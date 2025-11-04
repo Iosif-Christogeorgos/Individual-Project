@@ -105,24 +105,48 @@ RATE_LIMIT_MAX=100
 
 ---
 
-## Repository layout (what I actually use)
+## Repository layout (what I plan to use)
 
 ```
-/backend
-  ├─ src/
-  │  ├─ index.js        # Express bootstrap
-  │  ├─ routes/         # auth, files, shares, audit
-  │  ├─ services/       # key wrap, audit log, RBAC, link logic
-  │  └─ crypto/         # thin wrappers around Web Crypto-compatible formats
-  ├─ public/            # HTML/CSS/JS (served statically)
-  ├─ .env.example
-  └─ package.json
-/storage           # ciphertext blobs (dev only; gitignored)
-/docs
-  ├─ architecture.md
-  ├─ threat-model.md
-  └─ api.md
-README.md
+secure-file-sharing/
+├── backend/
+│   ├── src/
+│   │   ├── index.js              # Express server setup & middleware
+│   │   ├── routes/
+│   │   │   ├── auth.js           # login, register, WebAuthn/TOTP endpoints
+│   │   │   ├── files.js          # upload/download endpoints (ciphertext only)
+│   │   │   ├── shares.js         # create/revoke share links
+│   │   │   └── audit.js          # view / verify tamper-evident logs
+│   │   ├── services/
+│   │   │   ├── db.js             # SQLite/PostgreSQL access
+│   │   │   ├── storage.js        # save/retrieve encrypted files
+│   │   │   ├── auditService.js   # hash-chained audit entries
+│   │   │   └── rbac.js           # role & permission checks
+│   │   └── utils/
+│   │       └── hash.js           # small crypto helpers (hash chaining)
+│   ├── .env.example
+│   ├── package.json
+│   └── README.md
+│
+├── frontend/
+│   ├── index.html                # main web UI (upload, share, download)
+│   ├── js/
+│   │   ├── crypto.js             # encryption/decryption with Web Crypto API
+│   │   ├── keyring.js            # local key pair gen + key wrapping/unwrapping
+│   │   ├── api.js                # talk to backend (fetch, upload, etc.)
+│   │   ├── ui.js                 # handle forms, progress bars, messages
+│   │   └── main.js               # bootstraps everything
+│   ├── css/
+│   │   └── styles.css
+│   └── README.md
+│
+├── storage/                      # encrypted files (dev only, gitignored)
+├── docs/
+│   ├── architecture.md           # diagrams & component explanations
+│   ├── threat-model.md           # assets, threats, mitigations
+│   └── api.md                    # documented REST endpoints
+└── README.md                     # project overview (your main README)
+
 ```
 
 ---
