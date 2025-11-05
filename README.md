@@ -1,186 +1,74 @@
-# Secure File Sharing System
+# CrypShare — Zero-Knowledge Secure File Sharing System
 
-I’m building a zero-knowledge, end-to-end encrypted web app for sharing files securely. Files are encrypted **in the browser** with a random AES-GCM key per file. For each recipient I wrap that file key to their public key, so the server only stores ciphertext and wrapped keys. I use WebAuthn passkeys (with TOTP as a fallback), RBAC for authorization, expiring/revocable share links, and a tamper-evident audit log (hash-chained entries).
+> **CrypShare** is a web-based file sharing platform that provides **end-to-end encryption** with a strict **zero-knowledge** guarantee.
+> All files are encrypted _client-side_ using the **Web Crypto API**, and the server only stores ciphertext.
+> Access is controlled through **WebAuthn passkeys** (no passwords) and **per-recipient key wrapping** using secure ECDH key exchange.
 
-I’m starting **without Docker** to keep momentum. I run the frontend and backend locally, use **SQLite** during development, and store ciphertext on disk. I can add Nginx, PostgreSQL and MinIO later once the core features are stable.
+## 1. Overview
 
----
+Most cloud storage services rely on server-side encryption, meaning the provider can still access user data. CrypShare ensures privacy by encrypting files **before** they leave the user’s device. Private keys never leave the browser, making server breaches far less damaging.
 
-## My chosen stack (why I picked it)
+## 2. Key Features
 
-- **Backend: Node.js + Express (JavaScript)** — single language front to back, fast to iterate, great ecosystem for auth/crypto, and solid streaming support for large uploads. Easier for me to read/maintain since I already know JavaScript.
-- **Frontend: Vanilla JS + HTML/CSS** — I don’t need React/TypeScript to ship this. I’ll use modern ES modules and the Web Crypto API directly for client-side encryption.
-- **Styling:** plain CSS (I might add a tiny classless CSS later).
-- **Auth:** WebAuthn passkeys (plus TOTP fallback). I’ll keep the flow simple and well-documented.
-- **Storage:** local `storage/` folder in dev; switchable to S3/MinIO later.
+- **Zero-Knowledge Storage** — The server cannot read user files.
+- **Client-Side Encryption** — AES-GCM encryption handled entirely in-browser.
+- **Passwordless Authentication** — WebAuthn passkeys replace passwords.
+- **Secure File Sharing** — Per-recipient key wrapping using **ECDH P-256 + HKDF**.
+- **Access Control** — Owners can grant or revoke access at any time.
+- **Tamper-Evident Logs** — Audit log entries are hash-chained to detect manipulation.
+- **Modern UI** — Built with React, TypeScript, Vite, and Tailwind CSS.
 
-If I have spare time near the end, I can optionally move the frontend to a framework. Not required for my goals.
+## 3. Technology Stack
 
----
+| Layer          | Technology                             |
+| -------------- | -------------------------------------- |
+| Frontend       | React + TypeScript + Vite              |
+| Styling        | Tailwind CSS                           |
+| Cryptography   | Web Crypto API (AES-GCM / ECDH / HKDF) |
+| Authentication | WebAuthn Passkeys (`@simplewebauthn`)  |
+| Backend        | Node.js + Express                      |
+| Database       | SQLite (development)                   |
+| Storage        | Encrypted file chunks in `/storage`    |
+| Auditing       | Hash-linked log entries                |
 
-## How it works (short version)
+## 4. Architecture
 
-- **Client-side encryption**: per-file AES-GCM; filenames/metadata can be encrypted too.
-- **Key wrapping**: each recipient gets a copy of the file key wrapped to their public key (X25519 + HKDF, or equivalent).
-- **Server role**: stores ciphertext, wrapped keys, and access control; cannot read file contents.
-- **Auth**: WebAuthn passkeys (TOTP fallback).
-- **Links**: time-limited share links; revocation stops future access.
-- **Audit**: append-only log with `prev_hash → hash` to detect tampering.
+Browser (React + TS + Web Crypto) → HTTPS → Node.js (Express API) → SQLite + Encrypted Storage
 
----
+## 5. Development Setup
 
-## Architecture (current dev setup)
+### Backend
 
 ```
-Browser (Vanilla JS + Web Crypto)
-        ⇅ HTTPS
-Backend API (Node.js + Express)
-        ├── SQLite (dev)  → switchable to PostgreSQL later
-        └── storage/ (ciphertext blobs on disk) → switchable to S3/MinIO later
-```
-
-Cleartext never leaves the browser. Only recipients with the right private key can unwrap the file key and decrypt.
-
----
-
-## Getting started (no Docker)
-
-### Prerequisites
-
-- Node.js 20+
-- Git
-
-### 1) Clone and set up
-
-```bash
-git clone <your-repo-url>.git sfs
-cd sfs
-```
-
-#### Backend (Node + Express)
-
-```bash
 cd backend
-npm init -y
-npm i express zod jose cookie-parser cors dotenv pino pino-pretty
-npm i -D nodemon
-# Add a dev script to package.json:
-# "scripts": { "dev": "nodemon --ext js,json --watch src --exec node src/index.js" }
-mkdir -p src/{routes,services,crypto} public
+npm install
 cp .env.example .env
 npm run dev
 ```
 
-Backend runs at `http://localhost:8080` (or whatever `PORT` you set). It also serves static files from `backend/public/` for now.
-
-#### Frontend (Vanilla JS)
-
-I’ll keep HTML/CSS/JS in `backend/public/` initially so I don’t need a separate dev server. If I add a bundler later, I’ll document it here.
-
-Open the app at `http://localhost:8080`.
-
-### 2) Environment variables
-
-Create `backend/.env` based on this example.
-
-**backend/.env.example**
+### Frontend
 
 ```
-APP_ENV=development
-PORT=8080
-
-# SQLite path for dev (used by whichever DB library I wire up)
-SQLITE_PATH=./dev.db
-
-# Storage for ciphertext blobs
-STORAGE_DIR=../storage
-
-# Sessions / secrets
-SESSION_SECRET=change-me
-
-# Rate limiting
-RATE_LIMIT_WINDOW_MS=60000
-RATE_LIMIT_MAX=100
+cd frontend
+npm install
+npm run dev
 ```
+
+Open in browser:
+
+```
+http://localhost:5173
+```
+
+## 6. Security Principles
+
+- No plaintext ever leaves the client.
+- Private keys are stored securely in **IndexedDB**.
+- AES-GCM is used with **unique IVs per file chunk**.
+- Key sharing uses ECDH P-256 with HKDF to derive wrapping keys.
+- WebAuthn eliminates password vulnerabilities entirely.
+- Tamper-evident audit logs protect against silent data manipulation.
 
 ---
 
-## Repository layout (what I plan to use)
-
-```
-secure-file-sharing/
-├── backend/
-│   ├── src/
-│   │   ├── index.js              # Express server setup & middleware
-│   │   ├── routes/
-│   │   │   ├── auth.js           # login, register, WebAuthn/TOTP endpoints
-│   │   │   ├── files.js          # upload/download endpoints (ciphertext only)
-│   │   │   ├── shares.js         # create/revoke share links
-│   │   │   └── audit.js          # view / verify tamper-evident logs
-│   │   ├── services/
-│   │   │   ├── db.js             # SQLite/PostgreSQL access
-│   │   │   ├── storage.js        # save/retrieve encrypted files
-│   │   │   ├── auditService.js   # hash-chained audit entries
-│   │   │   └── rbac.js           # role & permission checks
-│   │   └── utils/
-│   │       └── hash.js           # small crypto helpers (hash chaining)
-│   ├── .env.example
-│   ├── package.json
-│   └── README.md
-│
-├── frontend/
-│   ├── index.html                # main web UI (upload, share, download)
-│   ├── js/
-│   │   ├── crypto.js             # encryption/decryption with Web Crypto API
-│   │   ├── keyring.js            # local key pair gen + key wrapping/unwrapping
-│   │   ├── api.js                # talk to backend (fetch, upload, etc.)
-│   │   ├── ui.js                 # handle forms, progress bars, messages
-│   │   └── main.js               # bootstraps everything
-│   ├── css/
-│   │   └── styles.css
-│   └── README.md
-│
-├── storage/                      # encrypted files (dev only, gitignored)
-├── docs/
-│   ├── architecture.md           # diagrams & component explanations
-│   ├── threat-model.md           # assets, threats, mitigations
-│   └── api.md                    # documented REST endpoints
-└── README.md                     # project overview (your main README)
-
-```
-
----
-
-## Notes on security choices
-
-- **Zero-knowledge**: encryption/decryption only in the browser; server keeps ciphertext.
-- **Keys**: per-file symmetric keys; per-recipient wrapped keys for sharing.
-- **Sessions**: HttpOnly, SameSite cookies; short TTL; rotate on login; CSRF protection on state-changing routes.
-- **Headers**: strict CSP + SRI for static assets (I’ll add via Express middleware or later with Nginx).
-- **Abuse controls**: rate limits on auth and downloads; size caps; basic IP throttling.
-- **Limits**: revocation can’t delete copies users already saved; some metadata (sizes/timestamps) may still leak unless I encrypt filenames and pad sizes.
-
----
-
-## My near-term plan
-
-- Express skeleton + routes; WebAuthn and TOTP flows
-- Browser keypair generation; encrypted recovery bundle for multi-device use
-- Upload (chunked), client-side AES-GCM, store ciphertext in `/storage`
-- Download + decrypt in browser
-- Sharing UI (select user → wrap key → create expiring link)
-- Audit trail with hash chaining and a small verifier script
-- Tests: unit (crypto wrappers/RBAC), integration (share/revoke), and a simple throughput check
-
-Later, I’ll:
-
-- switch SQLite → PostgreSQL,
-- move storage → MinIO/S3,
-- add Nginx in front for TLS, headers, and rate limiting,
-- and package everything for the demo.
-
----
-
-## License
-
-Private coursework during development. I’ll decide on a license (e.g., MIT) before any public release.
+CrypShare is developed for academic and research purposes but follows real-world secure system architecture standards.
