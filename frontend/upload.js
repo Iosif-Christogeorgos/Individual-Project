@@ -76,8 +76,10 @@ async function processFile() {
     if (!window.crypto || !window.crypto.subtle) {
       throw new Error(
         "Web Crypto API not available. This app requires HTTPS or localhost. " +
-        "You are accessing via: " + window.location.origin + ". " +
-        "Please use 'localhost' instead of an IP address, or set up HTTPS."
+          "You are accessing via: " +
+          window.location.origin +
+          ". " +
+          "Please use 'localhost' instead of an IP address, or set up HTTPS."
       );
     }
 
