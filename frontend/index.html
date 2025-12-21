@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CrypShare - Client Side Encryption</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="container">
+      <h2>CrypShare: Zero-Knowledge Uploader</h2>
+      <p>
+        Select a file. It will be encrypted in your browser before "uploading".
+      </p>
+
+      <input type="file" id="fileInput" />
+      <br /><br />
+      <button onclick="processFile()">Encrypt File (AES-GCM)</button>
+
+      <h3>Status Log:</h3>
+      <div id="log">Waiting for file...</div>
+    </div>
+
+    <script>
+      function log(msg) {
+        document.getElementById("log").innerText += "\n" + msg;
+      }
+
+      async function processFile() {
+        const fileInput = document.getElementById("fileInput");
+        if (fileInput.files.length === 0) {
+          alert("Please select a file first!");
+          return;
+        }
+
+        const file = fileInput.files[0];
+        log(`Original File: ${file.name} (${file.size} bytes)`);
+
+        try {
+          // STEP 1: Generate a random Encryption Key (AES-GCM)
+          // This happens ONLY in the browser. The server never sees this.
+          const key = await window.crypto.subtle.generateKey(
+            { name: "AES-GCM", length: 256 },
+            true, // extractable (we need to give it to the user)
+            ["encrypt", "decrypt"]
+          );
+          log("1. Generated AES-256 Key.");
+
+          // STEP 2: Create a random Initialization Vector (IV)
+          // This ensures the same file produces different encrypted data each time.
+          const iv = window.crypto.getRandomValues(new Uint8Array(12));
+          log("2. Generated random IV.");
+
+          // STEP 3: Read the file content
+          const fileData = await file.arrayBuffer();
+
+          // STEP 4: Encrypt the data
+          const encryptedData = await window.crypto.subtle.encrypt(
+            { name: "AES-GCM", iv: iv },
+            key,
+            fileData
+          );
+
+          log(`3. Encryption Complete!`);
+          log(`   Original Size: ${file.size} bytes`);
+          log(`   Encrypted Size: ${encryptedData.byteLength} bytes`);
+
+          // STEP 5: Export the key (User needs this to share the file)
+          const exportedKey = await window.crypto.subtle.exportKey("jwk", key);
+          log(`4. Key Exported: ${JSON.stringify(exportedKey.k)}`);
+          log("   (This key will be put in the URL #hash later)");
+        } catch (err) {
+          log("Error: " + err);
+          console.error(err);
+        }
+      }
+    </script>
+  </body>
+</html>

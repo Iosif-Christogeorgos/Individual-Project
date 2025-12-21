@@ -1,0 +1,22 @@
+body {
+  font-family: sans-serif;
+  padding: 20px;
+}
+.container {
+  max-width: 600px;
+  margin: 0 auto;
+}
+button {
+  padding: 10px 20px;
+  background-color: #28a745;
+  color: white;
+  border: none;
+  cursor: pointer;
+}
+#log {
+  background: #f4f4f4;
+  padding: 10px;
+  border: 1px solid #ddd;
+  margin-top: 20px;
+  white-space: pre-wrap;
+}
