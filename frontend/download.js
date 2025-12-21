@@ -15,6 +15,17 @@ async function startDownload() {
   btn.disabled = true;
 
   try {
+    // Check for secure context (HTTPS or localhost)
+    if (!window.crypto || !window.crypto.subtle) {
+      throw new Error(
+        "Web Crypto API not available. This app requires HTTPS or localhost. " +
+          "You are accessing via: " +
+          window.location.origin +
+          ". " +
+          "Please use 'localhost' instead of an IP address, or set up HTTPS."
+      );
+    }
+
     // 1. Get Parameters from URL
     const urlParams = new URLSearchParams(window.location.search);
     const fileId = urlParams.get("id");

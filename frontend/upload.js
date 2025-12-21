@@ -72,6 +72,15 @@ async function processFile() {
   );
 
   try {
+    // Check for secure context (HTTPS or localhost)
+    if (!window.crypto || !window.crypto.subtle) {
+      throw new Error(
+        "Web Crypto API not available. This app requires HTTPS or localhost. " +
+        "You are accessing via: " + window.location.origin + ". " +
+        "Please use 'localhost' instead of an IP address, or set up HTTPS."
+      );
+    }
+
     // -----------------------------------------------------------------
     // STEP 1: Generate Encryption Key
     // -----------------------------------------------------------------
