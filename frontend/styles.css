@@ -1,11 +1,16 @@
+/* =================================
+   Common Styles
+   ================================= */
 body {
   font-family: sans-serif;
   padding: 20px;
 }
+
 .container {
   max-width: 600px;
   margin: 0 auto;
 }
+
 button {
   padding: 10px 20px;
   background-color: #28a745;
@@ -13,10 +18,156 @@ button {
   border: none;
   cursor: pointer;
 }
+
 #log {
   background: #f4f4f4;
   padding: 10px;
   border: 1px solid #ddd;
   margin-top: 20px;
+  white-space: pre-wrap;
+}
+
+/* =================================
+   Debug Log Styling (index.html)
+   ================================= */
+#debug-log {
+  background: #1e1e1e;
+  color: #00ff00;
+  font-family: "Courier New", monospace;
+  font-size: 12px;
+  padding: 15px;
+  border-radius: 8px;
+  max-height: 300px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  margin: 15px 0;
+  border: 2px solid #333;
+}
+
+#debug-log .error {
+  color: #ff4444;
+}
+
+#debug-log .success {
+  color: #44ff44;
+}
+
+#debug-log .warn {
+  color: #ffaa00;
+}
+
+#debug-log .info {
+  color: #44aaff;
+}
+
+/* =================================
+   Share Link Box (index.html)
+   ================================= */
+#share-link-container {
+  display: none;
+  background: linear-gradient(135deg, #28a745, #20c997);
+  padding: 20px;
+  border-radius: 10px;
+  margin: 20px 0;
+  text-align: center;
+}
+
+#share-link-container h3 {
+  color: white;
+  margin: 0 0 10px 0;
+}
+
+#share-link {
+  width: 100%;
+  padding: 12px;
+  font-size: 14px;
+  border: none;
+  border-radius: 5px;
+  background: white;
+  color: #333;
+  text-align: center;
+  font-family: monospace;
+}
+
+#copy-btn {
+  margin-top: 10px;
+  padding: 10px 20px;
+  background: #fff;
+  color: #28a745;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+#copy-btn:hover {
+  background: #e0e0e0;
+}
+
+/* =================================
+   Progress Indicator (index.html)
+   ================================= */
+#progress-container {
+  display: none;
+  margin: 15px 0;
+}
+
+#progress-bar {
+  width: 100%;
+  height: 20px;
+  background: #333;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+#progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #007bff, #00d4ff);
+  width: 0%;
+  transition: width 0.3s ease;
+}
+
+#progress-text {
+  text-align: center;
+  margin-top: 5px;
+  font-size: 14px;
+  color: #666;
+}
+
+/* =================================
+   Download Page Styles (download.html)
+   ================================= */
+.download-page {
+  text-align: center;
+  padding: 40px;
+}
+
+.card {
+  max-width: 500px;
+  margin: 0 auto;
+  border: 1px solid #ccc;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.card button {
+  background: #007bff;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  font-size: 16px;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.card button:disabled {
+  background: #ccc;
+}
+
+#status {
+  margin-top: 20px;
+  color: #555;
   white-space: pre-wrap;
 }
