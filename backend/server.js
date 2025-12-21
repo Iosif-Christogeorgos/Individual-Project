@@ -42,6 +42,10 @@ app.use(cors());
 // Parse JSON bodies (for potential future use)
 app.use(express.json());
 
+// Serve the 'public' folder (where your index.html and download.html live)
+// Go UP one level ('..'), then into 'frontend'
+app.use(express.static(path.join(__dirname, "../frontend")));
+
 // =============================================================================
 // Multer Configuration - Disk Storage
 // =============================================================================
