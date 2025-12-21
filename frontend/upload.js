@@ -63,6 +63,18 @@ async function processFile() {
   }
 
   const file = fileInput.files[0];
+
+  // Check file size limit (100MB)
+  const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB in bytes
+  if (file.size > MAX_FILE_SIZE) {
+    const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
+    showError(
+      "File Too Large",
+      `Maximum file size is 100MB. Your file is ${fileSizeMB}MB.`
+    );
+    return;
+  }
+
   uploadBtn.disabled = true;
   uploadBtn.innerText = "⏳ Processing...";
 
