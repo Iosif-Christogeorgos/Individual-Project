@@ -1,1 +1,21 @@
-backend/node_modules/
+# 1. Dependencies (Never upload these, they are huge)
+node_modules/
+*/node_modules/
+
+# 2. Environment Variables (Protect your passwords/secrets)
+.env
+.env.local
+
+# 3. The Uploads Folder (Don't commit the encrypted test files)
+backend/uploads/
+uploads/
+*.bin
+
+# 4. Logs and Debugging
+*.log
+npm-debug.log
+yarn-error.log
+
+# 5. OS Generated Files (Junk files from Mac/Windows)
+.DS_Store
+Thumbs.db
