@@ -1,12 +1,12 @@
-# 1. Dependencies (Never upload these, they are huge)
+# 1. Dependencies
 node_modules/
 */node_modules/
 
-# 2. Environment Variables (Protect your passwords/secrets)
+# 2. Environment Variables
 .env
 .env.local
 
-# 3. The Uploads Folder (Don't commit the encrypted test files)
+# 3. The Uploads Folder
 backend/uploads/
 uploads/
 *.bin
@@ -16,6 +16,6 @@ uploads/
 npm-debug.log
 yarn-error.log
 
-# 5. OS Generated Files (Junk files from Mac/Windows)
+# 5. OS Generated Files
 .DS_Store
 Thumbs.db
