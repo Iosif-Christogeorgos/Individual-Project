@@ -1,174 +1,714 @@
-/* =================================
-   Common Styles
-   ================================= */
+/* =============================================================================
+   CrypShare - Professional Cybersecurity Theme
+   ============================================================================= */
+
+/* -----------------------------------------------------------------------------
+   CSS Variables & Theme
+   ----------------------------------------------------------------------------- */
+:root {
+  /* Background Colors */
+  --bg-primary: #0a0a0a;
+  --bg-secondary: #0d1117;
+  --bg-card: #161b22;
+  --bg-input: #0d1117;
+
+  /* Accent Colors */
+  --cyber-green: #00ff41;
+  --cyber-green-dim: #00cc33;
+  --cyber-green-glow: rgba(0, 255, 65, 0.3);
+  --cyber-blue: #00d4ff;
+  --cyber-blue-glow: rgba(0, 212, 255, 0.3);
+  --warning-orange: #ff9500;
+  --error-red: #ff3b3b;
+  --error-red-glow: rgba(255, 59, 59, 0.3);
+
+  /* Text Colors */
+  --text-primary: #e6edf3;
+  --text-secondary: #8b949e;
+  --text-muted: #484f58;
+
+  /* Borders */
+  --border-color: #30363d;
+  --border-glow: #00ff41;
+
+  /* Fonts */
+  --font-mono: "Fira Code", "Roboto Mono", "Courier New", monospace;
+  --font-sans: "Inter", "Segoe UI", Roboto, sans-serif;
+
+  /* Spacing */
+  --radius: 8px;
+  --radius-lg: 12px;
+}
+
+/* -----------------------------------------------------------------------------
+   Global Reset & Base Styles
+   ----------------------------------------------------------------------------- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
 body {
-  font-family: sans-serif;
+  font-family: var(--font-sans);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: 20px;
-  background-color: #ced8cd;
+  line-height: 1.6;
 }
 
-.container {
-  max-width: 600px;
-  margin: 0 auto;
+/* Subtle grid background pattern */
+body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: linear-gradient(rgba(0, 255, 65, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 255, 65, 0.03) 1px, transparent 1px);
+  background-size: 50px 50px;
+  pointer-events: none;
+  z-index: -1;
 }
 
-button {
-  padding: 10px 20px;
-  background-color: #28a745;
-  color: white;
-  border: none;
+/* -----------------------------------------------------------------------------
+   Typography
+   ----------------------------------------------------------------------------- */
+h1,
+h2,
+h3 {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  letter-spacing: -0.5px;
+}
+
+h2 {
+  font-size: 1.5rem;
+  color: var(--cyber-green);
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+h2::before {
+  content: ">";
+  color: var(--cyber-green);
+  animation: blink 1s step-end infinite;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+p {
+  color: var(--text-secondary);
+  margin-bottom: 1.5rem;
+}
+
+/* -----------------------------------------------------------------------------
+   Main Container / Card
+   ----------------------------------------------------------------------------- */
+.container,
+.card {
+  width: 100%;
+  max-width: 550px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 2rem;
+  box-shadow: 0 0 0 1px rgba(0, 255, 65, 0.1), 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+/* -----------------------------------------------------------------------------
+   Logo / Brand Header
+   ----------------------------------------------------------------------------- */
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.logo-icon {
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, var(--cyber-green), var(--cyber-blue));
+  border-radius: var(--radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+}
+
+.logo-text {
+  font-family: var(--font-mono);
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.logo-text span {
+  color: var(--cyber-green);
+}
+
+/* -----------------------------------------------------------------------------
+   Drop Zone / File Upload Area
+   ----------------------------------------------------------------------------- */
+.drop-zone {
+  position: relative;
+  border: 2px dashed var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 2.5rem 1.5rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: var(--bg-input);
+  margin-bottom: 1.5rem;
+}
+
+.drop-zone::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: var(--radius-lg);
+  padding: 2px;
+  background: linear-gradient(135deg, transparent, transparent);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: xor;
+  -webkit-mask-composite: xor;
+  pointer-events: none;
+  transition: background 0.3s ease;
+}
+
+.drop-zone:hover,
+.drop-zone.drag-over {
+  border-color: var(--cyber-green);
+  background: rgba(0, 255, 65, 0.05);
+}
+
+.drop-zone:hover::before,
+.drop-zone.drag-over::before {
+  background: linear-gradient(135deg, var(--cyber-green), var(--cyber-blue));
+  animation: borderGlow 2s linear infinite;
+}
+
+@keyframes borderGlow {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.drop-zone-icon {
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+  display: block;
+}
+
+.drop-zone-text {
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.drop-zone-text strong {
+  color: var(--cyber-green);
+}
+
+.drop-zone input[type="file"] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
   cursor: pointer;
 }
 
-#log {
-  background: #f4f4f4;
-  padding: 10px;
-  border: 1px solid #ddd;
-  margin-top: 20px;
-  white-space: pre-wrap;
-}
-
-/* =================================
-   Debug Log Styling (index.html)
-   ================================= */
-#debug-log {
-  background: #1e1e1e;
-  color: #00ff00;
-  font-family: "Courier New", monospace;
-  font-size: 12px;
-  padding: 15px;
-  border-radius: 8px;
-  max-height: 300px;
-  overflow-y: auto;
-  white-space: pre-wrap;
-  word-wrap: break-word;
-  margin: 15px 0;
-  border: 2px solid #333;
-}
-
-#debug-log .error {
-  color: #ff4444;
-}
-
-#debug-log .success {
-  color: #44ff44;
-}
-
-#debug-log .warn {
-  color: #ffaa00;
-}
-
-#debug-log .info {
-  color: #44aaff;
-}
-
-/* =================================
-   Share Link Box (index.html)
-   ================================= */
-#share-link-container {
+/* Selected file display */
+.file-selected {
   display: none;
-  background: linear-gradient(135deg, #28a745, #20c997);
-  padding: 20px;
-  border-radius: 10px;
-  margin: 20px 0;
-  text-align: center;
+  align-items: center;
+  gap: 12px;
+  padding: 1rem;
+  background: rgba(0, 255, 65, 0.1);
+  border: 1px solid var(--cyber-green);
+  border-radius: var(--radius);
+  margin-top: 1rem;
 }
 
-#share-link-container h3 {
-  color: white;
-  margin: 0 0 10px 0;
+.file-selected.show {
+  display: flex;
 }
 
-#share-link {
-  width: 100%;
-  padding: 12px;
-  font-size: 14px;
+.file-selected-icon {
+  font-size: 1.5rem;
+}
+
+.file-selected-info {
+  flex: 1;
+  text-align: left;
+}
+
+.file-selected-name {
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  word-break: break-all;
+}
+
+.file-selected-size {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.file-selected-remove {
+  background: none;
   border: none;
-  border-radius: 5px;
-  background: white;
-  color: #333;
-  text-align: center;
-  font-family: monospace;
-}
-
-#copy-btn {
-  margin-top: 10px;
-  padding: 10px 20px;
-  background: #fff;
-  color: #28a745;
-  border: none;
-  border-radius: 5px;
+  color: var(--text-muted);
   cursor: pointer;
-  font-weight: bold;
+  padding: 5px;
+  font-size: 1.2rem;
+  transition: color 0.2s;
 }
 
-#copy-btn:hover {
-  background: #e0e0e0;
+.file-selected-remove:hover {
+  color: var(--error-red);
 }
 
-/* =================================
-   Progress Indicator (index.html)
-   ================================= */
-#progress-container {
-  display: none;
-  margin: 15px 0;
-}
-
-#progress-bar {
+/* -----------------------------------------------------------------------------
+   Buttons
+   ----------------------------------------------------------------------------- */
+.btn {
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  font-weight: 600;
+  padding: 14px 28px;
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
   width: 100%;
-  height: 20px;
-  background: #333;
-  border-radius: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.btn-primary {
+  background: linear-gradient(
+    135deg,
+    var(--cyber-green-dim),
+    var(--cyber-green)
+  );
+  color: var(--bg-primary);
+  box-shadow: 0 0 20px var(--cyber-green-glow);
+}
+
+.btn-primary:hover:not(:disabled) {
+  box-shadow: 0 0 30px var(--cyber-green-glow), 0 0 60px var(--cyber-green-glow);
+  transform: translateY(-2px);
+}
+
+.btn-primary:disabled {
+  background: var(--text-muted);
+  box-shadow: none;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--cyber-green);
+  border: 1px solid var(--cyber-green);
+}
+
+.btn-secondary:hover {
+  background: rgba(0, 255, 65, 0.1);
+  box-shadow: 0 0 20px var(--cyber-green-glow);
+}
+
+/* Copy button specific styling */
+.btn-copy {
+  background: transparent;
+  color: var(--cyber-blue);
+  border: 1px solid var(--cyber-blue);
+  margin-top: 1rem;
+}
+
+.btn-copy:hover {
+  background: rgba(0, 212, 255, 0.1);
+  box-shadow: 0 0 20px var(--cyber-blue-glow);
+}
+
+.btn-copy.copied {
+  background: var(--cyber-green);
+  color: var(--bg-primary);
+  border-color: var(--cyber-green);
+}
+
+/* -----------------------------------------------------------------------------
+   Progress Bar - Terminal Style
+   ----------------------------------------------------------------------------- */
+.progress-container {
+  display: none;
+  margin: 1.5rem 0;
+}
+
+.progress-container.show {
+  display: block;
+}
+
+.progress-bar {
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  padding: 8px 12px;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+}
+
+.progress-bar-inner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.progress-bar-label {
+  color: var(--cyber-green);
+  white-space: nowrap;
+}
+
+.progress-bar-track {
+  flex: 1;
+  color: var(--text-muted);
+  letter-spacing: 0;
   overflow: hidden;
 }
 
-#progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #007bff, #00d4ff);
-  width: 0%;
-  transition: width 0.3s ease;
+.progress-bar-percent {
+  color: var(--cyber-blue);
+  min-width: 45px;
+  text-align: right;
 }
 
-#progress-text {
-  text-align: center;
-  margin-top: 5px;
-  font-size: 14px;
-  color: #666;
+.progress-status {
+  margin-top: 0.5rem;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-family: var(--font-mono);
 }
 
-/* =================================
-   Download Page Styles (download.html)
-   ================================= */
-.download-page {
-  text-align: center;
-  padding: 40px;
+/* -----------------------------------------------------------------------------
+   Share Link Container
+   ----------------------------------------------------------------------------- */
+.share-container {
+  display: none;
+  margin-top: 1.5rem;
+  padding: 1.5rem;
+  background: rgba(0, 255, 65, 0.05);
+  border: 1px solid var(--cyber-green);
+  border-radius: var(--radius-lg);
+  animation: fadeIn 0.3s ease;
 }
 
-.card {
-  max-width: 500px;
-  margin: 0 auto;
-  border: 1px solid #ccc;
-  padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+.share-container.show {
+  display: block;
 }
 
-.card button {
-  background: #007bff;
-  color: white;
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.share-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 1rem;
+  font-family: var(--font-mono);
+  color: var(--cyber-green);
+}
+
+.share-header-icon {
+  font-size: 1.5rem;
+}
+
+.share-link-wrapper {
+  position: relative;
+}
+
+.share-link-input {
+  width: 100%;
+  padding: 12px 16px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  outline: none;
+}
+
+.share-link-input:focus {
+  border-color: var(--cyber-green);
+  box-shadow: 0 0 0 3px var(--cyber-green-glow);
+}
+
+/* -----------------------------------------------------------------------------
+   Alert / Error Box
+   ----------------------------------------------------------------------------- */
+.alert {
+  display: none;
+  padding: 1rem 1.25rem;
+  border-radius: var(--radius);
+  margin-bottom: 1rem;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  animation: fadeIn 0.3s ease;
+}
+
+.alert.show {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.alert-error {
+  background: rgba(255, 59, 59, 0.1);
+  border: 1px solid var(--error-red);
+  color: var(--error-red);
+}
+
+.alert-success {
+  background: rgba(0, 255, 65, 0.1);
+  border: 1px solid var(--cyber-green);
+  color: var(--cyber-green);
+}
+
+.alert-icon {
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+
+.alert-content {
+  flex: 1;
+}
+
+.alert-title {
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.alert-message {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+}
+
+.alert-close {
+  background: none;
   border: none;
-  padding: 10px 20px;
-  font-size: 16px;
+  color: currentColor;
   cursor: pointer;
-  border-radius: 4px;
+  padding: 0;
+  font-size: 1.2rem;
+  opacity: 0.7;
+  transition: opacity 0.2s;
 }
 
-.card button:disabled {
-  background: #ccc;
+.alert-close:hover {
+  opacity: 1;
 }
 
-#status {
-  margin-top: 20px;
-  color: #555;
-  white-space: pre-wrap;
+/* -----------------------------------------------------------------------------
+   Download Page Specific Styles
+   ----------------------------------------------------------------------------- */
+.download-page .card {
+  text-align: center;
+}
+
+.download-page h2::before {
+  content: none;
+}
+
+.download-icon {
+  font-size: 4rem;
+  margin-bottom: 1.5rem;
+  display: block;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.05);
+  }
+}
+
+.download-status {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  text-align: left;
+}
+
+.download-status-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.download-status-line.complete {
+  color: var(--cyber-green);
+}
+
+.download-status-line.error {
+  color: var(--error-red);
+}
+
+.download-status-line.pending {
+  color: var(--text-muted);
+}
+
+.status-icon {
+  font-size: 1rem;
+}
+
+/* -----------------------------------------------------------------------------
+   Security Badge
+   ----------------------------------------------------------------------------- */
+.security-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border-color);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.security-badge-icon {
+  color: var(--cyber-green);
+}
+
+/* -----------------------------------------------------------------------------
+   Responsive Design
+   ----------------------------------------------------------------------------- */
+@media (max-width: 600px) {
+  body {
+    padding: 15px;
+    align-items: flex-start;
+    padding-top: 40px;
+  }
+
+  .container,
+  .card {
+    padding: 1.5rem;
+  }
+
+  h2 {
+    font-size: 1.25rem;
+  }
+
+  .drop-zone {
+    padding: 2rem 1rem;
+  }
+
+  .drop-zone-icon {
+    font-size: 2rem;
+  }
+
+  .btn {
+    padding: 12px 20px;
+    font-size: 0.85rem;
+  }
+
+  .share-link-input {
+    font-size: 0.7rem;
+  }
+
+  .logo-text {
+    font-size: 1.1rem;
+  }
+}
+
+@media (max-width: 400px) {
+  .file-selected {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .file-selected-info {
+    text-align: center;
+  }
+}
+
+/* -----------------------------------------------------------------------------
+   Utility Classes
+   ----------------------------------------------------------------------------- */
+.hidden {
+  display: none !important;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.mt-1 {
+  margin-top: 0.5rem;
+}
+.mt-2 {
+  margin-top: 1rem;
+}
+.mt-3 {
+  margin-top: 1.5rem;
+}
+.mb-1 {
+  margin-bottom: 0.5rem;
+}
+.mb-2 {
+  margin-bottom: 1rem;
+}
+.mb-3 {
+  margin-bottom: 1.5rem;
 }

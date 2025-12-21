@@ -1,311 +1,298 @@
-// =======================================================================
-// DEBUGGING UTILITIES
-// =======================================================================
-function log(msg, type = "info") {
-  const logEl = document.getElementById("debug-log");
-  const timestamp = new Date().toLocaleTimeString();
-  const prefix =
-    {
-      info: "📘",
-      success: "✅",
-      error: "❌",
-      warn: "⚠️",
-    }[type] || "•";
+// =============================================================================
+// CrypShare - Upload & Encryption Module
+// =============================================================================
 
-  const line = `[${timestamp}] ${prefix} ${msg}`;
-  logEl.innerHTML += `\n<span class="${type}">${line}</span>`;
-  logEl.scrollTop = logEl.scrollHeight; // Auto-scroll
-  console.log(`[${type.toUpperCase()}]`, msg);
+const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
+
+// =============================================================================
+// UI Helper Functions
+// =============================================================================
+
+function showAlert(title, message) {
+  const alert = document.getElementById("alert");
+  const alertTitle = document.getElementById("alert-title");
+  const alertMessage = document.getElementById("alert-message");
+
+  alertTitle.textContent = title;
+  alertMessage.textContent = message;
+  alert.classList.add("show");
 }
 
-function updateProgress(percent, text) {
-  document.getElementById("progress-container").style.display = "block";
-  document.getElementById("progress-fill").style.width = percent + "%";
-  document.getElementById("progress-text").innerText = text;
+function hideAlert() {
+  document.getElementById("alert").classList.remove("show");
 }
 
-function showError(title, details) {
-  log(`${title}: ${details}`, "error");
-  alert(`❌ ERROR: ${title}\n\nDetails: ${details}`);
+function updateProgress(percent, status) {
+  const container = document.getElementById("progressContainer");
+  const track = document.getElementById("progressTrack");
+  const percentEl = document.getElementById("progressPercent");
+  const statusEl = document.getElementById("progressStatus");
+
+  container.classList.add("show");
+
+  // Create terminal-style progress bar
+  const filled = Math.floor(percent / 4);
+  const empty = 25 - filled;
+  track.textContent = "[" + "#".repeat(filled) + ".".repeat(empty) + "]";
+
+  percentEl.textContent = percent + "%";
+  statusEl.textContent = status;
+}
+
+function hideProgress() {
+  document.getElementById("progressContainer").classList.remove("show");
 }
 
 function showShareLink(link) {
-  const container = document.getElementById("share-link-container");
-  const input = document.getElementById("share-link");
-  container.style.display = "block";
+  const container = document.getElementById("shareContainer");
+  const input = document.getElementById("shareLink");
+
+  container.classList.add("show");
   input.value = link;
-  input.select();
 }
 
 function copyLink() {
-  const input = document.getElementById("share-link");
-  input.select();
-  document.execCommand("copy");
-  alert("✅ Link copied to clipboard!");
+  const input = document.getElementById("shareLink");
+  const btn = document.getElementById("copyBtn");
+
+  navigator.clipboard
+    .writeText(input.value)
+    .then(() => {
+      btn.classList.add("copied");
+      btn.innerHTML = "<span>✓</span> Copied!";
+
+      setTimeout(() => {
+        btn.classList.remove("copied");
+        btn.innerHTML = "<span>📋</span> Copy to Clipboard";
+      }, 2000);
+    })
+    .catch(() => {
+      // Fallback for older browsers
+      input.select();
+      document.execCommand("copy");
+      btn.classList.add("copied");
+      btn.innerHTML = "<span>✓</span> Copied!";
+
+      setTimeout(() => {
+        btn.classList.remove("copied");
+        btn.innerHTML = "<span>📋</span> Copy to Clipboard";
+      }, 2000);
+    });
 }
 
-// =======================================================================
-// MAIN PROCESS: Encrypt & Upload
-// =======================================================================
+function formatFileSize(bytes) {
+  if (bytes < 1024) return bytes + " B";
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+  return (bytes / (1024 * 1024)).toFixed(2) + " MB";
+}
+
+function clearFile() {
+  const fileInput = document.getElementById("fileInput");
+  const fileSelected = document.getElementById("fileSelected");
+
+  fileInput.value = "";
+  fileSelected.classList.remove("show");
+}
+
+// =============================================================================
+// Drag & Drop Handlers
+// =============================================================================
+
+document.addEventListener("DOMContentLoaded", () => {
+  const dropZone = document.getElementById("dropZone");
+  const fileInput = document.getElementById("fileInput");
+
+  // Drag events
+  ["dragenter", "dragover"].forEach((event) => {
+    dropZone.addEventListener(event, (e) => {
+      e.preventDefault();
+      dropZone.classList.add("drag-over");
+    });
+  });
+
+  ["dragleave", "drop"].forEach((event) => {
+    dropZone.addEventListener(event, (e) => {
+      e.preventDefault();
+      dropZone.classList.remove("drag-over");
+    });
+  });
+
+  // Handle dropped files
+  dropZone.addEventListener("drop", (e) => {
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      fileInput.files = files;
+      handleFileSelect(files[0]);
+    }
+  });
+
+  // Handle file input change
+  fileInput.addEventListener("change", (e) => {
+    if (e.target.files.length > 0) {
+      handleFileSelect(e.target.files[0]);
+    }
+  });
+});
+
+function handleFileSelect(file) {
+  const fileSelected = document.getElementById("fileSelected");
+  const fileName = document.getElementById("fileName");
+  const fileSize = document.getElementById("fileSize");
+
+  hideAlert();
+
+  // Check file size
+  if (file.size > MAX_FILE_SIZE) {
+    showAlert(
+      "File Too Large",
+      `Maximum file size is 100MB. Your file is ${formatFileSize(file.size)}.`
+    );
+    clearFile();
+    return;
+  }
+
+  fileName.textContent = file.name;
+  fileSize.textContent = formatFileSize(file.size);
+  fileSelected.classList.add("show");
+}
+
+// =============================================================================
+// Main Encryption & Upload Process
+// =============================================================================
+
 async function processFile() {
   const fileInput = document.getElementById("fileInput");
   const uploadBtn = document.getElementById("uploadBtn");
 
   // Reset UI
-  document.getElementById("share-link-container").style.display = "none";
-  document.getElementById("debug-log").innerHTML =
-    "[ CrypShare Debug Console ]\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━";
+  hideAlert();
+  document.getElementById("shareContainer").classList.remove("show");
 
   // Validate file selection
   if (fileInput.files.length === 0) {
-    showError("No File Selected", "Please select a file first!");
+    showAlert(
+      "No File Selected",
+      "Please select a file to encrypt and upload."
+    );
     return;
   }
 
   const file = fileInput.files[0];
 
-  // Check file size limit (100MB)
-  const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB in bytes
+  // Check file size
   if (file.size > MAX_FILE_SIZE) {
-    const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
-    showError(
+    showAlert(
       "File Too Large",
-      `Maximum file size is 100MB. Your file is ${fileSizeMB}MB.`
+      `Maximum file size is 100MB. Your file is ${formatFileSize(file.size)}.`
     );
     return;
   }
 
+  // Disable button during processing
   uploadBtn.disabled = true;
-  uploadBtn.innerText = "⏳ Processing...";
-
-  log(
-    `Selected File: "${file.name}" (${(file.size / 1024).toFixed(2)} KB)`,
-    "info"
-  );
+  uploadBtn.innerHTML = "<span>⏳</span> Processing...";
 
   try {
-    // Check for secure context (HTTPS or localhost)
+    // Check for Web Crypto API (requires HTTPS or localhost)
     if (!window.crypto || !window.crypto.subtle) {
       throw new Error(
-        "Web Crypto API not available. This app requires HTTPS or localhost. " +
-          "You are accessing via: " +
-          window.location.origin +
-          ". " +
-          "Please use 'localhost' instead of an IP address, or set up HTTPS."
+        "Web Crypto API not available. Please use HTTPS or localhost."
       );
     }
 
-    // -----------------------------------------------------------------
-    // STEP 1: Generate Encryption Key
-    // -----------------------------------------------------------------
-    updateProgress(10, "Step 1/5: Generating encryption key...");
-    log("Step 1: Generating AES-256-GCM encryption key...", "info");
-
+    // Step 1: Generate encryption key
+    updateProgress(10, "Generating encryption key...");
     const key = await window.crypto.subtle.generateKey(
       { name: "AES-GCM", length: 256 },
       true,
       ["encrypt", "decrypt"]
     );
-    log("Step 1: ✓ Key generated successfully!", "success");
 
-    // -----------------------------------------------------------------
-    // STEP 2: Generate IV (Initialization Vector)
-    // -----------------------------------------------------------------
-    updateProgress(20, "Step 2/5: Generating IV...");
-    log("Step 2: Generating random 12-byte IV...", "info");
-
+    // Step 2: Generate IV
+    updateProgress(20, "Generating initialization vector...");
     const iv = window.crypto.getRandomValues(new Uint8Array(12));
-    log("Step 2: ✓ IV generated successfully!", "success");
 
-    // -----------------------------------------------------------------
-    // STEP 3: Read File Contents
-    // -----------------------------------------------------------------
-    updateProgress(30, "Step 3/5: Reading file...");
-    log("Step 3: Reading file contents into memory...", "info");
-
+    // Step 3: Read file
+    updateProgress(30, "Reading file...");
     const fileData = await file.arrayBuffer();
-    log(
-      `Step 3: ✓ File read complete (${fileData.byteLength} bytes)`,
-      "success"
-    );
 
-    // -----------------------------------------------------------------
-    // STEP 4: Create payload with filename + file data
-    // -----------------------------------------------------------------
-    updateProgress(40, "Step 4/6: Preparing payload...");
-    log("Step 4: Embedding filename in payload...", "info");
-
-    // Encode filename as UTF-8 bytes
+    // Step 4: Create payload with embedded filename
+    updateProgress(40, "Preparing payload...");
     const filenameBytes = new TextEncoder().encode(file.name);
     const filenameLength = filenameBytes.length;
-
-    // Create payload: [2 bytes for filename length] + [filename] + [file data]
     const fileDataArray = new Uint8Array(fileData);
     const payload = new Uint8Array(2 + filenameLength + fileDataArray.length);
 
-    // Store filename length as 2 bytes (supports filenames up to 65535 chars)
+    // Store filename length as 2 bytes
     payload[0] = (filenameLength >> 8) & 0xff;
     payload[1] = filenameLength & 0xff;
     payload.set(filenameBytes, 2);
     payload.set(fileDataArray, 2 + filenameLength);
 
-    log(`Step 4: ✓ Payload created with filename "${file.name}"`, "success");
-
-    // -----------------------------------------------------------------
-    // STEP 5: Encrypt the payload
-    // -----------------------------------------------------------------
-    updateProgress(50, "Step 5/6: Encrypting data...");
-    log("Step 5: Encrypting payload with AES-GCM...", "info");
-
+    // Step 5: Encrypt
+    updateProgress(55, "Encrypting data...");
     const encryptedData = await window.crypto.subtle.encrypt(
       { name: "AES-GCM", iv: iv },
       key,
       payload
     );
-    log(
-      `Step 5: ✓ Encryption complete! (${encryptedData.byteLength} bytes)`,
-      "success"
-    );
 
-    // -----------------------------------------------------------------
-    // STEP 6: Export Key for URL Hash
-    // -----------------------------------------------------------------
-    updateProgress(60, "Step 6/6: Preparing upload...");
-    log("Step 6: Exporting key as JWK format...", "info");
-
+    // Step 6: Export key
+    updateProgress(65, "Exporting key...");
     const exportedKey = await window.crypto.subtle.exportKey("jwk", key);
-    log("Step 5: ✓ Key exported!", "success");
 
-    // Combine IV + encrypted data for transmission
-    // The IV is needed for decryption and is safe to transmit publicly
-    const ivArray = Array.from(iv);
+    // Combine IV + encrypted data
     const encryptedArray = new Uint8Array(encryptedData);
     const combined = new Uint8Array(iv.length + encryptedArray.length);
     combined.set(iv);
     combined.set(encryptedArray, iv.length);
 
-    log(
-      `Payload prepared: ${combined.length} bytes (IV: ${iv.length}, Data: ${encryptedArray.length})`,
-      "info"
-    );
-
-    // -----------------------------------------------------------------
-    // STEP 6: Upload to Server
-    // -----------------------------------------------------------------
-    updateProgress(75, "Uploading to server...");
-    log("Step 6: Uploading encrypted blob to server...", "info");
-    log(`  → Target: POST /upload`, "info");
-
-    // Create FormData with the encrypted file
+    // Step 7: Upload
+    updateProgress(75, "Uploading encrypted file...");
     const formData = new FormData();
-    const blob = new Blob([combined], {
-      type: "application/octet-stream",
-    });
+    const blob = new Blob([combined], { type: "application/octet-stream" });
     formData.append("encryptedFile", blob, "encrypted.bin");
 
-    let response;
-    try {
-      response = await fetch("/upload", {
-        method: "POST",
-        body: formData,
-      });
-      log(
-        `  → Server responded with status: ${response.status} ${response.statusText}`,
-        "info"
-      );
-    } catch (networkError) {
-      // Network error (server offline, CORS issue, etc.)
-      showError(
-        "Network Error - Cannot reach server",
-        `The server is not responding.\n\nPossible causes:\n• Server is not running\n• Network connectivity issue\n• Firewall blocking request\n\nTechnical: ${networkError.message}`
-      );
-      uploadBtn.disabled = false;
-      uploadBtn.innerText = "🔒 Encrypt & Upload";
-      return;
-    }
+    const response = await fetch("/upload", {
+      method: "POST",
+      body: formData,
+    });
 
-    // Check HTTP status
     if (!response.ok) {
       const errorText = await response.text();
-      showError(
-        `Server Error (HTTP ${response.status})`,
-        `The server returned an error.\n\nResponse body:\n${errorText}`
+      throw new Error(
+        `Upload failed: ${response.status} ${response.statusText}`
       );
-      uploadBtn.disabled = false;
-      uploadBtn.innerText = "🔒 Encrypt & Upload";
-      return;
     }
 
-    // -----------------------------------------------------------------
-    // STEP 7: Parse and Validate Server Response
-    // -----------------------------------------------------------------
-    updateProgress(90, "Processing server response...");
-    log("Step 7: Parsing server response...", "info");
+    // Step 8: Process response
+    updateProgress(90, "Processing response...");
+    const serverData = await response.json();
 
-    let serverData;
-    const rawResponse = await response.text();
-    log(`  → Raw response: ${rawResponse}`, "info");
-
-    try {
-      serverData = JSON.parse(rawResponse);
-    } catch (parseError) {
-      showError(
-        "Invalid Server Response",
-        `Server did not return valid JSON.\n\nRaw response:\n${rawResponse}`
-      );
-      uploadBtn.disabled = false;
-      uploadBtn.innerText = "🔒 Encrypt & Upload";
-      return;
-    }
-
-    // Validate fileId exists
     if (!serverData.fileId) {
-      showError(
-        "Missing fileId in Response",
-        `Server response is missing 'fileId' field.\n\nReceived:\n${JSON.stringify(
-          serverData,
-          null,
-          2
-        )}`
-      );
-      uploadBtn.disabled = false;
-      uploadBtn.innerText = "🔒 Encrypt & Upload";
-      return;
+      throw new Error("Server did not return a file ID.");
     }
 
-    log(`Step 7: ✓ Received fileId: "${serverData.fileId}"`, "success");
-
-    // -----------------------------------------------------------------
-    // STEP 8: Generate Share Link
-    // -----------------------------------------------------------------
+    // Step 9: Generate share link
     updateProgress(100, "Complete!");
-    log("Step 8: Generating share link...", "info");
+    const keyString = exportedKey.k;
+    const shareLink = `${
+      window.location.origin
+    }/download?id=${encodeURIComponent(serverData.fileId)}#${keyString}`;
 
-    // The key goes in the URL hash (#) so it's never sent to the server
-    const keyString = exportedKey.k; // The raw key material in base64url
-    const shareLink = `${window.location.origin}/download?id=${serverData.fileId}#${keyString}`;
-
-    log(`Step 8: ✓ Share link generated!`, "success");
-    log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");
-    log(`🎉 SUCCESS! File encrypted and uploaded!`, "success");
-    log(`📎 FileId: ${serverData.fileId}`, "info");
-    log(
-      `🔑 Key (in URL hash, never sent to server): ${keyString.substring(
-        0,
-        20
-      )}...`,
-      "info"
+    // Show success
+    setTimeout(() => {
+      hideProgress();
+      showShareLink(shareLink);
+    }, 500);
+  } catch (error) {
+    hideProgress();
+    showAlert(
+      "Encryption Failed",
+      error.message || "An unexpected error occurred."
     );
-
-    // Show the link in the UI
-    showShareLink(shareLink);
-  } catch (err) {
-    log(`UNEXPECTED ERROR: ${err.message}`, "error");
-    log(`Stack trace: ${err.stack}`, "error");
-    showError("Unexpected Error", err.message);
-    console.error("Full error object:", err);
   } finally {
     uploadBtn.disabled = false;
-    uploadBtn.innerText = "🔒 Encrypt & Upload";
+    uploadBtn.innerHTML = "<span>🔒</span> Encrypt & Upload";
   }
 }

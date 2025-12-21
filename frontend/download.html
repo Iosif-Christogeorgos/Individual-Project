@@ -3,17 +3,84 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>CrypShare - Download</title>
+    <meta
+      name="description"
+      content="CrypShare - Download and decrypt your secure file."
+    />
+    <meta name="theme-color" content="#0a0a0a" />
+    <title>CrypShare - Secure Download</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body class="download-page">
     <div class="card">
-      <h2>Secure File Download</h2>
-      <p>This file is encrypted. Your browser will decrypt it locally.</p>
-      <button id="btnDownload" onclick="startDownload()">
-        Download & Decrypt
+      <!-- Logo Header -->
+      <div class="logo" style="justify-content: center">
+        <div class="logo-icon">🔐</div>
+        <div class="logo-text">Cryp<span>Share</span></div>
+      </div>
+
+      <!-- Download Icon -->
+      <span class="download-icon">🔓</span>
+
+      <!-- Page Title -->
+      <h2 style="justify-content: center">Secure Download</h2>
+      <p>
+        This file is encrypted. Click below to download and decrypt it locally
+        in your browser.
+      </p>
+
+      <!-- Alert Box (for errors) -->
+      <div id="alert" class="alert alert-error">
+        <span class="alert-icon">⚠️</span>
+        <div class="alert-content">
+          <div class="alert-title" id="alert-title">Error</div>
+          <div class="alert-message" id="alert-message">
+            Something went wrong.
+          </div>
+        </div>
+        <button class="alert-close" onclick="hideAlert()">×</button>
+      </div>
+
+      <!-- Download Button -->
+      <button
+        class="btn btn-primary"
+        id="downloadBtn"
+        onclick="startDownload()"
+      >
+        <span>⬇️</span> Download & Decrypt
       </button>
-      <div id="status"></div>
+
+      <!-- Status Display -->
+      <div class="download-status" id="statusContainer" style="display: none">
+        <div class="download-status-line pending" id="step1">
+          <span class="status-icon">○</span>
+          <span>Fetching encrypted file...</span>
+        </div>
+        <div class="download-status-line pending" id="step2">
+          <span class="status-icon">○</span>
+          <span>Importing decryption key...</span>
+        </div>
+        <div class="download-status-line pending" id="step3">
+          <span class="status-icon">○</span>
+          <span>Decrypting file...</span>
+        </div>
+        <div class="download-status-line pending" id="step4">
+          <span class="status-icon">○</span>
+          <span>Preparing download...</span>
+        </div>
+      </div>
+
+      <!-- Security Badge -->
+      <div class="security-badge">
+        <span class="security-badge-icon">🛡️</span>
+        <span>Decryption happens in your browser</span>
+      </div>
     </div>
 
     <script src="download.js"></script>

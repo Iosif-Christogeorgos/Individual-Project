@@ -1,54 +1,103 @@
-// Helper: Convert base64url to standard base64
-function base64urlToBase64(str) {
-  // Replace base64url characters with standard base64
-  let base64 = str.replace(/-/g, "+").replace(/_/g, "/");
-  // Add padding if needed
-  while (base64.length % 4 !== 0) {
-    base64 += "=";
-  }
-  return base64;
+// =============================================================================
+// CrypShare - Download & Decryption Module
+// =============================================================================
+
+// =============================================================================
+// UI Helper Functions
+// =============================================================================
+
+function showAlert(title, message) {
+  const alert = document.getElementById("alert");
+  const alertTitle = document.getElementById("alert-title");
+  const alertMessage = document.getElementById("alert-message");
+
+  alertTitle.textContent = title;
+  alertMessage.textContent = message;
+  alert.classList.add("show");
 }
 
+function hideAlert() {
+  document.getElementById("alert").classList.remove("show");
+}
+
+function updateStep(stepId, status) {
+  const step = document.getElementById(stepId);
+  const icon = step.querySelector(".status-icon");
+
+  // Remove all status classes
+  step.classList.remove("pending", "complete", "error");
+
+  // Add new status
+  step.classList.add(status);
+
+  // Update icon
+  if (status === "complete") {
+    icon.textContent = "✓";
+  } else if (status === "error") {
+    icon.textContent = "✗";
+  } else {
+    icon.textContent = "○";
+  }
+}
+
+function showStatus() {
+  document.getElementById("statusContainer").style.display = "block";
+}
+
+// =============================================================================
+// Main Download & Decryption Process
+// =============================================================================
+
 async function startDownload() {
-  const btn = document.getElementById("btnDownload");
-  const status = document.getElementById("status");
+  const btn = document.getElementById("downloadBtn");
+
+  hideAlert();
+  showStatus();
+
   btn.disabled = true;
+  btn.innerHTML = "<span>⏳</span> Decrypting...";
 
   try {
-    // Check for secure context (HTTPS or localhost)
+    // Check for Web Crypto API
     if (!window.crypto || !window.crypto.subtle) {
       throw new Error(
-        "Web Crypto API not available. This app requires HTTPS or localhost. " +
-          "You are accessing via: " +
-          window.location.origin +
-          ". " +
-          "Please use 'localhost' instead of an IP address, or set up HTTPS."
+        "Web Crypto API not available. Please use HTTPS or localhost."
       );
     }
 
-    // 1. Get Parameters from URL
+    // Get parameters from URL
     const urlParams = new URLSearchParams(window.location.search);
     const fileId = urlParams.get("id");
-    const keyString = window.location.hash.substring(1); // Remove '#'
+    const keyString = window.location.hash.substring(1);
 
-    console.log("DEBUG - fileId:", fileId);
-    console.log("DEBUG - keyString:", keyString);
-    console.log("DEBUG - keyString length:", keyString ? keyString.length : 0);
+    if (!fileId || !keyString) {
+      throw new Error(
+        "Invalid download link. Missing file ID or decryption key."
+      );
+    }
 
-    if (!fileId || !keyString)
-      throw new Error("Missing File ID or Key in URL.");
+    // Validate fileId format (should be like file-timestamp-random.bin)
+    if (!/^file-\d+-[a-f0-9]+\.bin$/.test(fileId)) {
+      throw new Error("Invalid file ID format.");
+    }
 
-    status.innerText = "1. Fetching encrypted blob...";
+    // Step 1: Fetch encrypted file
+    updateStep("step1", "complete");
+    const response = await fetch(`/download/${encodeURIComponent(fileId)}`);
 
-    // 2. Download the Encrypted Blob
-    const response = await fetch(`/download/${fileId}`);
-    if (!response.ok) throw new Error("File not found on server.");
+    if (!response.ok) {
+      if (response.status === 404) {
+        throw new Error(
+          "File not found. It may have been deleted or the link is invalid."
+        );
+      }
+      throw new Error(`Failed to fetch file: ${response.status}`);
+    }
+
     const encryptedBlob = await response.arrayBuffer();
 
-    console.log("DEBUG - Encrypted blob size:", encryptedBlob.byteLength);
-    status.innerText += `\n2. Blob received (${encryptedBlob.byteLength} bytes). Importing key...`;
-
-    // 3. Import the Key
+    // Step 2: Import decryption key
+    updateStep("step2", "complete");
     const jwk = {
       kty: "oct",
       k: keyString,
@@ -56,66 +105,74 @@ async function startDownload() {
       ext: true,
     };
 
-    console.log("DEBUG - JWK object:", JSON.stringify(jwk));
+    let key;
+    try {
+      key = await window.crypto.subtle.importKey(
+        "jwk",
+        jwk,
+        { name: "AES-GCM" },
+        true,
+        ["encrypt", "decrypt"]
+      );
+    } catch (keyError) {
+      throw new Error("Invalid decryption key. The link may be corrupted.");
+    }
 
-    const key = await window.crypto.subtle.importKey(
-      "jwk",
-      jwk,
-      { name: "AES-GCM" },
-      true,
-      ["encrypt", "decrypt"]
-    );
+    // Step 3: Decrypt
+    updateStep("step3", "complete");
 
-    console.log("DEBUG - Key imported successfully");
-    status.innerText += "\n3. Key imported! Decrypting...";
-
-    // 4. Split IV and Data
+    // Extract IV (first 12 bytes) and encrypted data
     const iv = new Uint8Array(encryptedBlob.slice(0, 12));
-    const data = encryptedBlob.slice(12);
+    const encryptedData = encryptedBlob.slice(12);
 
-    console.log("DEBUG - IV (first 12 bytes):", Array.from(iv));
-    console.log("DEBUG - Encrypted data size:", data.byteLength);
-
-    // 5. Decrypt
     let decryptedBuffer;
     try {
       decryptedBuffer = await window.crypto.subtle.decrypt(
         { name: "AES-GCM", iv: iv },
         key,
-        data
-      );
-      console.log(
-        "DEBUG - Decryption successful! Decrypted size:",
-        decryptedBuffer.byteLength
+        encryptedData
       );
     } catch (decryptError) {
-      console.error("DEBUG - Decryption FAILED:", decryptError);
       throw new Error(
-        "Decryption failed: " +
-          decryptError.message +
-          ". Wrong key or corrupted data."
+        "Decryption failed. The file may be corrupted or the key is incorrect."
       );
     }
 
-    // 6. Extract filename from decrypted payload
+    // Step 4: Extract filename and prepare download
+    updateStep("step4", "complete");
+
     const decryptedArray = new Uint8Array(decryptedBuffer);
 
-    // First 2 bytes contain filename length
+    // Validate minimum size (at least 2 bytes for filename length)
+    if (decryptedArray.length < 2) {
+      throw new Error("Invalid file format: data too short.");
+    }
+
+    // Extract filename length (first 2 bytes)
     const filenameLength = (decryptedArray[0] << 8) | decryptedArray[1];
-    console.log("DEBUG - Filename length:", filenameLength);
+
+    // Validate filename length bounds
+    if (
+      filenameLength === 0 ||
+      filenameLength > 1000 ||
+      2 + filenameLength > decryptedArray.length
+    ) {
+      throw new Error("Invalid file format: corrupted filename data.");
+    }
 
     // Extract filename
     const filenameBytes = decryptedArray.slice(2, 2 + filenameLength);
-    const originalFilename = new TextDecoder().decode(filenameBytes);
-    console.log("DEBUG - Original filename:", originalFilename);
+    let originalFilename = new TextDecoder().decode(filenameBytes);
 
-    // Extract actual file data
+    // Sanitize filename: remove path separators and null bytes to prevent directory traversal
+    originalFilename =
+      originalFilename.replace(/[/\\]/g, "_").replace(/\x00/g, "").trim() ||
+      "download";
+
+    // Extract file content
     const fileContent = decryptedArray.slice(2 + filenameLength);
-    console.log("DEBUG - File content size:", fileContent.byteLength);
 
-    status.innerText += `\n4. Decrypted! Original file: "${originalFilename}" (${fileContent.byteLength} bytes)`;
-
-    // 7. Trigger Download with original filename
+    // Create download
     const blob = new Blob([fileContent]);
     const downloadUrl = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -126,12 +183,26 @@ async function startDownload() {
     document.body.removeChild(a);
     URL.revokeObjectURL(downloadUrl);
 
-    status.innerText += "\n✅ Download started!";
+    // Success state
     btn.disabled = false;
-    btn.innerText = "Download Again";
-  } catch (err) {
-    console.error("FULL ERROR:", err);
-    status.innerText += "\n❌ Error: " + err.message;
+    btn.innerHTML = "<span>✓</span> Download Complete";
+    btn.classList.add("btn-secondary");
+    btn.classList.remove("btn-primary");
+  } catch (error) {
+    // Mark remaining steps as error
+    ["step1", "step2", "step3", "step4"].forEach((step) => {
+      const el = document.getElementById(step);
+      if (el.classList.contains("pending")) {
+        updateStep(step, "error");
+      }
+    });
+
+    showAlert(
+      "Decryption Failed",
+      error.message || "An unexpected error occurred."
+    );
+
     btn.disabled = false;
+    btn.innerHTML = "<span>⬇️</span> Retry Download";
   }
 }

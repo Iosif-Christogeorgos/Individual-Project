@@ -219,6 +219,16 @@ GET /download/:fileId
 - **Key Derivation:** Randomly generated per file
 - **Implementation:** Web Crypto API (browser-native)
 
+### Tamper Protection
+
+AES-GCM provides **authenticated encryption**, which means:
+
+- 🛡️ **Integrity Guaranteed** — If anyone modifies even a single bit of the encrypted file, decryption will fail
+- 🔏 **Authenticity Verified** — The recipient can be certain the file hasn't been tampered with in transit
+- ❌ **No Silent Corruption** — Unlike basic encryption modes, GCM will reject any altered ciphertext rather than producing garbage output
+
+This makes it impossible for the server, network attackers, or anyone else to modify your files without detection.
+
 ### Recommendations
 
 - Always share links over secure channels (Signal, encrypted email, etc.)
@@ -292,7 +302,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🙏 Acknowledgments
 
 - Built with the [Web Crypto API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Crypto_API)
-- Inspired by secure file sharing services like Firefox Send
 
 ---
 

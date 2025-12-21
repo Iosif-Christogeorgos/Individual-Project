@@ -127,6 +127,14 @@ app.get("/download/:fileId", (req, res) => {
   try {
     const { fileId } = req.params;
 
+    // Validate fileId format (must match our generated pattern)
+    if (!/^file-\d+-[a-f0-9]+\.bin$/.test(fileId)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid file ID format.",
+      });
+    }
+
     // Sanitize fileId to prevent directory traversal attacks
     const sanitizedFileId = path.basename(fileId);
     const filePath = path.join(UPLOADS_DIR, sanitizedFileId);

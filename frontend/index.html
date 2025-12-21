@@ -3,42 +3,113 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>CrypShare - Client Side Encryption</title>
+    <meta
+      name="description"
+      content="CrypShare - Zero-knowledge end-to-end encrypted file sharing. Your files are encrypted in your browser before uploading."
+    />
+    <meta name="theme-color" content="#0a0a0a" />
+    <title>CrypShare - Zero-Knowledge File Encryption</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <div class="container">
-      <h2>CrypShare: Zero-Knowledge Uploader</h2>
+      <!-- Logo Header -->
+      <div class="logo">
+        <div class="logo-icon">🔐</div>
+        <div class="logo-text">Cryp<span>Share</span></div>
+      </div>
+
+      <!-- Page Title -->
+      <h2>Secure Upload</h2>
       <p>
-        Select a file. It will be encrypted in your browser before uploading.
+        Files are encrypted in your browser using AES-256-GCM before uploading.
+        The server never sees your data.
       </p>
 
-      <input type="file" id="fileInput" />
-      <br /><br />
-      <button id="uploadBtn" onclick="processFile()">
-        🔒 Encrypt & Upload
+      <!-- Alert Box (for errors) -->
+      <div id="alert" class="alert alert-error">
+        <span class="alert-icon">⚠️</span>
+        <div class="alert-content">
+          <div class="alert-title" id="alert-title">Error</div>
+          <div class="alert-message" id="alert-message">
+            Something went wrong.
+          </div>
+        </div>
+        <button class="alert-close" onclick="hideAlert()">×</button>
+      </div>
+
+      <!-- Drop Zone -->
+      <div class="drop-zone" id="dropZone">
+        <span class="drop-zone-icon">📁</span>
+        <div class="drop-zone-text">
+          <strong>Drop file here</strong> or click to browse<br />
+          <small style="color: var(--text-muted)"
+            >Maximum file size: 100MB</small
+          >
+        </div>
+        <input type="file" id="fileInput" />
+      </div>
+
+      <!-- Selected File Display -->
+      <div class="file-selected" id="fileSelected">
+        <span class="file-selected-icon">📄</span>
+        <div class="file-selected-info">
+          <div class="file-selected-name" id="fileName">filename.txt</div>
+          <div class="file-selected-size" id="fileSize">0 KB</div>
+        </div>
+        <button
+          class="file-selected-remove"
+          onclick="clearFile()"
+          title="Remove file"
+        >
+          ×
+        </button>
+      </div>
+
+      <!-- Upload Button -->
+      <button class="btn btn-primary" id="uploadBtn" onclick="processFile()">
+        <span>🔒</span> Encrypt & Upload
       </button>
 
       <!-- Progress Bar -->
-      <div id="progress-container">
-        <div id="progress-bar">
-          <div id="progress-fill"></div>
+      <div class="progress-container" id="progressContainer">
+        <div class="progress-bar">
+          <div class="progress-bar-inner">
+            <span class="progress-bar-label">ENCRYPTING</span>
+            <span class="progress-bar-track" id="progressTrack"
+              >[.......................]</span
+            >
+            <span class="progress-bar-percent" id="progressPercent">0%</span>
+          </div>
         </div>
-        <div id="progress-text">Starting...</div>
+        <div class="progress-status" id="progressStatus">Initializing...</div>
       </div>
 
-      <!-- Share Link Result Box -->
-      <div id="share-link-container">
-        <h3>✅ Upload Complete! Share this link:</h3>
-        <input type="text" id="share-link" readonly />
-        <br />
-        <button id="copy-btn" onclick="copyLink()">📋 Copy Link</button>
+      <!-- Share Link Result -->
+      <div class="share-container" id="shareContainer">
+        <div class="share-header">
+          <span class="share-header-icon">✅</span>
+          <span>Encryption Complete — Share This Link</span>
+        </div>
+        <div class="share-link-wrapper">
+          <input type="text" class="share-link-input" id="shareLink" readonly />
+        </div>
+        <button class="btn btn-copy" id="copyBtn" onclick="copyLink()">
+          <span>📋</span> Copy to Clipboard
+        </button>
       </div>
 
-      <h3>🔍 Debug Log:</h3>
-      <pre id="debug-log">
-[ CrypShare Debug Console ] Waiting for file selection...</pre
-      >
+      <!-- Security Badge -->
+      <div class="security-badge">
+        <span class="security-badge-icon">🛡️</span>
+        <span>End-to-End Encrypted • Zero-Knowledge • AES-256-GCM</span>
+      </div>
     </div>
 
     <script src="upload.js"></script>
