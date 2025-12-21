@@ -281,6 +281,14 @@ const upload = multer({
 
 ---
 
+## 🚀 Future Roadmap
+
+- **Stream-Based Encryption (Chunked AES-GCM)** — Refactor the encryption pipeline to process files in discrete chunks rather than loading entire files into memory. This will enable O(1) memory complexity, allowing the application to handle multi-gigabyte files without browser memory constraints. Each chunk will be independently encrypted with proper IV management to maintain security guarantees.
+
+- **Asymmetric Cryptography (RSA/ECC Key Pairs)** — Implement public-key cryptography to enable recipient-specific encryption. Users will be able to encrypt files directly to a recipient's public key, eliminating the need to share secret keys via URL fragments. This decouples security from the link itself, allowing secure file sharing even over untrusted channels and enabling features like persistent user identities and encrypted group sharing.
+
+---
+
 ## 🤝 Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
