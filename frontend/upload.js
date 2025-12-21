@@ -182,7 +182,7 @@ async function processFile() {
     // -----------------------------------------------------------------
     updateProgress(75, "Uploading to server...");
     log("Step 6: Uploading encrypted blob to server...", "info");
-    log(`  → Target: POST http://localhost:3000/upload`, "info");
+    log(`  → Target: POST /upload`, "info");
 
     // Create FormData with the encrypted file
     const formData = new FormData();
@@ -193,7 +193,7 @@ async function processFile() {
 
     let response;
     try {
-      response = await fetch("http://localhost:3000/upload", {
+      response = await fetch("/upload", {
         method: "POST",
         body: formData,
       });
@@ -205,7 +205,7 @@ async function processFile() {
       // Network error (server offline, CORS issue, etc.)
       showError(
         "Network Error - Cannot reach server",
-        `The server at http://localhost:3000 is not responding.\n\nPossible causes:\n• Server is not running (run 'node server.js')\n• CORS policy blocking request\n• Firewall blocking port 3000\n\nTechnical: ${networkError.message}`
+        `The server is not responding.\n\nPossible causes:\n• Server is not running\n• Network connectivity issue\n• Firewall blocking request\n\nTechnical: ${networkError.message}`
       );
       uploadBtn.disabled = false;
       uploadBtn.innerText = "🔒 Encrypt & Upload";
@@ -271,7 +271,7 @@ async function processFile() {
 
     // The key goes in the URL hash (#) so it's never sent to the server
     const keyString = exportedKey.k; // The raw key material in base64url
-    const shareLink = `${window.location.origin}/download.html?id=${serverData.fileId}#${keyString}`;
+    const shareLink = `${window.location.origin}/download?id=${serverData.fileId}#${keyString}`;
 
     log(`Step 8: ✓ Share link generated!`, "success");
     log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`, "info");

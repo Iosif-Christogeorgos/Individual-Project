@@ -47,6 +47,15 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, "../frontend")));
 
 // =============================================================================
+// Clean URL Routing - Serve HTML pages without .html extension
+// =============================================================================
+
+// Serve download.html at /download for clean URLs
+app.get("/download", (req, res) => {
+  res.sendFile(path.join(__dirname, "../frontend/download.html"));
+});
+
+// =============================================================================
 // Multer Configuration - Disk Storage
 // =============================================================================
 const storage = multer.diskStorage({
@@ -73,13 +82,9 @@ const upload = multer({
 // Routes
 // =============================================================================
 
-// Health check endpoint
+// Serve the main upload page at root
 app.get("/", (req, res) => {
-  res.json({
-    status: "online",
-    service: "CrypShare Backend",
-    message: "Zero-Knowledge File Storage Server",
-  });
+  res.sendFile(path.join(__dirname, "../frontend/index.html"));
 });
 
 // -----------------------------------------------------------------------------
@@ -207,10 +212,12 @@ app.listen(PORT, () => {
   console.log("=".repeat(60));
   console.log("🔐 CrypShare Backend Server");
   console.log("=".repeat(60));
-  console.log(`🚀 Server running on: http://localhost:${PORT}`);
+  console.log(`🚀 Server running on port: ${PORT}`);
   console.log(`📁 Uploads directory: ${UPLOADS_DIR}`);
   console.log("=".repeat(60));
   console.log("Endpoints:");
+  console.log(`  GET  /           - Serve upload page`);
+  console.log(`  GET  /download   - Serve download page (clean URL)`);
   console.log(`  POST /upload     - Upload encrypted file`);
   console.log(`  GET  /download/:fileId - Download encrypted file`);
   console.log("=".repeat(60));
