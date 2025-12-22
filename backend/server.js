@@ -58,16 +58,47 @@ app.get("/download", (req, res) => {
 // =============================================================================
 // Multer Configuration - Disk Storage
 // =============================================================================
+
+/**
+ * Generate a unique filename with collision checking.
+ * Uses crypto.randomBytes for high entropy, plus existence check for guarantee.
+ * @returns {string} A unique filename that does not exist on disk
+ */
+function generateUniqueFilename() {
+  const maxAttempts = 10;
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const timestamp = Date.now();
+    const randomBytes = crypto.randomBytes(16).toString("hex"); // 128 bits
+    const filename = `file-${timestamp}-${randomBytes}.bin`;
+    const fullPath = path.join(UPLOADS_DIR, filename);
+
+    // Check if file already exists (should virtually never happen)
+    if (!fs.existsSync(fullPath)) {
+      return filename;
+    }
+
+    // Log if we ever hit this - would indicate a serious issue
+    console.warn(
+      `⚠️ Filename collision detected (attempt ${attempt + 1}): ${filename}`
+    );
+  }
+
+  // If we somehow fail 10 times, throw an error rather than risk overwrite
+  throw new Error("Failed to generate unique filename after maximum attempts");
+}
+
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, UPLOADS_DIR);
   },
   filename: (req, file, cb) => {
-    // Generate unique filename: file-[timestamp]-[random].bin
-    const timestamp = Date.now();
-    const randomBytes = crypto.randomBytes(8).toString("hex");
-    const uniqueFilename = `file-${timestamp}-${randomBytes}.bin`;
-    cb(null, uniqueFilename);
+    try {
+      const uniqueFilename = generateUniqueFilename();
+      cb(null, uniqueFilename);
+    } catch (error) {
+      cb(error);
+    }
   },
 });
 
