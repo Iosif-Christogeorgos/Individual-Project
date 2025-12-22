@@ -82,7 +82,6 @@ async function startDownload() {
     }
 
     // Step 1: Fetch encrypted file
-    updateStep("step1", "complete");
     const response = await fetch(`/download/${encodeURIComponent(fileId)}`);
 
     if (!response.ok) {
@@ -95,9 +94,9 @@ async function startDownload() {
     }
 
     const encryptedBlob = await response.arrayBuffer();
+    updateStep("step1", "complete");
 
     // Step 2: Import decryption key
-    updateStep("step2", "complete");
     const jwk = {
       kty: "oct",
       k: keyString,
@@ -117,10 +116,9 @@ async function startDownload() {
     } catch (keyError) {
       throw new Error("Invalid decryption key. The link may be corrupted.");
     }
+    updateStep("step2", "complete");
 
     // Step 3: Decrypt
-    updateStep("step3", "complete");
-
     // Extract IV (first 12 bytes) and encrypted data
     const iv = new Uint8Array(encryptedBlob.slice(0, 12));
     const encryptedData = encryptedBlob.slice(12);
@@ -137,6 +135,7 @@ async function startDownload() {
         "Decryption failed. The file may be corrupted or the key is incorrect."
       );
     }
+    updateStep("step3", "complete");
 
     // Step 4: Extract filename and prepare download
     updateStep("step4", "complete");
