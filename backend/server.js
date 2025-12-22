@@ -24,12 +24,71 @@ const __dirname = path.dirname(__filename);
 // =============================================================================
 const PORT = process.env.PORT || 3000;
 const UPLOADS_DIR = path.join(__dirname, "uploads");
+const FILE_EXPIRY_HOURS = 24; // Files expire after 24 hours
+const FILE_EXPIRY_MS = FILE_EXPIRY_HOURS * 60 * 60 * 1000;
+const CLEANUP_INTERVAL_MS = 15 * 60 * 1000; // Run cleanup every 15 minutes
 
 // Ensure uploads directory exists
 if (!fs.existsSync(UPLOADS_DIR)) {
   fs.mkdirSync(UPLOADS_DIR, { recursive: true });
   console.log("📁 Created uploads directory:", UPLOADS_DIR);
 }
+
+// =============================================================================
+// File Cleanup / Garbage Collection
+// =============================================================================
+
+/**
+ * Delete files older than FILE_EXPIRY_MS.
+ * Uses the timestamp embedded in the filename for age calculation.
+ */
+function cleanupExpiredFiles() {
+  const now = Date.now();
+  let deletedCount = 0;
+
+  try {
+    const files = fs.readdirSync(UPLOADS_DIR);
+
+    for (const file of files) {
+      // Extract timestamp from filename pattern: file-{timestamp}-{random}.bin
+      const match = file.match(/^file-(\d+)-[a-f0-9]+\.bin$/);
+      if (match) {
+        const timestamp = parseInt(match[1], 10);
+        const age = now - timestamp;
+
+        if (age > FILE_EXPIRY_MS) {
+          const filePath = path.join(UPLOADS_DIR, file);
+          fs.unlinkSync(filePath);
+          deletedCount++;
+          console.log(
+            `🗑️  Expired file deleted: ${file} (age: ${Math.round(
+              age / 3600000
+            )}h)`
+          );
+        }
+      }
+    }
+
+    if (deletedCount > 0) {
+      console.log(
+        `🧹 Cleanup complete: ${deletedCount} expired file(s) removed`
+      );
+    }
+  } catch (error) {
+    console.error("❌ Cleanup error:", error);
+  }
+}
+
+// Run cleanup on startup
+cleanupExpiredFiles();
+
+// Schedule periodic cleanup
+setInterval(cleanupExpiredFiles, CLEANUP_INTERVAL_MS);
+console.log(
+  `⏰ File cleanup scheduled: every ${
+    CLEANUP_INTERVAL_MS / 60000
+  } minutes (files expire after ${FILE_EXPIRY_HOURS}h)`
+);
 
 // =============================================================================
 // Initialize Express App

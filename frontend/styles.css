@@ -253,6 +253,7 @@ p {
   border: 1px solid var(--cyber-green);
   border-radius: var(--radius);
   margin-top: 1rem;
+  margin-bottom: 1rem;
 }
 
 .file-selected.show {
@@ -612,6 +613,33 @@ p {
 }
 
 /* -----------------------------------------------------------------------------
+   Expiry Notice
+   ----------------------------------------------------------------------------- */
+.expiry-notice {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 1.5rem;
+  padding: 0.75rem 1rem;
+  background: rgba(255, 149, 0, 0.1);
+  border: 1px solid var(--warning-orange);
+  border-radius: var(--radius);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--warning-orange);
+}
+
+.expiry-notice-icon {
+  font-size: 1rem;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.expiry-notice strong {
+  color: var(--text-primary);
+}
+
+/* -----------------------------------------------------------------------------
    Security Badge
    ----------------------------------------------------------------------------- */
 .security-badge {
@@ -619,8 +647,8 @@ p {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  margin-top: 1.5rem;
-  padding-top: 1.5rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
   border-top: 1px solid var(--border-color);
   font-family: var(--font-mono);
   font-size: 0.75rem;
