@@ -155,6 +155,33 @@
       </div>
     </div>
 
+    <!-- Link Overwrite Warning Modal -->
+    <div class="modal-overlay" id="linkOverwriteModal">
+      <div class="modal-terminal">
+        <div class="modal-terminal-header">
+          <span class="modal-terminal-prompt">⚠️ SYSTEM_WARNING</span>
+          <button class="modal-close" onclick="hideOverwriteModal()">×</button>
+        </div>
+        <div class="modal-terminal-body">
+          <div class="modal-warning-icon">🔗</div>
+          <h3 class="modal-title">Active Link Will Be Lost</h3>
+          <p class="modal-message">
+            You have an active share link. Uploading a new file will replace it
+            and the previous link will no longer be accessible.
+          </p>
+          <div class="modal-link-preview" id="modalLinkPreview"></div>
+          <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="hideOverwriteModal()">
+              <span>✖</span> Cancel
+            </button>
+            <button class="btn btn-warning" onclick="confirmNewUpload()">
+              <span>▶</span> Continue Anyway
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <script src="upload.js"></script>
   </body>
 </html>

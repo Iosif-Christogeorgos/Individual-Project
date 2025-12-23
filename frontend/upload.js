@@ -4,6 +4,11 @@
 
 const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
 
+// State tracking for link overwrite warning
+let hasActiveLink = false;
+let overwriteWarningShown = false;
+let linkCopied = false;
+
 // =============================================================================
 // UI Helper Functions
 // =============================================================================
@@ -49,6 +54,10 @@ function showShareLink(link) {
 
   container.classList.add("show");
   input.value = link;
+
+  // Mark that we have an active link and reset copy status for this new link
+  hasActiveLink = true;
+  linkCopied = false;
 }
 
 function copyLink() {
@@ -61,6 +70,9 @@ function copyLink() {
       btn.classList.add("copied");
       btn.innerHTML = "<span>✓</span> Copied!";
 
+      // Mark that the link has been copied
+      linkCopied = true;
+
       setTimeout(() => {
         btn.classList.remove("copied");
         btn.innerHTML = "<span>📋</span> Copy to Clipboard";
@@ -72,6 +84,9 @@ function copyLink() {
       document.execCommand("copy");
       btn.classList.add("copied");
       btn.innerHTML = "<span>✓</span> Copied!";
+
+      // Mark that the link has been copied
+      linkCopied = true;
 
       setTimeout(() => {
         btn.classList.remove("copied");
@@ -92,6 +107,45 @@ function clearFile() {
 
   fileInput.value = "";
   fileSelected.classList.remove("show");
+}
+
+// =============================================================================
+// Link Overwrite Warning Modal
+// =============================================================================
+
+function showOverwriteModal(file) {
+  const modal = document.getElementById("linkOverwriteModal");
+  const linkPreview = document.getElementById("modalLinkPreview");
+  const currentLink = document.getElementById("shareLink").value;
+
+  // Show truncated link preview
+  if (currentLink) {
+    linkPreview.textContent =
+      currentLink.length > 50
+        ? currentLink.substring(0, 50) + "..."
+        : currentLink;
+    linkPreview.style.display = "block";
+  } else {
+    linkPreview.style.display = "none";
+  }
+
+  modal.classList.add("show");
+}
+
+function hideOverwriteModal() {
+  const modal = document.getElementById("linkOverwriteModal");
+  modal.classList.remove("show");
+}
+
+function confirmNewUpload() {
+  const modal = document.getElementById("linkOverwriteModal");
+  modal.classList.remove("show");
+
+  // Mark warning as shown so it won't appear again
+  overwriteWarningShown = true;
+
+  // Proceed with the upload
+  executeUpload();
 }
 
 // =============================================================================
@@ -135,11 +189,16 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 function handleFileSelect(file) {
+  hideAlert();
+
+  // Proceed with normal file selection
+  proceedWithFileSelect(file);
+}
+
+function proceedWithFileSelect(file) {
   const fileSelected = document.getElementById("fileSelected");
   const fileName = document.getElementById("fileName");
   const fileSize = document.getElementById("fileSize");
-
-  hideAlert();
 
   // Check file size
   if (file.size > MAX_FILE_SIZE) {
@@ -150,6 +209,12 @@ function handleFileSelect(file) {
     clearFile();
     return;
   }
+
+  // Manually set the file to the input (for cases coming from modal)
+  const fileInput = document.getElementById("fileInput");
+  const dataTransfer = new DataTransfer();
+  dataTransfer.items.add(file);
+  fileInput.files = dataTransfer.files;
 
   fileName.textContent = file.name;
   fileSize.textContent = formatFileSize(file.size);
@@ -166,9 +231,8 @@ async function processFile() {
 
   // Reset UI
   hideAlert();
-  document.getElementById("shareContainer").classList.remove("show");
 
-  // Validate file selection
+  // Validate file selection first
   if (fileInput.files.length === 0) {
     showAlert(
       "No File Selected",
@@ -176,6 +240,24 @@ async function processFile() {
     );
     return;
   }
+
+  // Check if we need to show the overwrite warning
+  // Only show once, and skip if user already copied the link
+  if (hasActiveLink && !overwriteWarningShown && !linkCopied) {
+    showOverwriteModal(fileInput.files[0]);
+    return;
+  }
+
+  // Proceed with upload
+  await executeUpload();
+}
+
+async function executeUpload() {
+  const fileInput = document.getElementById("fileInput");
+  const uploadBtn = document.getElementById("uploadBtn");
+
+  // Hide previous share container
+  document.getElementById("shareContainer").classList.remove("show");
 
   const file = fileInput.files[0];
 
