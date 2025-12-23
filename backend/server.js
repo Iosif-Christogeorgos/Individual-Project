@@ -211,32 +211,67 @@ app.post("/upload", upload.single("encryptedFile"), (req, res) => {
 });
 
 // -----------------------------------------------------------------------------
+// Helper: Validate and resolve file path
+// -----------------------------------------------------------------------------
+function resolveFilePath(fileId) {
+  // Validate fileId format (must match our generated pattern)
+  if (!/^file-\d+-[a-f0-9]+\.bin$/.test(fileId)) {
+    return { error: "Invalid file ID format.", status: 400 };
+  }
+
+  // Sanitize fileId to prevent directory traversal attacks
+  const sanitizedFileId = path.basename(fileId);
+  const filePath = path.join(UPLOADS_DIR, sanitizedFileId);
+
+  // Check if file exists
+  if (!fs.existsSync(filePath)) {
+    return { error: "File not found.", status: 404, sanitizedFileId };
+  }
+
+  return { filePath, sanitizedFileId };
+}
+
+// -----------------------------------------------------------------------------
+// HEAD /download/:fileId - Check if file exists (for link validation)
+// -----------------------------------------------------------------------------
+app.head("/download/:fileId", (req, res) => {
+  try {
+    const result = resolveFilePath(req.params.fileId);
+
+    if (result.error) {
+      return res.status(result.status).end();
+    }
+
+    const stats = fs.statSync(result.filePath);
+    res.setHeader("Content-Type", "application/octet-stream");
+    res.setHeader("Content-Length", stats.size);
+    res.status(200).end();
+  } catch (error) {
+    console.error("❌ HEAD request error:", error);
+    res.status(500).end();
+  }
+});
+
+// -----------------------------------------------------------------------------
 // GET /download/:fileId - Retrieve and stream encrypted file
 // -----------------------------------------------------------------------------
 app.get("/download/:fileId", (req, res) => {
   try {
-    const { fileId } = req.params;
+    const result = resolveFilePath(req.params.fileId);
 
-    // Validate fileId format (must match our generated pattern)
-    if (!/^file-\d+-[a-f0-9]+\.bin$/.test(fileId)) {
-      return res.status(400).json({
+    if (result.error) {
+      if (result.status === 404) {
+        console.log(
+          `⚠️ File not found: ${result.sanitizedFileId || req.params.fileId}`
+        );
+      }
+      return res.status(result.status).json({
         success: false,
-        error: "Invalid file ID format.",
+        error: result.error,
       });
     }
 
-    // Sanitize fileId to prevent directory traversal attacks
-    const sanitizedFileId = path.basename(fileId);
-    const filePath = path.join(UPLOADS_DIR, sanitizedFileId);
-
-    // Check if file exists
-    if (!fs.existsSync(filePath)) {
-      console.log(`⚠️ File not found: ${sanitizedFileId}`);
-      return res.status(404).json({
-        success: false,
-        error: "File not found.",
-      });
-    }
+    const { filePath, sanitizedFileId } = result;
 
     // Get file stats for content-length header
     const stats = fs.statSync(filePath);

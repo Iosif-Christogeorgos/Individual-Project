@@ -3,6 +3,111 @@
 // =============================================================================
 
 // =============================================================================
+// Link Validation on Page Load
+// =============================================================================
+
+/**
+ * Validates the download link on page load.
+ * Shows an error page if the link is invalid or the file doesn't exist.
+ */
+async function validateDownloadLink() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const fileId = urlParams.get("id");
+  const keyString = window.location.hash.substring(1);
+
+  // Check if required parameters are present
+  if (!fileId || !keyString) {
+    showInvalidLinkPage(
+      "Invalid Link",
+      "This download link is invalid or incomplete. Please make sure you have the complete URL."
+    );
+    return;
+  }
+
+  // Validate fileId format
+  if (!/^file-\d+-[a-f0-9]+\.bin$/.test(fileId)) {
+    showInvalidLinkPage(
+      "Invalid Link",
+      "This download link appears to be malformed. Please check the URL and try again."
+    );
+    return;
+  }
+
+  // Verify file exists on server (HEAD request to avoid downloading the file)
+  try {
+    const response = await fetch(`/download/${encodeURIComponent(fileId)}`, {
+      method: "HEAD",
+    });
+
+    if (response.status === 404) {
+      showInvalidLinkPage(
+        "File Not Found",
+        "This file has expired or been deleted. Files are automatically removed after 24 hours."
+      );
+      return;
+    }
+
+    if (!response.ok) {
+      showInvalidLinkPage(
+        "File Unavailable",
+        "Unable to access this file. Please try again later or request a new link."
+      );
+      return;
+    }
+
+    // Link is valid - show the download UI
+    showDownloadReady();
+  } catch (error) {
+    // Network error - show the download UI anyway (let them try)
+    // The actual download will show a more specific error if it fails
+    showDownloadReady();
+  }
+}
+
+/**
+ * Shows the invalid link error page.
+ */
+function showInvalidLinkPage(title, message) {
+  const card = document.querySelector(".card");
+  card.innerHTML = `
+    <!-- Logo Header -->
+    <div class="logo" style="justify-content: center">
+      <div class="logo-icon">🔐</div>
+      <div class="logo-text">Cryp<span>Share</span></div>
+    </div>
+
+    <!-- Error Icon -->
+    <span class="download-icon">❌</span>
+
+    <!-- Error Title -->
+    <h2 style="justify-content: center">${title}</h2>
+    <p>${message}</p>
+
+    <!-- Back to Upload Button -->
+    <a href="/" class="btn btn-primary" style="text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;">
+      <span>📤</span> Upload a New File
+    </a>
+
+    <!-- Help Text -->
+    <div class="security-badge">
+      <span class="security-badge-icon">💡</span>
+      <span>Need help? Make sure you have the complete share link</span>
+    </div>
+  `;
+}
+
+/**
+ * Shows the download-ready UI (hides loading state if any).
+ */
+function showDownloadReady() {
+  // The page is already set up for download, nothing to do
+  // This function exists for clarity and future enhancements
+}
+
+// Run validation when page loads
+document.addEventListener("DOMContentLoaded", validateDownloadLink);
+
+// =============================================================================
 // UI Helper Functions
 // =============================================================================
 
