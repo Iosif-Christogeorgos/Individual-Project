@@ -287,6 +287,8 @@ const upload = multer({
 
 - **Asymmetric Cryptography (RSA/ECC Key Pairs)** — Implement public-key cryptography to enable recipient-specific encryption. Users will be able to encrypt files directly to a recipient's public key, eliminating the need to share secret keys via URL fragments. This decouples security from the link itself, allowing secure file sharing even over untrusted channels and enabling features like persistent user identities and encrypted group sharing.
 
+- **WebRTC Peer-to-Peer** — Enable direct browser-to-browser file transfer using WebRTC data channels, eliminating the need for server-side storage entirely. Files will be encrypted and transmitted directly between peers, providing true end-to-end transfer with zero server knowledge. The server will only facilitate WebRTC signaling and peer discovery.
+
 ---
 
 ## 📄 License
