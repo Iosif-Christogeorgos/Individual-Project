@@ -69,6 +69,18 @@ body {
   line-height: 1.6;
 }
 
+/* -----------------------------------------------------------------------------
+   App Layout - Split Panel System
+   ----------------------------------------------------------------------------- */
+.app-layout {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 1.5rem;
+  width: 100%;
+  max-width: 1100px;
+}
+
 /* Subtle grid background pattern */
 body::before {
   content: "";
@@ -421,8 +433,60 @@ p {
 }
 
 /* -----------------------------------------------------------------------------
-   Share Link Container
+   Share Panel - Side Terminal
    ----------------------------------------------------------------------------- */
+.share-panel {
+  display: none;
+  width: 420px;
+  flex-shrink: 0;
+  background: var(--bg-card);
+  border: 1px solid var(--cyber-green);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 0 0 1px rgba(0, 255, 65, 0.2), 0 0 30px rgba(0, 255, 65, 0.1),
+    0 8px 32px rgba(0, 0, 0, 0.4);
+  animation: slideInRight 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+  overflow: hidden;
+}
+
+.share-panel.show {
+  display: block;
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(30px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+.share-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0.75rem 1rem;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+}
+
+.terminal-prompt {
+  color: var(--cyber-green);
+}
+
+.panel-title {
+  color: var(--text-muted);
+}
+
+.share-panel-content {
+  padding: 1.25rem;
+}
+
+/* Legacy share-container support (fallback) */
 .share-container {
   display: none;
   margin-top: 1.5rem;
@@ -480,6 +544,90 @@ p {
 .share-link-input:focus {
   border-color: var(--cyber-green);
   box-shadow: 0 0 0 3px var(--cyber-green-glow);
+}
+
+/* -----------------------------------------------------------------------------
+   Security Protocol Warning
+   ----------------------------------------------------------------------------- */
+.security-protocol-warning {
+  margin-top: 1.25rem;
+  padding: 1rem;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-left: 3px solid var(--cyber-green);
+  border-radius: var(--radius);
+  font-family: var(--font-mono);
+  animation: terminalFlicker 0.1s ease-out;
+}
+
+@keyframes terminalFlicker {
+  0% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.spw-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 0.75rem;
+}
+
+.spw-indicator {
+  color: var(--cyber-green);
+  font-size: 0.75rem;
+  animation: blink 1s step-end infinite;
+}
+
+.spw-title {
+  color: var(--cyber-green);
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-shadow: 0 0 10px var(--cyber-green-glow);
+}
+
+.spw-instruction {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  line-height: 1.5;
+  margin-bottom: 0.75rem;
+  padding-left: 1rem;
+  border-left: 1px solid var(--text-muted);
+}
+
+.spw-critical-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 0.75rem;
+  background: rgba(255, 149, 0, 0.08);
+  border: 1px solid var(--warning-orange);
+  border-radius: var(--radius);
+  box-shadow: 0 0 15px rgba(255, 149, 0, 0.1);
+}
+
+.spw-warning-icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+  line-height: 1.4;
+}
+
+.spw-warning-text {
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.spw-warning-text strong {
+  color: var(--warning-orange);
+  font-weight: 600;
 }
 
 /* -----------------------------------------------------------------------------
@@ -662,6 +810,30 @@ p {
 /* -----------------------------------------------------------------------------
    Responsive Design
    ----------------------------------------------------------------------------- */
+@media (max-width: 900px) {
+  .app-layout {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .share-panel {
+    width: 100%;
+    max-width: 550px;
+    animation: slideInUp 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  @keyframes slideInUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
 @media (max-width: 600px) {
   body {
     padding: 15px;
@@ -669,9 +841,17 @@ p {
     padding-top: 40px;
   }
 
+  .app-layout {
+    gap: 1rem;
+  }
+
   .container,
   .card {
     padding: 1.5rem;
+  }
+
+  .share-panel-content {
+    padding: 1rem;
   }
 
   h2 {
