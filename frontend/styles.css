@@ -1335,3 +1335,59 @@ p {
   box-shadow: 0 0 30px rgba(255, 149, 0, 0.4), 0 0 60px rgba(255, 149, 0, 0.2);
   transform: translateY(-2px);
 }
+
+/* -----------------------------------------------------------------------------
+   Toast Notification
+   ----------------------------------------------------------------------------- */
+.toast-notification {
+  position: fixed;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  background: linear-gradient(135deg, var(--bg-card), #192e1b);
+  border: 1px solid var(--cyber-green-dim);
+  border-radius: var(--radius);
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 0 25px var(--cyber-green), 0 10px 40px rgba(0, 0, 0, 0.4);
+  z-index: 10000;
+  opacity: 0;
+  transition: all 0.3s ease;
+  max-width: 90%;
+}
+
+.toast-notification.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.toast-icon {
+  font-size: 1.1rem;
+}
+
+.toast-message {
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+/* -----------------------------------------------------------------------------
+   Disabled Option Label
+   ----------------------------------------------------------------------------- */
+.option-label.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+  cursor: not-allowed;
+}
+
+.option-label.disabled input[type="checkbox"] {
+  cursor: not-allowed;
+}
+
+.option-label.disabled .option-desc {
+  color: var(--text-muted);
+  font-style: italic;
+}

@@ -20,8 +20,7 @@ let selectedRecipients = [];
 // =============================================================================
 
 function validateAccessConfig() {
-  const includeLinkKey =
-    document.getElementById("includeLinkKey")?.checked !== false;
+  const includeLinkKeyCheckbox = document.getElementById("includeLinkKey");
   const enableSigning =
     document.getElementById("enableSigning")?.checked || false;
   const uploadBtn = document.getElementById("uploadBtn");
@@ -29,7 +28,10 @@ function validateAccessConfig() {
   const warningTitle = document.getElementById("accessWarningTitle");
   const warningMessage = document.getElementById("accessWarningMessage");
 
-  if (!warningEl || !uploadBtn) return { valid: true, canUpload: true };
+  if (!warningEl || !uploadBtn || !includeLinkKeyCheckbox)
+    return { valid: true, canUpload: true };
+
+  const includeLinkKey = includeLinkKeyCheckbox.checked;
 
   let isValid = true;
   let canUpload = true;
@@ -53,15 +55,6 @@ function validateAccessConfig() {
       "You enabled signing but have no identity. Create an identity first, or disable signing to continue.";
     warningType = "warning";
   }
-  // Check 3: Identity-only mode with no recipients selected (BLOCKING)
-  else if (!includeLinkKey && selectedRecipients.length === 0) {
-    isValid = false;
-    canUpload = false;
-    warningTitle.textContent = "No Recipients Selected";
-    warningMessage.textContent =
-      "Identity-only mode requires at least one recipient. Add contacts and select who should access this file.";
-    warningType = "error";
-  }
 
   // Update UI
   if (!isValid) {
@@ -80,6 +73,74 @@ function validateAccessConfig() {
   }
 
   return { valid: isValid, canUpload: canUpload };
+}
+
+// =============================================================================
+// Mutual Exclusivity: Recipients vs Link Key
+// =============================================================================
+
+function updateLinkKeyState() {
+  const includeLinkKeyCheckbox = document.getElementById("includeLinkKey");
+  const linkKeyLabel = includeLinkKeyCheckbox?.closest(".option-label");
+  const linkKeyDesc = linkKeyLabel?.querySelector(".option-desc");
+
+  if (!includeLinkKeyCheckbox) return;
+
+  const hasRecipients = selectedRecipients.length > 0;
+
+  if (hasRecipients) {
+    // RULE 1: Disable and uncheck "Include key in link" when recipients selected
+    if (includeLinkKeyCheckbox.checked) {
+      includeLinkKeyCheckbox.checked = false;
+      showToast("Public link disabled for secure recipient delivery🔐");
+    }
+    includeLinkKeyCheckbox.disabled = true;
+    linkKeyLabel?.classList.add("disabled");
+    if (linkKeyDesc) {
+      linkKeyDesc.textContent =
+        "Disabled — file encrypted for specific recipients";
+    }
+  } else {
+    // RULE 2: Re-enable and check "Include key in link" when no recipients
+    includeLinkKeyCheckbox.disabled = false;
+    linkKeyLabel?.classList.remove("disabled");
+    if (linkKeyDesc) {
+      linkKeyDesc.textContent =
+        "Anyone with the link can decrypt (default behavior)";
+    }
+    // Reset to default (checked) only if it was disabled before
+    if (!includeLinkKeyCheckbox.checked) {
+      includeLinkKeyCheckbox.checked = true;
+    }
+  }
+
+  // Always revalidate after state change
+  validateAccessConfig();
+}
+
+function showToast(message) {
+  // Remove existing toast if any
+  const existingToast = document.querySelector(".toast-notification");
+  if (existingToast) {
+    existingToast.remove();
+  }
+
+  // Create toast element
+  const toast = document.createElement("div");
+  toast.className = "toast-notification";
+  toast.innerHTML = `<span class="toast-icon">ℹ️</span><span class="toast-message">${message}</span>`;
+  document.body.appendChild(toast);
+
+  // Trigger animation
+  requestAnimationFrame(() => {
+    toast.classList.add("show");
+  });
+
+  // Auto-remove after 3 seconds
+  setTimeout(() => {
+    toast.classList.remove("show");
+    setTimeout(() => toast.remove(), 300);
+  }, 3000);
 }
 
 // =============================================================================
@@ -164,7 +225,9 @@ function copyLink() {
 function formatFileSize(bytes) {
   if (bytes < 1024) return bytes + " B";
   if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
-  return (bytes / (1024 * 1024)).toFixed(2) + " MB";
+  if (bytes < 1024 * 1024 * 1024)
+    return (bytes / (1024 * 1024)).toFixed(2) + " MB";
+  return (bytes / (1024 * 1024 * 1024)).toFixed(2) + " GB";
 }
 
 function clearFile() {
@@ -318,7 +381,7 @@ function toggleRecipient(contactId, selected) {
     selectedRecipients = selectedRecipients.filter((id) => id !== contactId);
   }
   updateRecipientCount();
-  validateAccessConfig(); // Revalidate when recipients change
+  updateLinkKeyState(); // Enforce mutual exclusivity
 }
 
 function updateRecipientCount() {
@@ -337,6 +400,7 @@ async function removeContactUI(contactId) {
     selectedRecipients = selectedRecipients.filter((id) => id !== contactId);
     await loadContacts();
     updateRecipientCount();
+    updateLinkKeyState(); // Enforce mutual exclusivity
   } catch (error) {
     showAlert("Error", "Failed to remove contact: " + error.message);
   }
