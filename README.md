@@ -14,20 +14,24 @@ CrypShare is a secure file sharing application that implements true zero-knowled
 ## ✨ Features
 
 ### Core Security
+
 - **🔒 True Zero-Knowledge Architecture** — The server only stores encrypted binary blobs. It never has access to your files, filenames, or encryption keys.
 - **🔐 AES-256-GCM Encryption** — Military-grade encryption performed entirely in your browser using the Web Crypto API.
 - **📦 Chunked Encryption** — Files up to 1GB are processed in 64KB chunks for memory efficiency.
 
 ### Access Control
+
 - **🔗 Link-Based Access** — Encryption keys stored in URL fragment (`#`), never sent to server. Anyone with the link can decrypt.
 - **👤 Identity-Based Access** — Encrypt files for specific recipients using ECDH public-key cryptography. Only designated recipients can decrypt.
 - **🔀 Hybrid Mode** — Combine both methods for flexible access control.
 
 ### Authenticity
+
 - **✍️ Digital Signatures** — Sign files with ECDSA to cryptographically prove you uploaded them.
 - **✅ Signature Verification** — Recipients can verify file authenticity and detect tampering.
 
 ### User Experience
+
 - **🌐 No Account Required** — For link-based sharing, just upload and share. No sign-ups, no tracking.
 - **📁 Original Filename Preservation** — Filenames are encrypted and embedded in the payload.
 - **⚠️ Smart Validation** — Prevents uploading files that cannot be decrypted.
@@ -65,12 +69,12 @@ CrypShare is a secure file sharing application that implements true zero-knowled
 
 ### Cryptographic Primitives
 
-| Algorithm | Purpose | Key Size | Notes |
-|-----------|---------|----------|-------|
-| **AES-256-GCM** | File encryption | 256 bits | Authenticated encryption with tamper detection |
-| **ECDH (P-256)** | Key exchange | 256 bits | Identity-based access, ~128-bit security |
-| **ECDSA (P-256)** | Digital signatures | 256 bits | File authenticity verification |
-| **SHA-256** | Hashing | 256 bits | Content integrity, key fingerprints |
+| Algorithm         | Purpose            | Key Size | Notes                                          |
+| ----------------- | ------------------ | -------- | ---------------------------------------------- |
+| **AES-256-GCM**   | File encryption    | 256 bits | Authenticated encryption with tamper detection |
+| **ECDH (P-256)**  | Key exchange       | 256 bits | Identity-based access, ~128-bit security       |
+| **ECDSA (P-256)** | Digital signatures | 256 bits | File authenticity verification                 |
+| **SHA-256**       | Hashing            | 256 bits | Content integrity, key fingerprints            |
 
 ---
 
@@ -82,6 +86,7 @@ CrypShare is a secure file sharing application that implements true zero-knowled
 Upload:  File → AES Key → Encrypt → Upload → Link with #key
 Download: Link → Extract #key → Fetch blob → Decrypt → File
 ```
+
 - Anyone with the link can decrypt
 - Key is in URL fragment (never sent to server)
 - Simple, capability-based security
@@ -92,6 +97,7 @@ Download: Link → Extract #key → Fetch blob → Decrypt → File
 Upload:  File → AES Key → Encrypt → For each recipient: ECDH → Encrypt AES key
 Download: Fetch metadata → Find our key bundle → ECDH → Decrypt AES key → Decrypt file
 ```
+
 - Only designated recipients can decrypt
 - Private keys never leave the browser
 - Ephemeral keys provide forward secrecy
@@ -172,29 +178,31 @@ Individual-Project/
 
 ### File Operations
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/upload` | Upload encrypted file blob |
-| `GET` | `/download/:fileId` | Download encrypted file |
-| `HEAD` | `/download/:fileId` | Check file existence |
+| Method | Endpoint            | Description                |
+| ------ | ------------------- | -------------------------- |
+| `POST` | `/upload`           | Upload encrypted file blob |
+| `GET`  | `/download/:fileId` | Download encrypted file    |
+| `HEAD` | `/download/:fileId` | Check file existence       |
 
 ### Metadata Operations
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/metadata/:fileId` | Store file metadata |
-| `GET` | `/metadata/:fileId` | Retrieve file metadata |
+| Method | Endpoint            | Description            |
+| ------ | ------------------- | ---------------------- |
+| `POST` | `/metadata/:fileId` | Store file metadata    |
+| `GET`  | `/metadata/:fileId` | Retrieve file metadata |
 
 ---
 
 ## 🔐 Security Considerations
 
 ### What the Server Knows
+
 - ✅ Encrypted file size
 - ✅ Upload timestamp
 - ✅ Random file ID
 
 ### What the Server Does NOT Know
+
 - ❌ File contents
 - ❌ Original filename
 - ❌ File type
@@ -203,25 +211,25 @@ Individual-Project/
 
 ### Threat Model
 
-| Attack | Mitigation |
-|--------|------------|
-| Malicious Server | Cannot decrypt without keys |
-| Database Breach | Only ciphertext exposed |
-| Man-in-the-Middle | TLS + client-side encryption |
-| Link Leakage | Key in URL fragment (never sent) |
-| Replay Attacks | Unique IV per chunk, signed timestamps |
-| File Tampering | AES-GCM authentication tag rejects modifications |
+| Attack            | Mitigation                                       |
+| ----------------- | ------------------------------------------------ |
+| Malicious Server  | Cannot decrypt without keys                      |
+| Database Breach   | Only ciphertext exposed                          |
+| Man-in-the-Middle | TLS + client-side encryption                     |
+| Link Leakage      | Key in URL fragment (never sent)                 |
+| Replay Attacks    | Unique IV per chunk, signed timestamps           |
+| File Tampering    | AES-GCM authentication tag rejects modifications |
 
 ---
 
 ## 🌐 Browser Compatibility
 
 | Browser | Minimum Version |
-|---------|-----------------|
-| Chrome | 37+ |
-| Firefox | 34+ |
-| Safari | 11+ |
-| Edge | 12+ |
+| ------- | --------------- |
+| Chrome  | 37+             |
+| Firefox | 34+             |
+| Safari  | 11+             |
+| Edge    | 12+             |
 
 > ⚠️ **HTTPS Required:** The Web Crypto API requires a secure context (HTTPS or localhost).
 
@@ -246,14 +254,14 @@ const upload = multer({
 
 ## 🛠️ Tech Stack
 
-| Layer | Technology |
-|-------|------------|
-| **Frontend** | Vanilla JavaScript, HTML5, CSS3 |
-| **Backend** | Node.js, Express 5.x |
-| **Encryption** | Web Crypto API (AES-256-GCM, ECDH, ECDSA) |
-| **Storage** | IndexedDB (client), File system (server) |
-| **File Upload** | Multer (up to 1GB) |
-| **Containerization** | Docker |
+| Layer                | Technology                                |
+| -------------------- | ----------------------------------------- |
+| **Frontend**         | Vanilla JavaScript, HTML5, CSS3           |
+| **Backend**          | Node.js, Express 5.x                      |
+| **Encryption**       | Web Crypto API (AES-256-GCM, ECDH, ECDSA) |
+| **Storage**          | IndexedDB (client), File system (server)  |
+| **File Upload**      | Multer (up to 1GB)                        |
+| **Containerization** | Docker                                    |
 
 ---
 
