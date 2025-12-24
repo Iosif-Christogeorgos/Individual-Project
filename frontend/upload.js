@@ -671,7 +671,8 @@ async function executeUpload() {
   if (file.size > MAX_FILE_SIZE) {
     showAlert(
       "File Too Large",
-      `Maximum file size is 1GB. Your file is ${formatFileSize(file.size)}.`
+      `Maximum file size is 1GB. Your file is ${formatFileSize(file.size)}.`,
+      "error"
     );
     return;
   }
