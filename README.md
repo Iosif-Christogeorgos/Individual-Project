@@ -1,40 +1,53 @@
 # 🔐 CrypShare
 
-**Zero-Knowledge End-to-End Encrypted File Sharing**
+**Zero-Knowledge End-to-End Encrypted File Sharing with Hybrid Access Control**
 
-🌐 **Live Demo:** [https://crypshare.app](https://crypshare.app)
-
-CrypShare is a secure file sharing application that implements true zero-knowledge encryption. Files are encrypted entirely in your browser before being uploaded—the server never sees your data or encryption keys.
+CrypShare is a secure file sharing application that implements true zero-knowledge encryption with hybrid access control. Files are encrypted entirely in your browser before being uploaded—the server never sees your data or encryption keys.
 
 ![Node.js](https://img.shields.io/badge/Node.js-20.x-green?logo=node.js)
 ![Express](https://img.shields.io/badge/Express-5.x-lightgrey?logo=express)
 ![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker)
-![Website](https://img.shields.io/badge/Website-crypshare.app-brightgreen?logo=google-chrome)
+![License](https://img.shields.io/badge/License-MIT-blue)
 
 ---
 
 ## ✨ Features
 
+### Core Security
 - **🔒 True Zero-Knowledge Architecture** — The server only stores encrypted binary blobs. It never has access to your files, filenames, or encryption keys.
 - **🔐 AES-256-GCM Encryption** — Military-grade encryption performed entirely in your browser using the Web Crypto API.
-- **🔗 Secure Key Exchange** — Encryption keys are stored in the URL fragment (`#`), which is never sent to the server.
-- **📁 Original Filename Preservation** — Filenames are encrypted and embedded in the payload, so recipients get the original filename on download.
-- **🌐 No Account Required** — Just upload, share the link, and the recipient can download. No sign-ups, no tracking.
-- **🐳 Docker Ready** — One-command deployment with Docker.
+- **📦 Chunked Encryption** — Files up to 1GB are processed in 64KB chunks for memory efficiency.
+
+### Access Control
+- **🔗 Link-Based Access** — Encryption keys stored in URL fragment (`#`), never sent to server. Anyone with the link can decrypt.
+- **👤 Identity-Based Access** — Encrypt files for specific recipients using ECDH public-key cryptography. Only designated recipients can decrypt.
+- **🔀 Hybrid Mode** — Combine both methods for flexible access control.
+
+### Authenticity
+- **✍️ Digital Signatures** — Sign files with ECDSA to cryptographically prove you uploaded them.
+- **✅ Signature Verification** — Recipients can verify file authenticity and detect tampering.
+
+### User Experience
+- **🌐 No Account Required** — For link-based sharing, just upload and share. No sign-ups, no tracking.
+- **📁 Original Filename Preservation** — Filenames are encrypted and embedded in the payload.
+- **⚠️ Smart Validation** — Prevents uploading files that cannot be decrypted.
+- **🐳 Docker Ready** — One-command deployment.
 
 ---
 
 ## 🏗️ Architecture
 
+### System Overview
+
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                              BROWSER (Client)                           │
 │  ┌─────────────────────────────────────────────────────────────────┐   │
-│  │  1. User selects file                                            │   │
-│  │  2. Generate AES-256-GCM key + random IV                         │   │
-│  │  3. Encrypt: [filename length][filename][file data]              │   │
-│  │  4. Upload encrypted blob to server                              │   │
-│  │  5. Receive fileId, generate share link with key in URL hash     │   │
+│  │  • Generate AES-256-GCM key + random IV                          │   │
+│  │  • Encrypt file in 64KB chunks                                   │   │
+│  │  • (Optional) Encrypt key for recipients with ECDH               │   │
+│  │  • (Optional) Sign metadata with ECDSA                           │   │
+│  │  • Upload encrypted blob to server                               │   │
 │  └─────────────────────────────────────────────────────────────────┘   │
 └───────────────────────────────────┬─────────────────────────────────────┘
                                     │
@@ -42,34 +55,46 @@ CrypShare is a secure file sharing application that implements true zero-knowled
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                           SERVER (Zero-Knowledge)                       │
 │  ┌─────────────────────────────────────────────────────────────────┐   │
-│  │  • Receives encrypted binary blob                                │   │
-│  │  • Stores blob with unique fileId                                │   │
-│  │  • Returns encrypted blob on request                             │   │
-│  │  • NEVER decrypts, parses, or processes file contents            │   │
+│  │  • Stores encrypted binary blobs                                 │   │
+│  │  • Stores encrypted key bundles (for identity-based access)      │   │
+│  │  • Stores digital signatures (for verification)                  │   │
+│  │  • NEVER decrypts or processes file contents                     │   │
 │  └─────────────────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
-### How It Works
+### Cryptographic Primitives
 
-1. **Upload Flow:**
+| Algorithm | Purpose | Key Size | Notes |
+|-----------|---------|----------|-------|
+| **AES-256-GCM** | File encryption | 256 bits | Authenticated encryption with tamper detection |
+| **ECDH (P-256)** | Key exchange | 256 bits | Identity-based access, ~128-bit security |
+| **ECDSA (P-256)** | Digital signatures | 256 bits | File authenticity verification |
+| **SHA-256** | Hashing | 256 bits | Content integrity, key fingerprints |
 
-   - User selects a file in the browser
-   - Browser generates a random AES-256-GCM key and 12-byte IV
-   - File is encrypted with the key (filename embedded in encrypted payload)
-   - Encrypted blob (IV + ciphertext) is uploaded to the server
-   - Server returns a unique `fileId`
-   - Browser creates a share link: `/download?id={fileId}#{key}`
+---
 
-2. **Download Flow:**
-   - Recipient opens the share link
-   - Browser extracts `fileId` from query params and `key` from URL hash
-   - Browser downloads the encrypted blob from the server
-   - Browser decrypts the blob using the key
-   - Original filename is extracted from the decrypted payload
-   - File is downloaded to the user's device with the original name
+## 🔄 Access Models
 
-> ⚠️ **Security Note:** The encryption key is stored in the URL fragment (`#`). URL fragments are never sent to the server, ensuring the server cannot decrypt the files.
+### Model A: Link-Based Access
+
+```
+Upload:  File → AES Key → Encrypt → Upload → Link with #key
+Download: Link → Extract #key → Fetch blob → Decrypt → File
+```
+- Anyone with the link can decrypt
+- Key is in URL fragment (never sent to server)
+- Simple, capability-based security
+
+### Model B: Identity-Based Access
+
+```
+Upload:  File → AES Key → Encrypt → For each recipient: ECDH → Encrypt AES key
+Download: Fetch metadata → Find our key bundle → ECDH → Decrypt AES key → Decrypt file
+```
+- Only designated recipients can decrypt
+- Private keys never leave the browser
+- Ephemeral keys provide forward secrecy
 
 ---
 
@@ -82,59 +107,38 @@ CrypShare is a secure file sharing application that implements true zero-knowled
 
 ### Installation
 
-1. **Clone the repository:**
+```bash
+# Clone the repository
+git clone https://github.com/Iosif-Christogeorgos/Individual-Project.git
+cd Individual-Project
 
-   ```bash
-   git clone https://github.com/Iosif-Christogeorgos/Individual-Project.git
-   cd Individual-Project
-   ```
+# Install dependencies
+cd backend
+npm install
 
-2. **Install dependencies:**
+# Start the server
+npm start
+```
 
-   ```bash
-   cd backend
-   npm install
-   ```
-
-3. **Start the server:**
-
-   ```bash
-   npm start
-   ```
-
-4. **Open the app:**
-   Navigate to [http://localhost:3000](http://localhost:3000) in your browser.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ### Development Mode
 
-For development with auto-reload:
-
 ```bash
-cd backend
-npm run dev
+npm run dev  # Auto-reload on changes
 ```
 
 ---
 
 ## 🐳 Docker Deployment
 
-### Build and Run with Docker
-
 ```bash
-# Build the image
+# Build and run
 docker build -t crypshare .
-
-# Run the container
 docker run -p 8080:8080 crypshare
 ```
 
 The app will be available at [http://localhost:8080](http://localhost:8080).
-
-### Environment Variables
-
-| Variable | Default                          | Description |
-| -------- | -------------------------------- | ----------- |
-| `PORT`   | `3000` (local) / `8080` (Docker) | Server port |
 
 ---
 
@@ -145,14 +149,20 @@ Individual-Project/
 ├── backend/
 │   ├── server.js          # Express server (zero-knowledge storage)
 │   ├── package.json       # Backend dependencies
-│   └── uploads/           # Encrypted file storage directory
+│   ├── uploads/           # Encrypted file blobs
+│   ├── metadata/          # File metadata (encrypted keys, signatures)
+│   └── pubkeys/           # Registered public keys
 ├── frontend/
 │   ├── index.html         # Upload page
 │   ├── download.html      # Download page
-│   ├── upload.js          # Client-side encryption logic
-│   ├── download.js        # Client-side decryption logic
-│   └── styles.css         # Styling
+│   ├── crypto.js          # Cryptographic primitives
+│   ├── identity.js        # Identity/key management (IndexedDB)
+│   ├── upload.js          # Upload & encryption logic
+│   ├── download.js        # Download & decryption logic
+│   ├── styles.css         # Main styles
+│   └── styles-identity.css # Identity panel styles
 ├── Dockerfile             # Container configuration
+├── LICENSE                # MIT License
 └── README.md              # This file
 ```
 
@@ -160,93 +170,58 @@ Individual-Project/
 
 ## 🔌 API Reference
 
-### Upload Encrypted File
+### File Operations
 
-```http
-POST /upload
-Content-Type: multipart/form-data
-```
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/upload` | Upload encrypted file blob |
+| `GET` | `/download/:fileId` | Download encrypted file |
+| `HEAD` | `/download/:fileId` | Check file existence |
 
-| Parameter       | Type   | Description               |
-| --------------- | ------ | ------------------------- |
-| `encryptedFile` | `File` | The encrypted binary blob |
+### Metadata Operations
 
-**Response:**
-
-```json
-{
-  "success": true,
-  "fileId": "file-1234567890-abc123def456.bin",
-  "size": 102400
-}
-```
-
-### Download Encrypted File
-
-```http
-GET /download/:fileId
-```
-
-| Parameter | Type     | Description                |
-| --------- | -------- | -------------------------- |
-| `fileId`  | `string` | The unique file identifier |
-
-**Response:** Binary stream (`application/octet-stream`)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/metadata/:fileId` | Store file metadata |
+| `GET` | `/metadata/:fileId` | Retrieve file metadata |
 
 ---
 
 ## 🔐 Security Considerations
 
 ### What the Server Knows
-
-- ✅ File size (encrypted blob size)
+- ✅ Encrypted file size
 - ✅ Upload timestamp
-- ✅ File ID (random, reveals nothing)
+- ✅ Random file ID
 
 ### What the Server Does NOT Know
-
 - ❌ File contents
 - ❌ Original filename
 - ❌ File type
-- ❌ Encryption key
+- ❌ Encryption keys
 - ❌ Who downloads the file
 
-### Encryption Details
+### Threat Model
 
-- **Algorithm:** AES-256-GCM (Authenticated Encryption)
-- **Key Length:** 256 bits
-- **IV Length:** 96 bits (12 bytes)
-- **Key Derivation:** Randomly generated per file
-- **Implementation:** Web Crypto API (browser-native)
-
-### Tamper Protection
-
-AES-GCM provides **authenticated encryption**, which means:
-
-- 🛡️ **Integrity Guaranteed** — If anyone modifies even a single bit of the encrypted file, decryption will fail
-- 🔏 **Authenticity Verified** — The recipient can be certain the file hasn't been tampered with in transit
-- ❌ **No Silent Corruption** — Unlike basic encryption modes, GCM will reject any altered ciphertext rather than producing garbage output
-
-This makes it impossible for the server, network attackers, or anyone else to modify your files without detection.
-
-### Recommendations
-
-- Always share links over secure channels (Signal, encrypted email, etc.)
-- Links are single-use in concept—anyone with the link can decrypt the file
-- For sensitive files, consider setting up HTTPS in production
+| Attack | Mitigation |
+|--------|------------|
+| Malicious Server | Cannot decrypt without keys |
+| Database Breach | Only ciphertext exposed |
+| Man-in-the-Middle | TLS + client-side encryption |
+| Link Leakage | Key in URL fragment (never sent) |
+| Replay Attacks | Unique IV per chunk, signed timestamps |
+| File Tampering | AES-GCM authentication tag rejects modifications |
 
 ---
 
 ## 🌐 Browser Compatibility
 
-CrypShare requires the [Web Crypto API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Crypto_API), which is available in:
-
 | Browser | Minimum Version |
-| ------- | --------------- |
-| Chrome  | 37+             |
-| Firefox | 34+             |
-| Safari  | 11+             |
-| Edge    | 12+             |
+|---------|-----------------|
+| Chrome | 37+ |
+| Firefox | 34+ |
+| Safari | 11+ |
+| Edge | 12+ |
 
 > ⚠️ **HTTPS Required:** The Web Crypto API requires a secure context (HTTPS or localhost).
 
@@ -256,13 +231,13 @@ CrypShare requires the [Web Crypto API](https://developer.mozilla.org/en-US/docs
 
 ### File Size Limit
 
-The default maximum file size is **1 GB**. To change this, edit [backend/server.js](backend/server.js):
+The default maximum file size is **1 GB**. To change this, edit `backend/server.js`:
 
 ```javascript
 const upload = multer({
   storage: storage,
   limits: {
-    fileSize: 1024 * 1024 * 1024, // Change this value (1GB)
+    fileSize: 1024 * 1024 * 1024, // Change this value
   },
 });
 ```
@@ -271,33 +246,23 @@ const upload = multer({
 
 ## 🛠️ Tech Stack
 
-| Layer                | Technology                                |
-| -------------------- | ----------------------------------------- |
-| **Frontend**         | Vanilla JavaScript, HTML5, CSS3           |
-| **Backend**          | Node.js, Express 5.x                      |
-| **Encryption**       | Web Crypto API (AES-256-GCM, ECDH, ECDSA) |
-| **File Upload**      | Multer (up to 1GB)                        |
-| **Containerization** | Docker                                    |
-
----
-
-## ✅ Implemented Features
-
-- **Chunked Encryption (64KB blocks)** — Files are processed in discrete chunks with O(1) memory complexity, enabling uploads up to 1GB without browser memory constraints.
-
-- **Hybrid E2EE with Identity-Based Access** — Implements ECDH (P-256) for key exchange and ECDSA (P-256) for digital signatures. Users can encrypt files for specific recipients using their public keys.
-
-- **Digital Signatures** — Files can be cryptographically signed to prove authenticity and verify the uploader's identity.
+| Layer | Technology |
+|-------|------------|
+| **Frontend** | Vanilla JavaScript, HTML5, CSS3 |
+| **Backend** | Node.js, Express 5.x |
+| **Encryption** | Web Crypto API (AES-256-GCM, ECDH, ECDSA) |
+| **Storage** | IndexedDB (client), File system (server) |
+| **File Upload** | Multer (up to 1GB) |
+| **Containerization** | Docker |
 
 ---
 
 ## 🚀 Future Roadmap
 
-- **WebRTC Peer-to-Peer** — Enable direct browser-to-browser file transfer using WebRTC data channels, eliminating the need for server-side storage entirely.
-
-- **Key Revocation** — Mechanism to revoke compromised identity keys.
-
-- **Group Encryption** — Key hierarchy for team/group file sharing.
+- **WebRTC Peer-to-Peer** — Direct browser-to-browser file transfer
+- **Key Revocation** — Mechanism to revoke compromised identity keys
+- **Group Encryption** — Key hierarchy for team/group file sharing
+- **Web Streams API** — True streaming encryption for unlimited file sizes
 
 ---
 
