@@ -147,13 +147,39 @@ function showToast(message) {
 // UI Helper Functions
 // =============================================================================
 
-function showAlert(title, message) {
+/**
+ * Show an alert message to the user.
+ * @param {string} title - Alert title
+ * @param {string} message - Alert message
+ * @param {string} type - Alert type: 'error', 'success', 'info', or 'warning'
+ */
+function showAlert(title, message, type = "error") {
   const alert = document.getElementById("alert");
   const alertTitle = document.getElementById("alert-title");
   const alertMessage = document.getElementById("alert-message");
+  const alertIcon = alert.querySelector(".alert-icon");
 
   alertTitle.textContent = title;
   alertMessage.textContent = message;
+
+  // Remove all type classes and add the correct one
+  alert.classList.remove(
+    "alert-error",
+    "alert-success",
+    "alert-info",
+    "alert-warning"
+  );
+  alert.classList.add(`alert-${type}`);
+
+  // Update icon based on type
+  const icons = {
+    error: "⚠️",
+    success: "✅",
+    info: "ℹ️",
+    warning: "⚡",
+  };
+  alertIcon.textContent = icons[type] || icons.error;
+
   alert.classList.add("show");
 }
 
@@ -287,17 +313,18 @@ async function createIdentity() {
     validateAccessConfig(); // Re-validate now that we have an identity
     showAlert(
       "Identity Created",
-      "Your cryptographic identity has been generated and stored securely."
+      "Your cryptographic identity has been generated and stored securely.",
+      "success"
     );
     setTimeout(hideAlert, 3000);
   } catch (error) {
-    showAlert("Error", "Failed to create identity: " + error.message);
+    showAlert("Error", "Failed to create identity: " + error.message, "error");
   }
 }
 
 async function exportIdentity() {
   if (!currentIdentity) {
-    showAlert("No Identity", "Create an identity first.");
+    showAlert("No Identity", "Create an identity first.", "warning");
     return;
   }
 
@@ -315,7 +342,7 @@ async function exportIdentity() {
 
 async function copyPublicKey() {
   if (!currentIdentity) {
-    showAlert("No Identity", "Create an identity first.");
+    showAlert("No Identity", "Create an identity first.", "warning");
     return;
   }
 
@@ -324,10 +351,14 @@ async function copyPublicKey() {
 
   try {
     await navigator.clipboard.writeText(publicKeyData);
-    showAlert("Copied", "Your public identity has been copied to clipboard.");
+    showAlert(
+      "Copied",
+      "Your public identity has been copied to clipboard.",
+      "success"
+    );
     setTimeout(hideAlert, 2000);
   } catch (error) {
-    showAlert("Error", "Failed to copy: " + error.message);
+    showAlert("Error", "Failed to copy: " + error.message, "error");
   }
 }
 
@@ -402,14 +433,14 @@ async function removeContactUI(contactId) {
     updateRecipientCount();
     updateLinkKeyState(); // Enforce mutual exclusivity
   } catch (error) {
-    showAlert("Error", "Failed to remove contact: " + error.message);
+    showAlert("Error", "Failed to remove contact: " + error.message, "error");
   }
 }
 
 async function importContact() {
   const input = document.getElementById("importContactInput");
   if (!input || !input.value.trim()) {
-    showAlert("Error", "Please paste a public identity JSON.");
+    showAlert("Error", "Please paste a public identity JSON.", "warning");
     return;
   }
 
@@ -430,11 +461,12 @@ async function importContact() {
     await loadContacts();
     showAlert(
       "Contact Added",
-      `Added ${publicIdentity.displayName} to your contacts.`
+      `Added ${publicIdentity.displayName} to your contacts.`,
+      "success"
     );
     setTimeout(hideAlert, 2000);
   } catch (error) {
-    showAlert("Error", "Failed to import contact: " + error.message);
+    showAlert("Error", "Failed to import contact: " + error.message, "error");
   }
 }
 
@@ -459,11 +491,12 @@ async function importContactFromFile() {
       await loadContacts();
       showAlert(
         "Contact Added",
-        `Added ${publicIdentity.displayName} to your contacts.`
+        `Added ${publicIdentity.displayName} to your contacts.`,
+        "success"
       );
       setTimeout(hideAlert, 2000);
     } catch (error) {
-      showAlert("Error", "Failed to import contact: " + error.message);
+      showAlert("Error", "Failed to import contact: " + error.message, "error");
     }
   };
 
@@ -568,7 +601,8 @@ function proceedWithFileSelect(file) {
   if (file.size > MAX_FILE_SIZE) {
     showAlert(
       "File Too Large",
-      `Maximum file size is 1GB. Your file is ${formatFileSize(file.size)}.`
+      `Maximum file size is 1GB. Your file is ${formatFileSize(file.size)}.`,
+      "error"
     );
     clearFile();
     return;
@@ -599,7 +633,8 @@ async function processFile() {
   if (!validation.canUpload) {
     showAlert(
       "Invalid Configuration",
-      "Please fix the access configuration issues before uploading."
+      "Please fix the access configuration issues before uploading.",
+      "warning"
     );
     return;
   }
@@ -607,7 +642,8 @@ async function processFile() {
   if (fileInput.files.length === 0) {
     showAlert(
       "No File Selected",
-      "Please select a file to encrypt and upload."
+      "Please select a file to encrypt and upload.",
+      "warning"
     );
     return;
   }
@@ -805,7 +841,8 @@ async function executeUpload() {
     hideProgress();
     showAlert(
       "Encryption Failed",
-      error.message || "An unexpected error occurred."
+      error.message || "An unexpected error occurred.",
+      "error"
     );
   } finally {
     uploadBtn.disabled = false;

@@ -915,6 +915,18 @@ p {
   color: var(--cyber-green);
 }
 
+.alert-info {
+  background: rgba(0, 212, 255, 0.1);
+  border: 1px solid var(--cyber-blue);
+  color: var(--cyber-blue);
+}
+
+.alert-warning {
+  background: rgba(255, 149, 0, 0.1);
+  border: 1px solid var(--warning-orange);
+  color: var(--warning-orange);
+}
+
 .alert-icon {
   font-size: 1.2rem;
   flex-shrink: 0;
