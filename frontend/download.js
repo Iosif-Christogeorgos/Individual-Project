@@ -1,22 +1,25 @@
 // =============================================================================
-// CrypShare - Download & Decryption Module
+// CrypShare - Download & Decryption Module (Hybrid E2EE)
 // =============================================================================
+// Supports both:
+// 1. Link-based access - AES key from URL fragment
+// 2. Identity-based access - Decrypt AES key using user's private key
+// =============================================================================
+
+let currentIdentity = null;
+let fileMetadata = null;
 
 // =============================================================================
 // Link Validation on Page Load
 // =============================================================================
 
-/**
- * Validates the download link on page load.
- * Shows an error page if the link is invalid or the file doesn't exist.
- */
 async function validateDownloadLink() {
   const urlParams = new URLSearchParams(window.location.search);
   const fileId = urlParams.get("id");
   const keyString = window.location.hash.substring(1);
 
-  // Check if required parameters are present
-  if (!fileId || !keyString) {
+  // Check if file ID is present
+  if (!fileId) {
     showInvalidLinkPage(
       "Invalid Link",
       "This download link is invalid or incomplete. Please make sure you have the complete URL."
@@ -33,7 +36,7 @@ async function validateDownloadLink() {
     return;
   }
 
-  // Verify file exists on server (HEAD request to avoid downloading the file)
+  // Check if file exists on server
   try {
     const response = await fetch(`/download/${encodeURIComponent(fileId)}`, {
       method: "HEAD",
@@ -55,40 +58,97 @@ async function validateDownloadLink() {
       return;
     }
 
-    // Link is valid - show the download UI
-    showDownloadReady();
+    // Try to fetch metadata
+    await fetchMetadata(fileId);
+
+    // Load user identity
+    await loadUserIdentity();
+
+    // Determine access mode
+    if (keyString) {
+      // Link-based access available
+      showDownloadReady("link");
+    } else if (fileMetadata && canDecryptWithIdentity()) {
+      // Identity-based access available
+      showDownloadReady("identity");
+    } else if (fileMetadata && fileMetadata.encryptedKeys?.length > 0) {
+      // Identity-based access required but user doesn't have matching identity
+      showIdentityRequiredPage();
+    } else {
+      // No key in URL and no identity access
+      showInvalidLinkPage(
+        "Missing Decryption Key",
+        "This link does not contain the decryption key. You may need to use identity-based access or request a new link."
+      );
+    }
   } catch (error) {
-    // Network error - show the download UI anyway (let them try)
-    // The actual download will show a more specific error if it fails
-    showDownloadReady();
+    console.error("Validation error:", error);
+    showDownloadReady("link"); // Try anyway
   }
 }
 
-/**
- * Shows the invalid link error page.
- */
+async function fetchMetadata(fileId) {
+  try {
+    const response = await fetch(`/metadata/${encodeURIComponent(fileId)}`);
+    if (response.ok) {
+      fileMetadata = await response.json();
+      console.log("Metadata loaded:", fileMetadata);
+    }
+  } catch (error) {
+    console.log("No metadata available (legacy file):", error.message);
+    fileMetadata = null;
+  }
+}
+
+async function loadUserIdentity() {
+  try {
+    if (typeof IdentityManager !== "undefined") {
+      currentIdentity = await IdentityManager.getLoadedIdentity();
+    }
+  } catch (error) {
+    console.log("No identity available:", error.message);
+    currentIdentity = null;
+  }
+}
+
+function canDecryptWithIdentity() {
+  if (!currentIdentity || !fileMetadata?.encryptedKeys) return false;
+
+  // Check if any encrypted key matches our identity
+  return fileMetadata.encryptedKeys.some(
+    (ek) => ek.recipientFingerprint === currentIdentity.fingerprint
+  );
+}
+
+function getMatchingEncryptedKey() {
+  if (!currentIdentity || !fileMetadata?.encryptedKeys) return null;
+
+  return fileMetadata.encryptedKeys.find(
+    (ek) => ek.recipientFingerprint === currentIdentity.fingerprint
+  );
+}
+
+// =============================================================================
+// Page Display Functions
+// =============================================================================
+
 function showInvalidLinkPage(title, message) {
   const card = document.querySelector(".card");
   card.innerHTML = `
-    <!-- Logo Header -->
     <div class="logo" style="justify-content: center">
       <div class="logo-icon">🔐</div>
       <div class="logo-text">Cryp<span>Share</span></div>
     </div>
 
-    <!-- Error Icon -->
     <span class="download-icon">❌</span>
 
-    <!-- Error Title -->
     <h2 style="justify-content: center">${title}</h2>
     <p>${message}</p>
 
-    <!-- Back to Upload Button -->
     <a href="/" class="btn btn-primary" style="text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;">
       <span>📤</span> Upload a New File
     </a>
 
-    <!-- Help Text -->
     <div class="security-badge">
       <span class="security-badge-icon">💡</span>
       <span>Need help? Make sure you have the complete share link</span>
@@ -96,12 +156,126 @@ function showInvalidLinkPage(title, message) {
   `;
 }
 
-/**
- * Shows the download-ready UI (hides loading state if any).
- */
-function showDownloadReady() {
-  // The page is already set up for download, nothing to do
-  // This function exists for clarity and future enhancements
+function showIdentityRequiredPage() {
+  const card = document.querySelector(".card");
+  const recipientInfo = fileMetadata?.encryptedKeys?.length
+    ? `This file is encrypted for ${fileMetadata.encryptedKeys.length} specific recipient(s).`
+    : "";
+
+  card.innerHTML = `
+    <div class="logo" style="justify-content: center">
+      <div class="logo-icon">🔐</div>
+      <div class="logo-text">Cryp<span>Share</span></div>
+    </div>
+
+    <span class="download-icon">🔑</span>
+
+    <h2 style="justify-content: center">Identity Required</h2>
+    <p>
+      This file requires identity-based decryption. ${recipientInfo}
+    </p>
+
+    ${
+      currentIdentity
+        ? `
+      <div class="identity-info">
+        <span class="identity-badge">🆔</span>
+        <span>Your identity: <strong>${escapeHtml(
+          currentIdentity.displayName
+        )}</strong></span>
+        <span class="fingerprint">${currentIdentity.fingerprint
+          .substring(0, 16)
+          .toUpperCase()}</span>
+      </div>
+      <p class="error-text">Your identity does not match any authorized recipient.</p>
+    `
+        : `
+      <p>You need to set up your cryptographic identity to decrypt this file.</p>
+      <a href="/" class="btn btn-secondary" style="text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; margin-bottom: 1rem;">
+        <span>🆔</span> Set Up Identity
+      </a>
+    `
+    }
+
+    <a href="/" class="btn btn-primary" style="text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;">
+      <span>📤</span> Upload a New File
+    </a>
+  `;
+}
+
+function showDownloadReady(accessMode) {
+  const accessModeEl = document.getElementById("accessMode");
+  const signatureInfo = document.getElementById("signatureInfo");
+
+  // Update access mode indicator
+  if (accessModeEl) {
+    if (accessMode === "identity") {
+      accessModeEl.innerHTML = `
+        <div class="access-mode-card access-identity">
+          <span class="access-icon">🔑</span>
+          <div class="access-details">
+            <span class="access-label">Identity-Based Access</span>
+            <span class="access-user">Decrypting as: ${escapeHtml(
+              currentIdentity?.displayName || "Unknown"
+            )}</span>
+          </div>
+        </div>
+      `;
+      accessModeEl.classList.add("show");
+    } else {
+      accessModeEl.innerHTML = `
+        <div class="access-mode-card access-link">
+          <span class="access-icon">🔗</span>
+          <div class="access-details">
+            <span class="access-label">Link-Based Access</span>
+            <span class="access-user">Decryption key included in URL</span>
+          </div>
+        </div>
+      `;
+      accessModeEl.classList.add("show");
+    }
+  }
+
+  // Show signature info if available
+  if (signatureInfo && fileMetadata?.signature) {
+    const signerName =
+      fileMetadata.signature.signerId?.substring(0, 8) || "Unknown";
+    const signerFingerprint =
+      fileMetadata.signature.signerFingerprint
+        ?.substring(0, 16)
+        .toUpperCase() || "";
+
+    signatureInfo.innerHTML = `
+      <div class="signature-info-card signed">
+        <span class="sig-icon">✍️</span>
+        <div class="sig-details">
+          <span class="sig-label">Digitally Signed</span>
+          <span class="sig-signer">By: ${escapeHtml(signerName)} ${
+      signerFingerprint ? `(${signerFingerprint})` : ""
+    }</span>
+        </div>
+      </div>
+    `;
+    signatureInfo.classList.add("show");
+  } else if (signatureInfo) {
+    signatureInfo.innerHTML = `
+      <div class="signature-info-card unsigned">
+        <span class="sig-icon">📝</span>
+        <div class="sig-details">
+          <span class="sig-label">Not Signed</span>
+          <span class="sig-signer">Uploader identity not verified</span>
+        </div>
+      </div>
+    `;
+    signatureInfo.classList.add("show");
+  }
+}
+
+function escapeHtml(text) {
+  if (!text) return "";
+  const div = document.createElement("div");
+  div.textContent = text;
+  return div.innerHTML;
 }
 
 // Run validation when page loads
@@ -127,15 +301,13 @@ function hideAlert() {
 
 function updateStep(stepId, status) {
   const step = document.getElementById(stepId);
+  if (!step) return;
+
   const icon = step.querySelector(".status-icon");
 
-  // Remove all status classes
   step.classList.remove("pending", "complete", "error");
-
-  // Add new status
   step.classList.add(status);
 
-  // Update icon
   if (status === "complete") {
     icon.textContent = "✓";
   } else if (status === "error") {
@@ -146,7 +318,10 @@ function updateStep(stepId, status) {
 }
 
 function showStatus() {
-  document.getElementById("statusContainer").style.display = "block";
+  const container = document.getElementById("statusContainer");
+  if (container) {
+    container.style.display = "block";
+  }
 }
 
 // =============================================================================
@@ -163,7 +338,6 @@ async function startDownload() {
   btn.innerHTML = "<span>⏳</span> Decrypting...";
 
   try {
-    // Check for Web Crypto API
     if (!window.crypto || !window.crypto.subtle) {
       throw new Error(
         "Web Crypto API not available. Please use HTTPS or localhost."
@@ -175,13 +349,11 @@ async function startDownload() {
     const fileId = urlParams.get("id");
     const keyString = window.location.hash.substring(1);
 
-    if (!fileId || !keyString) {
-      throw new Error(
-        "Invalid download link. Missing file ID or decryption key."
-      );
+    if (!fileId) {
+      throw new Error("Invalid download link. Missing file ID.");
     }
 
-    // Validate fileId format (should be like file-timestamp-random.bin)
+    // Validate fileId format
     if (!/^file-\d+-[a-f0-9]+\.bin$/.test(fileId)) {
       throw new Error("Invalid file ID format.");
     }
@@ -201,39 +373,62 @@ async function startDownload() {
     const encryptedBlob = await response.arrayBuffer();
     updateStep("step1", "complete");
 
-    // Step 2: Import decryption key
-    const jwk = {
-      kty: "oct",
-      k: keyString,
-      alg: "A256GCM",
-      ext: true,
-    };
-
+    // Step 2: Get decryption key (link-based or identity-based)
     let key;
-    try {
-      key = await window.crypto.subtle.importKey(
-        "jwk",
-        jwk,
-        { name: "AES-GCM" },
-        true,
-        ["encrypt", "decrypt"]
-      );
-    } catch (keyError) {
-      throw new Error("Invalid decryption key. The link may be corrupted.");
+
+    if (keyString) {
+      // Link-based access: import key from URL fragment
+      const jwk = {
+        kty: "oct",
+        k: keyString,
+        alg: "A256GCM",
+        ext: true,
+      };
+
+      try {
+        key = await CryptoModule.importAESKeyFromJWK(jwk);
+      } catch (keyError) {
+        throw new Error("Invalid decryption key. The link may be corrupted.");
+      }
+    } else {
+      // Identity-based access: decrypt key using private key
+      if (!currentIdentity) {
+        throw new Error(
+          "No identity available. Please set up your identity first."
+        );
+      }
+
+      const encryptedKeyBundle = getMatchingEncryptedKey();
+      if (!encryptedKeyBundle) {
+        throw new Error(
+          "Your identity is not authorized to decrypt this file."
+        );
+      }
+
+      try {
+        key = await CryptoModule.decryptKeyWithPrivateKey(
+          encryptedKeyBundle,
+          currentIdentity.encryption.privateKey
+        );
+      } catch (keyError) {
+        console.error("Key decryption error:", keyError);
+        throw new Error("Failed to decrypt file key with your identity.");
+      }
     }
     updateStep("step2", "complete");
 
-    // Step 3: Decrypt
-    // Extract IV (first 12 bytes) and encrypted data
-    const iv = new Uint8Array(encryptedBlob.slice(0, 12));
-    const encryptedData = encryptedBlob.slice(12);
-
-    let decryptedBuffer;
+    // Step 3: Decrypt file using auto-detection (handles legacy and chunked formats)
+    let decryptedResult;
     try {
-      decryptedBuffer = await window.crypto.subtle.decrypt(
-        { name: "AES-GCM", iv: iv },
+      decryptedResult = await CryptoModule.decryptFileAuto(
+        encryptedBlob,
         key,
-        encryptedData
+        (progress) => {
+          // Update progress during decryption of large files
+          if (progress < 100) {
+            updateStep("step3", "pending");
+          }
+        }
       );
     } catch (decryptError) {
       throw new Error(
@@ -242,46 +437,60 @@ async function startDownload() {
     }
     updateStep("step3", "complete");
 
-    // Step 4: Extract filename and prepare download
+    const { filename: originalFilename, data: fileContentBuffer } =
+      decryptedResult;
+    const fileContent = new Uint8Array(fileContentBuffer);
+
+    // Step 4: Verify signature if present
+    if (fileMetadata?.signature) {
+      updateStep("step5", "pending"); // Optional signature step
+      try {
+        const signerPublicKey = await CryptoModule.importSigningPublicKey(
+          fileMetadata.signature.signerPublicKey
+        );
+
+        const verification = await CryptoModule.verifyFileMetadataSignature(
+          fileMetadata.signature,
+          signerPublicKey
+        );
+
+        if (verification.valid) {
+          updateStep("step5", "complete");
+          showSignatureVerified(verification.metadata);
+        } else {
+          console.warn("Signature verification failed");
+          showSignatureWarning();
+        }
+      } catch (sigError) {
+        console.error("Signature verification error:", sigError);
+      }
+    }
+
+    // Step 5: Prepare download
     updateStep("step4", "complete");
 
-    const decryptedArray = new Uint8Array(decryptedBuffer);
-
-    // Validate minimum size (at least 2 bytes for filename length)
-    if (decryptedArray.length < 2) {
-      throw new Error("Invalid file format: data too short.");
-    }
-
-    // Extract filename length (first 2 bytes)
-    const filenameLength = (decryptedArray[0] << 8) | decryptedArray[1];
-
-    // Validate filename length bounds
-    if (
-      filenameLength === 0 ||
-      filenameLength > 1000 ||
-      2 + filenameLength > decryptedArray.length
-    ) {
-      throw new Error("Invalid file format: corrupted filename data.");
-    }
-
-    // Extract filename
-    const filenameBytes = decryptedArray.slice(2, 2 + filenameLength);
-    let originalFilename = new TextDecoder().decode(filenameBytes);
-
-    // Sanitize filename: remove path separators and null bytes to prevent directory traversal
-    originalFilename =
+    // Sanitize filename
+    const sanitizedFilename =
       originalFilename.replace(/[/\\]/g, "_").replace(/\x00/g, "").trim() ||
       "download";
 
-    // Extract file content
-    const fileContent = decryptedArray.slice(2 + filenameLength);
+    // Verify content hash if metadata available
+    if (fileMetadata?.contentHash) {
+      const downloadedHash = await CryptoModule.sha256(fileContent.buffer);
+      if (downloadedHash !== fileMetadata.contentHash) {
+        showAlert(
+          "Warning",
+          "File integrity check failed. The file may have been tampered with."
+        );
+      }
+    }
 
     // Create download
     const blob = new Blob([fileContent]);
     const downloadUrl = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = downloadUrl;
-    a.download = originalFilename;
+    a.download = sanitizedFilename;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -294,9 +503,9 @@ async function startDownload() {
     btn.classList.remove("btn-primary");
   } catch (error) {
     // Mark remaining steps as error
-    ["step1", "step2", "step3", "step4"].forEach((step) => {
+    ["step1", "step2", "step3", "step4", "step5"].forEach((step) => {
       const el = document.getElementById(step);
-      if (el.classList.contains("pending")) {
+      if (el && el.classList.contains("pending")) {
         updateStep(step, "error");
       }
     });
@@ -309,4 +518,34 @@ async function startDownload() {
     btn.disabled = false;
     btn.innerHTML = "<span>⬇️</span> Retry Download";
   }
+}
+
+// =============================================================================
+// Signature Verification UI
+// =============================================================================
+
+function showSignatureVerified(metadata) {
+  const infoEl = document.getElementById("signatureVerification");
+  if (!infoEl) return;
+
+  infoEl.innerHTML = `
+    <div class="signature-verified">
+      <span class="sig-icon">✅</span>
+      <span>Signature verified - File was signed by the uploader</span>
+    </div>
+  `;
+  infoEl.classList.add("show");
+}
+
+function showSignatureWarning() {
+  const infoEl = document.getElementById("signatureVerification");
+  if (!infoEl) return;
+
+  infoEl.innerHTML = `
+    <div class="signature-warning">
+      <span class="sig-icon">⚠️</span>
+      <span>Signature verification failed - File may have been tampered with</span>
+    </div>
+  `;
+  infoEl.classList.add("show", "warning");
 }

@@ -1,0 +1,638 @@
+/* =============================================================================
+   CrypShare - Hybrid E2EE Additional Styles
+   ============================================================================= */
+
+/* -----------------------------------------------------------------------------
+   Main Row Layout
+   ----------------------------------------------------------------------------- */
+.main-row {
+  display: flex;
+  gap: 1.5rem;
+  width: 100%;
+  justify-content: center;
+  align-items: stretch;
+}
+
+/* -----------------------------------------------------------------------------
+   Side Panel (Identity & Recipients)
+   ----------------------------------------------------------------------------- */
+.side-panel {
+  width: 300px;
+  min-width: 280px;
+  max-width: 320px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 0 0 1px rgba(0, 255, 65, 0.1), 0 8px 32px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+@media (max-width: 900px) {
+  .main-row {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .side-panel {
+    width: 100%;
+    max-width: 550px;
+  }
+}
+
+.side-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0.6rem 1rem;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+}
+
+.terminal-prompt {
+  color: var(--cyber-green);
+  font-weight: 600;
+}
+
+.panel-title {
+  color: var(--text-muted);
+  letter-spacing: 1px;
+}
+
+/* -----------------------------------------------------------------------------
+   Panel Sections
+   ----------------------------------------------------------------------------- */
+.panel-section {
+  padding: 1rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.panel-section:last-child {
+  border-bottom: none;
+}
+
+.panel-section-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 0.75rem;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--cyber-green);
+  font-weight: 600;
+}
+
+.section-icon {
+  font-size: 1rem;
+}
+
+.section-desc {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  margin-bottom: 1rem;
+  line-height: 1.5;
+}
+
+/* -----------------------------------------------------------------------------
+   Panel Inputs
+   ----------------------------------------------------------------------------- */
+.panel-input {
+  width: 100%;
+  padding: 0.6rem 0.8rem;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  margin-bottom: 0.75rem;
+  transition: border-color 0.2s;
+}
+
+.panel-input:focus {
+  outline: none;
+  border-color: var(--cyber-green);
+  box-shadow: 0 0 0 1px var(--cyber-green-glow);
+}
+
+.panel-input::placeholder {
+  color: var(--text-muted);
+}
+
+textarea.panel-input {
+  resize: vertical;
+  min-height: 60px;
+}
+
+/* -----------------------------------------------------------------------------
+   Small Buttons
+   ----------------------------------------------------------------------------- */
+.btn-small {
+  padding: 8px 14px;
+  font-size: 0.75rem;
+  width: auto;
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+}
+
+.btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--text-secondary);
+  color: var(--text-primary);
+}
+
+/* -----------------------------------------------------------------------------
+   Identity Card
+   ----------------------------------------------------------------------------- */
+.identity-card {
+  background: var(--bg-input);
+  border: 1px solid var(--cyber-green);
+  border-radius: var(--radius);
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.identity-name {
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.identity-fingerprint {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.fingerprint-label {
+  color: var(--text-secondary);
+}
+
+.fingerprint-value {
+  color: var(--cyber-blue);
+  letter-spacing: 1px;
+}
+
+.identity-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* -----------------------------------------------------------------------------
+   Contacts List
+   ----------------------------------------------------------------------------- */
+.contacts-list {
+  max-height: 200px;
+  overflow-y: auto;
+  margin-bottom: 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  background: var(--bg-input);
+}
+
+.no-contacts {
+  padding: 1rem;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.contact-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0.6rem 0.8rem;
+  border-bottom: 1px solid var(--border-color);
+  transition: background 0.2s;
+}
+
+.contact-item:last-child {
+  border-bottom: none;
+}
+
+.contact-item:hover {
+  background: rgba(0, 255, 65, 0.05);
+}
+
+.contact-checkbox {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--cyber-green);
+  cursor: pointer;
+}
+
+.contact-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.contact-name {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--text-primary);
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.contact-fingerprint {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  display: block;
+}
+
+.contact-remove {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px 8px;
+  font-size: 1rem;
+  transition: color 0.2s;
+  line-height: 1;
+}
+
+.contact-remove:hover {
+  color: var(--error-red);
+}
+
+.recipient-count {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--cyber-green);
+  margin-bottom: 0.75rem;
+}
+
+/* -----------------------------------------------------------------------------
+   Add Contact Section
+   ----------------------------------------------------------------------------- */
+.add-contact-section {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.contact-paste {
+  width: 100%;
+  margin-top: 0.5rem;
+}
+
+.contact-paste summary {
+  cursor: pointer;
+  margin-bottom: 0.5rem;
+}
+
+.contact-paste[open] summary {
+  margin-bottom: 0.75rem;
+}
+
+.paste-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* -----------------------------------------------------------------------------
+   Access Options
+   ----------------------------------------------------------------------------- */
+.access-options {
+  margin-bottom: 1.25rem;
+  padding: 1rem;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+}
+
+.option-group {
+  margin-bottom: 0.75rem;
+}
+
+.option-group:last-child {
+  margin-bottom: 0;
+}
+
+.option-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.option-label input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--cyber-green);
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.option-text {
+  flex: 1;
+}
+
+.option-title {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  font-weight: 500;
+  margin-bottom: 2px;
+}
+
+.option-desc {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+/* -----------------------------------------------------------------------------
+   Share Mode Info
+   ----------------------------------------------------------------------------- */
+.share-mode-info {
+  display: none;
+  padding: 0.6rem 0.8rem;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-top: 0.75rem;
+  line-height: 1.5;
+}
+
+.share-mode-info.show {
+  display: block;
+}
+
+/* -----------------------------------------------------------------------------
+   Access Mode Indicator (Download Page)
+   ----------------------------------------------------------------------------- */
+.access-mode-indicator {
+  display: none;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.access-mode-indicator.show {
+  display: block;
+}
+
+.access-badge {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.access-badge.link {
+  background: rgba(0, 212, 255, 0.15);
+  color: var(--cyber-blue);
+  border: 1px solid rgba(0, 212, 255, 0.3);
+}
+
+.access-badge.identity {
+  background: rgba(0, 255, 65, 0.15);
+  color: var(--cyber-green);
+  border: 1px solid rgba(0, 255, 65, 0.3);
+}
+
+.identity-name {
+  display: block;
+  margin-top: 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+/* -----------------------------------------------------------------------------
+   Access Mode Card (Download Page)
+   ----------------------------------------------------------------------------- */
+.access-mode-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius);
+  font-family: var(--font-mono);
+  margin-bottom: 0.75rem;
+}
+
+.access-mode-card .access-icon {
+  font-size: 1.5rem;
+}
+
+.access-mode-card .access-details {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.access-mode-card .access-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.access-mode-card .access-user {
+  font-size: 0.7rem;
+  opacity: 0.8;
+}
+
+.access-mode-card.access-link {
+  background: rgba(0, 212, 255, 0.1);
+  border: 1px solid rgba(0, 212, 255, 0.3);
+  color: var(--cyber-blue);
+}
+
+.access-mode-card.access-identity {
+  background: rgba(0, 255, 65, 0.1);
+  border: 1px solid rgba(0, 255, 65, 0.3);
+  color: var(--cyber-green);
+}
+
+/* -----------------------------------------------------------------------------
+   Signature Info Card (Download Page)
+   ----------------------------------------------------------------------------- */
+.signature-info-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0.6rem 1rem;
+  border-radius: var(--radius);
+  font-family: var(--font-mono);
+  margin-bottom: 0.75rem;
+}
+
+.signature-info-card .sig-icon {
+  font-size: 1.25rem;
+}
+
+.signature-info-card .sig-details {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.signature-info-card .sig-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.signature-info-card .sig-signer {
+  font-size: 0.65rem;
+  opacity: 0.8;
+}
+
+.signature-info-card.signed {
+  background: rgba(0, 255, 65, 0.1);
+  border: 1px solid rgba(0, 255, 65, 0.3);
+  color: var(--cyber-green);
+}
+
+.signature-info-card.unsigned {
+  background: rgba(100, 100, 100, 0.1);
+  border: 1px solid rgba(100, 100, 100, 0.3);
+  color: var(--text-muted);
+}
+
+/* -----------------------------------------------------------------------------
+   Signature Info (Legacy)
+   ----------------------------------------------------------------------------- */
+.signature-info {
+  display: none;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.signature-info.show {
+  display: block;
+}
+
+.signature-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  background: rgba(255, 149, 0, 0.15);
+  color: var(--warning-orange);
+  border: 1px solid rgba(255, 149, 0, 0.3);
+  border-radius: 12px;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+}
+
+/* -----------------------------------------------------------------------------
+   Signature Verification Result
+   ----------------------------------------------------------------------------- */
+.signature-verification {
+  display: none;
+  margin-top: 1rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: var(--radius);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+}
+
+.signature-verification.show {
+  display: block;
+}
+
+.signature-verified {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--cyber-green);
+  background: rgba(0, 255, 65, 0.1);
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius);
+  border: 1px solid rgba(0, 255, 65, 0.2);
+}
+
+.signature-warning {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--warning-orange);
+  background: rgba(255, 149, 0, 0.1);
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius);
+  border: 1px solid rgba(255, 149, 0, 0.2);
+}
+
+.sig-icon {
+  font-size: 1rem;
+}
+
+/* -----------------------------------------------------------------------------
+   Identity Info (on download page)
+   ----------------------------------------------------------------------------- */
+.identity-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0.75rem 1rem;
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  margin-bottom: 1rem;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+}
+
+.identity-badge {
+  font-size: 1.25rem;
+}
+
+.identity-info .fingerprint {
+  display: block;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  margin-left: auto;
+}
+
+.error-text {
+  color: var(--error-red);
+  font-size: 0.85rem;
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+/* -----------------------------------------------------------------------------
+   Hidden Utility
+   ----------------------------------------------------------------------------- */
+.hidden {
+  display: none !important;
+}
+
+/* -----------------------------------------------------------------------------
+   Responsive Adjustments
+   ----------------------------------------------------------------------------- */
+@media (max-width: 600px) {
+  .side-panel {
+    margin-top: 0;
+  }
+
+  .add-contact-section {
+    flex-direction: column;
+  }
+
+  .modal-actions {
+    flex-direction: column;
+  }
+
+  .modal-actions .btn {
+    max-width: 100%;
+  }
+}

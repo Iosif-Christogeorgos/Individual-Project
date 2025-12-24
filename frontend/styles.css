@@ -63,22 +63,45 @@ body {
   color: var(--text-primary);
   min-height: 100vh;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  padding: 20px;
+  padding: 40px 20px;
   line-height: 1.6;
 }
 
 /* -----------------------------------------------------------------------------
-   App Layout - Split Panel System
+   App Layout - Clean Professional Layout
    ----------------------------------------------------------------------------- */
 .app-layout {
   display: flex;
-  align-items: flex-start;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
   gap: 1.5rem;
   width: 100%;
-  max-width: 1100px;
+  max-width: 900px;
+}
+
+/* Main content row */
+.main-row {
+  display: flex;
+  gap: 1.5rem;
+  width: 100%;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+/* Ensure proper ordering */
+.app-layout > .container {
+  order: 1;
+}
+
+.app-layout > .side-panel {
+  order: 2;
+}
+
+.app-layout > .share-panel {
+  order: 3;
+  width: 100%;
 }
 
 /* Subtle grid background pattern */
@@ -433,18 +456,17 @@ p {
 }
 
 /* -----------------------------------------------------------------------------
-   Share Panel - Side Terminal
+   Share Panel - Full Width Result Display
    ----------------------------------------------------------------------------- */
 .share-panel {
   display: none;
-  width: 420px;
-  flex-shrink: 0;
+  width: 100%;
   background: var(--bg-card);
   border: 1px solid var(--cyber-green);
   border-radius: var(--radius-lg);
   box-shadow: 0 0 0 1px rgba(0, 255, 65, 0.2), 0 0 30px rgba(0, 255, 65, 0.1),
     0 8px 32px rgba(0, 0, 0, 0.4);
-  animation: slideInRight 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+  animation: slideInUp 0.4s cubic-bezier(0.22, 1, 0.36, 1);
   overflow: hidden;
 }
 
@@ -452,14 +474,14 @@ p {
   display: block;
 }
 
-@keyframes slideInRight {
+@keyframes slideInUp {
   from {
     opacity: 0;
-    transform: translateX(30px) scale(0.95);
+    transform: translateY(20px);
   }
   to {
     opacity: 1;
-    transform: translateX(0) scale(1);
+    transform: translateY(0);
   }
 }
 
@@ -483,35 +505,10 @@ p {
 }
 
 .share-panel-content {
-  padding: 1.25rem;
-}
-
-/* Legacy share-container support (fallback) */
-.share-container {
-  display: none;
-  margin-top: 1.5rem;
   padding: 1.5rem;
-  background: rgba(0, 255, 65, 0.05);
-  border: 1px solid var(--cyber-green);
-  border-radius: var(--radius-lg);
-  animation: fadeIn 0.3s ease;
 }
 
-.share-container.show {
-  display: block;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
+/* Share panel inner layout */
 .share-header {
   display: flex;
   align-items: center;
@@ -526,11 +523,14 @@ p {
 }
 
 .share-link-wrapper {
-  position: relative;
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
 }
 
 .share-link-input {
-  width: 100%;
+  flex: 1;
+  min-width: 0; /* Allow shrinking */
   padding: 12px 16px;
   background: var(--bg-input);
   border: 1px solid var(--border-color);
@@ -544,6 +544,47 @@ p {
 .share-link-input:focus {
   border-color: var(--cyber-green);
   box-shadow: 0 0 0 3px var(--cyber-green-glow);
+}
+
+.btn-copy {
+  flex-shrink: 0;
+  width: auto;
+  padding: 12px 20px;
+}
+
+/* Share mode info */
+.share-mode-info {
+  display: none;
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.75rem;
+  background: rgba(0, 200, 255, 0.08);
+  border: 1px solid var(--cyber-blue);
+  border-radius: var(--radius);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--cyber-blue);
+  text-align: center;
+}
+
+.share-mode-info.show {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.share-mode-info .info-icon {
+  font-size: 1rem;
+}
+
+@media (max-width: 600px) {
+  .share-link-wrapper {
+    flex-direction: column;
+  }
+
+  .btn-copy {
+    width: 100%;
+  }
 }
 
 /* -----------------------------------------------------------------------------
@@ -628,6 +669,157 @@ p {
 .spw-warning-text strong {
   color: var(--warning-orange);
   font-weight: 600;
+}
+
+/* Success box for identity-only access */
+.spw-success-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 0.75rem;
+  background: rgba(0, 255, 65, 0.08);
+  border: 1px solid var(--cyber-green);
+  border-radius: var(--radius);
+  box-shadow: 0 0 15px rgba(0, 255, 65, 0.1);
+}
+
+.spw-success-icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+  line-height: 1.4;
+}
+
+.spw-success-text {
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.spw-success-text strong {
+  color: var(--cyber-green);
+  font-weight: 600;
+}
+
+/* -----------------------------------------------------------------------------
+   Upload Status Badges
+   ----------------------------------------------------------------------------- */
+.upload-status-badges {
+  display: none;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  justify-content: center;
+}
+
+.upload-status-badges.show {
+  display: flex;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+}
+
+.badge-encrypted {
+  background: rgba(0, 255, 65, 0.15);
+  color: var(--cyber-green);
+  border: 1px solid rgba(0, 255, 65, 0.3);
+}
+
+.badge-link {
+  background: rgba(0, 212, 255, 0.15);
+  color: var(--cyber-blue);
+  border: 1px solid rgba(0, 212, 255, 0.3);
+}
+
+.badge-identity {
+  background: rgba(147, 51, 234, 0.15);
+  color: #a78bfa;
+  border: 1px solid rgba(147, 51, 234, 0.3);
+}
+
+.badge-signed {
+  background: rgba(0, 255, 65, 0.15);
+  color: var(--cyber-green);
+  border: 1px solid rgba(0, 255, 65, 0.3);
+}
+
+.badge-unsigned {
+  background: rgba(255, 149, 0, 0.15);
+  color: var(--warning-orange);
+  border: 1px solid rgba(255, 149, 0, 0.3);
+}
+
+/* -----------------------------------------------------------------------------
+   Signature Status Info
+   ----------------------------------------------------------------------------- */
+.signature-status-info {
+  display: none;
+  margin-top: 1rem;
+}
+
+.signature-status-info.show {
+  display: block;
+}
+
+.sig-status {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius);
+  font-family: var(--font-mono);
+}
+
+.sig-status .sig-icon {
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+
+.sig-status .sig-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sig-status .sig-content strong {
+  font-size: 0.85rem;
+}
+
+.sig-status .sig-detail {
+  font-size: 0.7rem;
+  opacity: 0.8;
+}
+
+.sig-status .sig-note {
+  font-size: 0.7rem;
+  opacity: 0.7;
+  margin-top: 2px;
+}
+
+.sig-signed {
+  background: rgba(0, 255, 65, 0.1);
+  border: 1px solid rgba(0, 255, 65, 0.3);
+  color: var(--cyber-green);
+}
+
+.sig-unsigned {
+  background: rgba(100, 100, 100, 0.1);
+  border: 1px solid rgba(100, 100, 100, 0.3);
+  color: var(--text-secondary);
+}
+
+.sig-warning {
+  background: rgba(255, 149, 0, 0.1);
+  border: 1px solid rgba(255, 149, 0, 0.3);
+  color: var(--warning-orange);
 }
 
 /* -----------------------------------------------------------------------------
@@ -811,37 +1003,43 @@ p {
    Responsive Design
    ----------------------------------------------------------------------------- */
 @media (max-width: 900px) {
+  body {
+    padding: 20px;
+    align-items: flex-start;
+    padding-top: 30px;
+  }
+
   .app-layout {
+    max-width: 100%;
+  }
+
+  .main-row {
     flex-direction: column;
     align-items: center;
   }
 
-  .share-panel {
+  .container,
+  .side-panel {
     width: 100%;
     max-width: 550px;
-    animation: slideInUp 0.4s cubic-bezier(0.22, 1, 0.36, 1);
   }
 
-  @keyframes slideInUp {
-    from {
-      opacity: 0;
-      transform: translateY(20px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
+  .share-panel {
+    max-width: 550px;
   }
 }
 
 @media (max-width: 600px) {
   body {
     padding: 15px;
-    align-items: flex-start;
-    padding-top: 40px;
+    padding-top: 20px;
   }
 
   .app-layout {
+    gap: 1rem;
+  }
+
+  .main-row {
     gap: 1rem;
   }
 

@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="CrypShare - Download and decrypt your secure file."
+      content="CrypShare - Download and decrypt your secure file with hybrid access control."
     />
     <meta name="theme-color" content="#0a0a0a" />
     <title>CrypShare - Secure Download</title>
@@ -16,6 +16,7 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="styles-identity.css" />
   </head>
   <body class="download-page">
     <div class="card">
@@ -35,7 +36,13 @@
         in your browser.
       </p>
 
-      <!-- Alert Box (for errors) -->
+      <!-- Access Mode Indicator -->
+      <div class="access-mode-indicator" id="accessMode"></div>
+
+      <!-- Signature Info -->
+      <div class="signature-info" id="signatureInfo"></div>
+
+      <!-- Alert Box -->
       <div id="alert" class="alert alert-error">
         <span class="alert-icon">⚠️</span>
         <div class="alert-content">
@@ -74,7 +81,18 @@
           <span class="status-icon">○</span>
           <span>Preparing download...</span>
         </div>
+        <div
+          class="download-status-line pending"
+          id="step5"
+          style="display: none"
+        >
+          <span class="status-icon">○</span>
+          <span>Verifying signature...</span>
+        </div>
       </div>
+
+      <!-- Signature Verification Result -->
+      <div class="signature-verification" id="signatureVerification"></div>
 
       <!-- Expiry Notice -->
       <div class="expiry-notice">
@@ -85,10 +103,13 @@
       <!-- Security Badge -->
       <div class="security-badge">
         <span class="security-badge-icon">🛡️</span>
-        <span>Decryption happens in your browser</span>
+        <span>Decryption happens in your browser • Zero-Knowledge</span>
       </div>
     </div>
 
+    <!-- Scripts -->
+    <script src="crypto.js"></script>
+    <script src="identity.js"></script>
     <script src="download.js"></script>
   </body>
 </html>

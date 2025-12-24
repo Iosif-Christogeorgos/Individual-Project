@@ -256,13 +256,13 @@ CrypShare requires the [Web Crypto API](https://developer.mozilla.org/en-US/docs
 
 ### File Size Limit
 
-The default maximum file size is **100 MB**. To change this, edit [backend/server.js](backend/server.js):
+The default maximum file size is **1 GB**. To change this, edit [backend/server.js](backend/server.js):
 
 ```javascript
 const upload = multer({
   storage: storage,
   limits: {
-    fileSize: 100 * 1024 * 1024, // Change this value
+    fileSize: 1024 * 1024 * 1024, // Change this value (1GB)
   },
 });
 ```
@@ -271,23 +271,33 @@ const upload = multer({
 
 ## 🛠️ Tech Stack
 
-| Layer                | Technology                      |
-| -------------------- | ------------------------------- |
-| **Frontend**         | Vanilla JavaScript, HTML5, CSS3 |
-| **Backend**          | Node.js, Express 5.x            |
-| **Encryption**       | Web Crypto API (AES-256-GCM)    |
-| **File Upload**      | Multer                          |
-| **Containerization** | Docker                          |
+| Layer                | Technology                                |
+| -------------------- | ----------------------------------------- |
+| **Frontend**         | Vanilla JavaScript, HTML5, CSS3           |
+| **Backend**          | Node.js, Express 5.x                      |
+| **Encryption**       | Web Crypto API (AES-256-GCM, ECDH, ECDSA) |
+| **File Upload**      | Multer (up to 1GB)                        |
+| **Containerization** | Docker                                    |
+
+---
+
+## ✅ Implemented Features
+
+- **Chunked Encryption (64KB blocks)** — Files are processed in discrete chunks with O(1) memory complexity, enabling uploads up to 1GB without browser memory constraints.
+
+- **Hybrid E2EE with Identity-Based Access** — Implements ECDH (P-256) for key exchange and ECDSA (P-256) for digital signatures. Users can encrypt files for specific recipients using their public keys.
+
+- **Digital Signatures** — Files can be cryptographically signed to prove authenticity and verify the uploader's identity.
 
 ---
 
 ## 🚀 Future Roadmap
 
-- **Stream-Based Encryption (Chunked AES-GCM)** — Refactor the encryption pipeline to process files in discrete chunks rather than loading entire files into memory. This will enable O(1) memory complexity, allowing the application to handle multi-gigabyte files without browser memory constraints. Each chunk will be independently encrypted with proper IV management to maintain security guarantees.
+- **WebRTC Peer-to-Peer** — Enable direct browser-to-browser file transfer using WebRTC data channels, eliminating the need for server-side storage entirely.
 
-- **Asymmetric Cryptography (RSA/ECC Key Pairs)** — Implement public-key cryptography to enable recipient-specific encryption. Users will be able to encrypt files directly to a recipient's public key, eliminating the need to share secret keys via URL fragments. This decouples security from the link itself, allowing secure file sharing even over untrusted channels and enabling features like persistent user identities and encrypted group sharing.
+- **Key Revocation** — Mechanism to revoke compromised identity keys.
 
-- **WebRTC Peer-to-Peer** — Enable direct browser-to-browser file transfer using WebRTC data channels, eliminating the need for server-side storage entirely. Files will be encrypted and transmitted directly between peers, providing true end-to-end transfer with zero server knowledge. The server will only facilitate WebRTC signaling and peer discovery.
+- **Group Encryption** — Key hierarchy for team/group file sharing.
 
 ---
 

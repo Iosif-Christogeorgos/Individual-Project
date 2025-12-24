@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="CrypShare - Zero-knowledge end-to-end encrypted file sharing. Your files are encrypted in your browser before uploading."
+      content="CrypShare - Zero-knowledge end-to-end encrypted file sharing with hybrid access control."
     />
     <meta name="theme-color" content="#0a0a0a" />
     <title>CrypShare - Zero-Knowledge File Encryption</title>
@@ -16,100 +16,249 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="styles-identity.css" />
   </head>
   <body>
     <div class="app-layout">
-      <div class="container">
-        <!-- Logo Header -->
-        <div class="logo">
-          <div class="logo-icon">🔐</div>
-          <div class="logo-text">Cryp<span>Share</span></div>
-        </div>
+      <!-- Main Content Row -->
+      <div class="main-row">
+        <!-- Upload Panel -->
+        <div class="container">
+          <!-- Logo Header -->
+          <div class="logo">
+            <div class="logo-icon">🔐</div>
+            <div class="logo-text">Cryp<span>Share</span></div>
+          </div>
 
-        <!-- Page Title -->
-        <h2>Secure Upload</h2>
-        <p>
-          Files are encrypted in your browser before uploading. The server
-          <b>never</b>
-          sees your data.
-        </p>
+          <!-- Page Title -->
+          <h2>Secure Upload</h2>
+          <p>
+            Files are encrypted in your browser before uploading. The server
+            <b>never</b>
+            sees your data.
+          </p>
 
-        <!-- Alert Box (for errors) -->
-        <div id="alert" class="alert alert-error">
-          <span class="alert-icon">⚠️</span>
-          <div class="alert-content">
-            <div class="alert-title" id="alert-title">Error</div>
-            <div class="alert-message" id="alert-message">
-              Something went wrong.
+          <!-- Alert Box -->
+          <div id="alert" class="alert alert-error">
+            <span class="alert-icon">⚠️</span>
+            <div class="alert-content">
+              <div class="alert-title" id="alert-title">Error</div>
+              <div class="alert-message" id="alert-message">
+                Something went wrong.
+              </div>
+            </div>
+            <button class="alert-close" onclick="hideAlert()">×</button>
+          </div>
+
+          <!-- Drop Zone -->
+          <div class="drop-zone" id="dropZone">
+            <span class="drop-zone-icon">📁</span>
+            <div class="drop-zone-text">
+              <strong>Drop file here</strong> or click to browse<br />
+              <small style="color: var(--text-muted)"
+                >Maximum file size: 1GB</small
+              >
+            </div>
+            <input type="file" id="fileInput" />
+          </div>
+
+          <!-- Selected File Display -->
+          <div class="file-selected" id="fileSelected">
+            <span class="file-selected-icon">📄</span>
+            <div class="file-selected-info">
+              <div class="file-selected-name" id="fileName">filename.txt</div>
+              <div class="file-selected-size" id="fileSize">0 KB</div>
+            </div>
+            <button
+              class="file-selected-remove"
+              onclick="clearFile()"
+              title="Remove file"
+            >
+              ×
+            </button>
+          </div>
+
+          <!-- Access Control Options -->
+          <div class="access-options">
+            <div class="option-group">
+              <label class="option-label">
+                <input type="checkbox" id="includeLinkKey" checked />
+                <span class="option-text">
+                  <span class="option-title">🔗 Include key in link</span>
+                  <span class="option-desc"
+                    >Anyone with the link can decrypt (default behavior)</span
+                  >
+                </span>
+              </label>
+            </div>
+
+            <div class="option-group">
+              <label class="option-label">
+                <input type="checkbox" id="enableSigning" />
+                <span class="option-text">
+                  <span class="option-title">✍️ Sign file</span>
+                  <span class="option-desc"
+                    >Cryptographically prove you uploaded this file</span
+                  >
+                </span>
+              </label>
             </div>
           </div>
-          <button class="alert-close" onclick="hideAlert()">×</button>
-        </div>
 
-        <!-- Drop Zone -->
-        <div class="drop-zone" id="dropZone">
-          <span class="drop-zone-icon">📁</span>
-          <div class="drop-zone-text">
-            <strong>Drop file here</strong> or click to browse<br />
-            <small style="color: var(--text-muted)"
-              >Maximum file size: 100MB</small
+          <!-- Upload Button -->
+          <button
+            class="btn btn-primary"
+            id="uploadBtn"
+            onclick="processFile()"
+          >
+            <span>🔒</span> Encrypt & Upload
+          </button>
+
+          <!-- Progress Bar -->
+          <div class="progress-container" id="progressContainer">
+            <div class="progress-bar">
+              <div class="progress-bar-inner">
+                <span class="progress-bar-label">ENCRYPTING</span>
+                <span class="progress-bar-track" id="progressTrack"
+                  >[.......................]</span
+                >
+                <span class="progress-bar-percent" id="progressPercent"
+                  >0%</span
+                >
+              </div>
+            </div>
+            <div class="progress-status" id="progressStatus">
+              Initializing...
+            </div>
+          </div>
+
+          <!-- Expiry Notice -->
+          <div class="expiry-notice">
+            <span class="expiry-notice-icon">⏳</span>
+            <span
+              >Files are automatically deleted after
+              <strong>24 hours</strong></span
             >
           </div>
-          <input type="file" id="fileInput" />
-        </div>
 
-        <!-- Selected File Display -->
-        <div class="file-selected" id="fileSelected">
-          <span class="file-selected-icon">📄</span>
-          <div class="file-selected-info">
-            <div class="file-selected-name" id="fileName">filename.txt</div>
-            <div class="file-selected-size" id="fileSize">0 KB</div>
+          <!-- Security Badge -->
+          <div class="security-badge">
+            <span class="security-badge-icon">🛡️</span>
+            <span>End-to-End Encrypted • Zero-Knowledge • AES-256-GCM</span>
           </div>
-          <button
-            class="file-selected-remove"
-            onclick="clearFile()"
-            title="Remove file"
-          >
-            ×
-          </button>
         </div>
 
-        <!-- Upload Button -->
-        <button class="btn btn-primary" id="uploadBtn" onclick="processFile()">
-          <span>🔒</span> Encrypt & Upload
-        </button>
+        <!-- Identity & Recipients Panel -->
+        <div class="side-panel" id="identityPanel">
+          <div class="side-panel-header">
+            <span class="terminal-prompt">$</span>
+            <span class="panel-title">IDENTITY</span>
+          </div>
 
-        <!-- Progress Bar -->
-        <div class="progress-container" id="progressContainer">
-          <div class="progress-bar">
-            <div class="progress-bar-inner">
-              <span class="progress-bar-label">ENCRYPTING</span>
-              <span class="progress-bar-track" id="progressTrack"
-                >[.......................]</span
+          <!-- No Identity Section -->
+          <div class="panel-section" id="noIdentitySection">
+            <div class="panel-section-header">
+              <span class="section-icon">🆔</span>
+              <span>Create Identity</span>
+            </div>
+            <p class="section-desc">
+              Generate a cryptographic identity for identity-based file sharing.
+            </p>
+            <input
+              type="text"
+              id="identityNameInput"
+              class="panel-input"
+              placeholder="Display name (optional)"
+              maxlength="50"
+            />
+            <button
+              class="btn btn-secondary btn-small"
+              onclick="createIdentity()"
+            >
+              <span>🔑</span> Generate Identity
+            </button>
+          </div>
+
+          <!-- Has Identity Section -->
+          <div class="panel-section hidden" id="hasIdentitySection">
+            <div class="panel-section-header">
+              <span class="section-icon">🆔</span>
+              <span>Your Identity</span>
+            </div>
+            <div class="identity-card">
+              <div class="identity-name" id="identityName">User</div>
+              <div class="identity-fingerprint">
+                <span class="fingerprint-label">Fingerprint:</span>
+                <span class="fingerprint-value" id="identityFingerprint"
+                  >ABCD1234</span
+                >
+              </div>
+            </div>
+            <div class="identity-actions">
+              <button
+                class="btn btn-small btn-ghost"
+                onclick="exportIdentity()"
+                title="Export identity"
               >
-              <span class="progress-bar-percent" id="progressPercent">0%</span>
+                📤 Export
+              </button>
+              <button
+                class="btn btn-small btn-ghost"
+                onclick="copyPublicKey()"
+                title="Copy public key"
+              >
+                📋 Copy Key
+              </button>
             </div>
           </div>
-          <div class="progress-status" id="progressStatus">Initializing...</div>
-        </div>
 
-        <!-- Expiry Notice -->
-        <div class="expiry-notice">
-          <span class="expiry-notice-icon">⏳</span>
-          <span
-            >Files are automatically deleted after
-            <strong>24 hours</strong></span
-          >
-        </div>
+          <!-- Recipients Section -->
+          <div class="panel-section">
+            <div class="panel-section-header">
+              <span class="section-icon">👥</span>
+              <span>Recipients</span>
+            </div>
+            <p class="section-desc">
+              Select contacts who can decrypt this file using their identity.
+            </p>
 
-        <!-- Security Badge -->
-        <div class="security-badge">
-          <span class="security-badge-icon">🛡️</span>
-          <span>End-to-End Encrypted • Zero-Knowledge • AES-256-GCM</span>
+            <div class="contacts-list" id="contactsList">
+              <div class="no-contacts">No contacts added yet</div>
+            </div>
+
+            <div class="recipient-count" id="recipientCount"></div>
+
+            <!-- Add Contact -->
+            <div class="add-contact-section">
+              <button
+                class="btn btn-small btn-ghost"
+                onclick="importContactFromFile()"
+              >
+                📂 Import Contact
+              </button>
+              <details class="contact-paste">
+                <summary class="btn btn-small btn-ghost">📋 Paste Key</summary>
+                <div class="paste-content">
+                  <textarea
+                    id="importContactInput"
+                    class="panel-input"
+                    placeholder="Paste public identity JSON..."
+                    rows="3"
+                  ></textarea>
+                  <button
+                    class="btn btn-small btn-secondary"
+                    onclick="importContact()"
+                  >
+                    Add Contact
+                  </button>
+                </div>
+              </details>
+            </div>
+          </div>
         </div>
       </div>
 
-      <!-- Share Link Result - Side Panel -->
+      <!-- Share Link Result Panel -->
       <div class="share-panel" id="shareContainer">
         <div class="share-panel-header">
           <span class="terminal-prompt">root@crypshare:~$</span>
@@ -120,6 +269,12 @@
             <span class="share-header-icon">✅</span>
             <span>Encryption Complete — Share This Link</span>
           </div>
+
+          <!-- Upload Status Badges -->
+          <div class="upload-status-badges" id="uploadStatusBadges">
+            <!-- Dynamically populated by JavaScript -->
+          </div>
+
           <div class="share-link-wrapper">
             <input
               type="text"
@@ -127,13 +282,23 @@
               id="shareLink"
               readonly
             />
+            <button
+              class="btn btn-primary btn-copy"
+              id="copyBtn"
+              onclick="copyLink()"
+            >
+              <span>📋</span> Copy
+            </button>
           </div>
-          <button class="btn btn-copy" id="copyBtn" onclick="copyLink()">
-            <span>📋</span> Copy to Clipboard
-          </button>
+
+          <!-- Share Mode Info -->
+          <div class="share-mode-info" id="shareModeInfo"></div>
+
+          <!-- Signature Status Info -->
+          <div class="signature-status-info" id="signatureStatusInfo"></div>
 
           <!-- Security Protocol Warning -->
-          <div class="security-protocol-warning">
+          <div class="security-protocol-warning" id="securityWarning">
             <div class="spw-header">
               <span class="spw-indicator">▶</span>
               <span class="spw-title">ENCRYPTION SUCCESSFUL</span>
@@ -182,6 +347,9 @@
       </div>
     </div>
 
+    <!-- Scripts -->
+    <script src="crypto.js"></script>
+    <script src="identity.js"></script>
     <script src="upload.js"></script>
   </body>
 </html>

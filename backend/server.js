@@ -1,8 +1,14 @@
 // =============================================================================
-// CrypShare Backend - Zero-Knowledge File Storage Server
+// CrypShare Backend - Zero-Knowledge File Storage Server (Hybrid E2EE)
 // =============================================================================
 // This server is intentionally "dumb" - it only stores and retrieves encrypted
-// binary blobs. It never attempts to read, parse, or process file contents.
+// binary blobs and metadata. It never attempts to decrypt or process file contents.
+//
+// ZERO-KNOWLEDGE PRINCIPLES:
+// - Server never sees plaintext file contents
+// - Server never sees AES file keys
+// - Server never sees private keys
+// - Server MAY store: ciphertext, public keys, encrypted AES keys, signatures
 // =============================================================================
 
 import express from "express";
@@ -14,7 +20,7 @@ import crypto from "crypto";
 import { fileURLToPath } from "url";
 
 // =============================================================================
-// ESM Fix: Recreate __dirname (not available in ES Modules)
+// ESM Fix: Recreate __dirname
 // =============================================================================
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -24,33 +30,32 @@ const __dirname = path.dirname(__filename);
 // =============================================================================
 const PORT = process.env.PORT || 3000;
 const UPLOADS_DIR = path.join(__dirname, "uploads");
-const FILE_EXPIRY_HOURS = 24; // Files expire after 24 hours
+const METADATA_DIR = path.join(__dirname, "metadata");
+const PUBKEYS_DIR = path.join(__dirname, "pubkeys");
+const FILE_EXPIRY_HOURS = 24;
 const FILE_EXPIRY_MS = FILE_EXPIRY_HOURS * 60 * 60 * 1000;
-const CLEANUP_INTERVAL_MS = 15 * 60 * 1000; // Run cleanup every 15 minutes
+const CLEANUP_INTERVAL_MS = 15 * 60 * 1000;
 
-// Ensure uploads directory exists
-if (!fs.existsSync(UPLOADS_DIR)) {
-  fs.mkdirSync(UPLOADS_DIR, { recursive: true });
-  console.log("📁 Created uploads directory:", UPLOADS_DIR);
-}
+// Ensure directories exist
+[UPLOADS_DIR, METADATA_DIR, PUBKEYS_DIR].forEach((dir) => {
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+    console.log("📁 Created directory:", dir);
+  }
+});
 
 // =============================================================================
 // File Cleanup / Garbage Collection
 // =============================================================================
 
-/**
- * Delete files older than FILE_EXPIRY_MS.
- * Uses the timestamp embedded in the filename for age calculation.
- */
 function cleanupExpiredFiles() {
   const now = Date.now();
   let deletedCount = 0;
 
   try {
+    // Clean up encrypted files
     const files = fs.readdirSync(UPLOADS_DIR);
-
     for (const file of files) {
-      // Extract timestamp from filename pattern: file-{timestamp}-{random}.bin
       const match = file.match(/^file-(\d+)-[a-f0-9]+\.bin$/);
       if (match) {
         const timestamp = parseInt(match[1], 10);
@@ -60,6 +65,16 @@ function cleanupExpiredFiles() {
           const filePath = path.join(UPLOADS_DIR, file);
           fs.unlinkSync(filePath);
           deletedCount++;
+
+          // Also delete associated metadata
+          const metadataPath = path.join(
+            METADATA_DIR,
+            file.replace(".bin", ".json")
+          );
+          if (fs.existsSync(metadataPath)) {
+            fs.unlinkSync(metadataPath);
+          }
+
           console.log(
             `🗑️  Expired file deleted: ${file} (age: ${Math.round(
               age / 3600000
@@ -79,15 +94,10 @@ function cleanupExpiredFiles() {
   }
 }
 
-// Run cleanup on startup
 cleanupExpiredFiles();
-
-// Schedule periodic cleanup
 setInterval(cleanupExpiredFiles, CLEANUP_INTERVAL_MS);
 console.log(
-  `⏰ File cleanup scheduled: every ${
-    CLEANUP_INTERVAL_MS / 60000
-  } minutes (files expire after ${FILE_EXPIRY_HOURS}h)`
+  `⏰ File cleanup scheduled: every ${CLEANUP_INTERVAL_MS / 60000} minutes`
 );
 
 // =============================================================================
@@ -95,55 +105,47 @@ console.log(
 // =============================================================================
 const app = express();
 
-// Enable CORS for frontend communication
 app.use(cors());
-
-// Parse JSON bodies (for potential future use)
-app.use(express.json());
-
-// Serve the 'public' folder (where your index.html and download.html live)
-// Go UP one level ('..'), then into 'frontend'
-app.use(express.static(path.join(__dirname, "../frontend")));
+app.use(express.json({ limit: "1mb" })); // For metadata JSON
 
 // =============================================================================
-// Clean URL Routing - Serve HTML pages without .html extension
+// Clean URL Routing (MUST be before static middleware)
 // =============================================================================
 
-// Serve download.html at /download for clean URLs
+// Serve upload page at root
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "../frontend/index.html"));
+});
+
+// Serve download page at /download
 app.get("/download", (req, res) => {
   res.sendFile(path.join(__dirname, "../frontend/download.html"));
 });
 
+// Serve the 'frontend' folder for static files (JS, CSS, etc.)
+// This comes AFTER route definitions so routes take priority
+app.use(express.static(path.join(__dirname, "../frontend")));
+
 // =============================================================================
-// Multer Configuration - Disk Storage
+// Multer Configuration
 // =============================================================================
 
-/**
- * Generate a unique filename with collision checking.
- * Uses crypto.randomBytes for high entropy, plus existence check for guarantee.
- * @returns {string} A unique filename that does not exist on disk
- */
 function generateUniqueFilename() {
   const maxAttempts = 10;
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const timestamp = Date.now();
-    const randomBytes = crypto.randomBytes(16).toString("hex"); // 128 bits
+    const randomBytes = crypto.randomBytes(16).toString("hex");
     const filename = `file-${timestamp}-${randomBytes}.bin`;
     const fullPath = path.join(UPLOADS_DIR, filename);
 
-    // Check if file already exists (should virtually never happen)
     if (!fs.existsSync(fullPath)) {
       return filename;
     }
 
-    // Log if we ever hit this - would indicate a serious issue
-    console.warn(
-      `⚠️ Filename collision detected (attempt ${attempt + 1}): ${filename}`
-    );
+    console.warn(`⚠️ Filename collision detected (attempt ${attempt + 1})`);
   }
 
-  // If we somehow fail 10 times, throw an error rather than risk overwrite
   throw new Error("Failed to generate unique filename after maximum attempts");
 }
 
@@ -164,36 +166,25 @@ const storage = multer.diskStorage({
 const upload = multer({
   storage: storage,
   limits: {
-    fileSize: 100 * 1024 * 1024, // 100MB limit (adjust as needed)
+    fileSize: 1024 * 1024 * 1024, // 1GB
   },
 });
 
 // =============================================================================
-// Routes
+// File Upload/Download Routes
 // =============================================================================
 
-// Serve the main upload page at root
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "../frontend/index.html"));
-});
-
-// -----------------------------------------------------------------------------
-// POST /upload - Accept encrypted file and return fileId
-// -----------------------------------------------------------------------------
+// POST /upload - Accept encrypted file
 app.post("/upload", upload.single("encryptedFile"), (req, res) => {
   try {
-    // Check if file was uploaded
     if (!req.file) {
       return res.status(400).json({
         success: false,
-        error:
-          'No file uploaded. Please send a file with field name "encryptedFile".',
+        error: "No file uploaded.",
       });
     }
 
-    // Return the unique fileId (filename) to the client
     const fileId = req.file.filename;
-
     console.log(`✅ File uploaded: ${fileId} (${req.file.size} bytes)`);
 
     res.status(201).json({
@@ -210,20 +201,15 @@ app.post("/upload", upload.single("encryptedFile"), (req, res) => {
   }
 });
 
-// -----------------------------------------------------------------------------
 // Helper: Validate and resolve file path
-// -----------------------------------------------------------------------------
 function resolveFilePath(fileId) {
-  // Validate fileId format (must match our generated pattern)
   if (!/^file-\d+-[a-f0-9]+\.bin$/.test(fileId)) {
     return { error: "Invalid file ID format.", status: 400 };
   }
 
-  // Sanitize fileId to prevent directory traversal attacks
   const sanitizedFileId = path.basename(fileId);
   const filePath = path.join(UPLOADS_DIR, sanitizedFileId);
 
-  // Check if file exists
   if (!fs.existsSync(filePath)) {
     return { error: "File not found.", status: 404, sanitizedFileId };
   }
@@ -231,9 +217,7 @@ function resolveFilePath(fileId) {
   return { filePath, sanitizedFileId };
 }
 
-// -----------------------------------------------------------------------------
-// HEAD /download/:fileId - Check if file exists (for link validation)
-// -----------------------------------------------------------------------------
+// HEAD /download/:fileId - Check if file exists
 app.head("/download/:fileId", (req, res) => {
   try {
     const result = resolveFilePath(req.params.fileId);
@@ -252,9 +236,7 @@ app.head("/download/:fileId", (req, res) => {
   }
 });
 
-// -----------------------------------------------------------------------------
-// GET /download/:fileId - Retrieve and stream encrypted file
-// -----------------------------------------------------------------------------
+// GET /download/:fileId - Download encrypted file
 app.get("/download/:fileId", (req, res) => {
   try {
     const result = resolveFilePath(req.params.fileId);
@@ -272,13 +254,10 @@ app.get("/download/:fileId", (req, res) => {
     }
 
     const { filePath, sanitizedFileId } = result;
-
-    // Get file stats for content-length header
     const stats = fs.statSync(filePath);
 
     console.log(`📤 Downloading: ${sanitizedFileId} (${stats.size} bytes)`);
 
-    // Set headers for binary download
     res.setHeader("Content-Type", "application/octet-stream");
     res.setHeader(
       "Content-Disposition",
@@ -286,7 +265,6 @@ app.get("/download/:fileId", (req, res) => {
     );
     res.setHeader("Content-Length", stats.size);
 
-    // Stream the file to the client
     const fileStream = fs.createReadStream(filePath);
     fileStream.pipe(res);
 
@@ -309,16 +287,263 @@ app.get("/download/:fileId", (req, res) => {
 });
 
 // =============================================================================
+// Metadata Routes (for hybrid E2EE)
+// =============================================================================
+
+/**
+ * POST /metadata/:fileId - Store file metadata (encrypted keys, signatures)
+ *
+ * The server stores this metadata blindly - it cannot decrypt the file keys
+ * because they are encrypted with recipient public keys.
+ */
+app.post("/metadata/:fileId", (req, res) => {
+  try {
+    const fileId = req.params.fileId;
+
+    // Validate fileId format
+    if (!/^file-\d+-[a-f0-9]+\.bin$/.test(fileId)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid file ID format.",
+      });
+    }
+
+    // Check if the file exists
+    const filePath = path.join(UPLOADS_DIR, path.basename(fileId));
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({
+        success: false,
+        error: "File not found.",
+      });
+    }
+
+    // Validate metadata structure
+    const metadata = req.body;
+    if (!metadata || typeof metadata !== "object") {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid metadata format.",
+      });
+    }
+
+    // Validate metadata doesn't contain plaintext secrets
+    // (Server should never receive plaintext keys)
+    if (metadata.plaintextKey || metadata.rawKey || metadata.aesKey) {
+      console.warn(
+        "⚠️ SECURITY: Attempted to store plaintext key in metadata!"
+      );
+      return res.status(400).json({
+        success: false,
+        error: "Invalid metadata: plaintext keys are not allowed.",
+      });
+    }
+
+    // Store metadata
+    const metadataFilename = fileId.replace(".bin", ".json");
+    const metadataPath = path.join(METADATA_DIR, metadataFilename);
+
+    fs.writeFileSync(metadataPath, JSON.stringify(metadata, null, 2));
+
+    console.log(`📋 Metadata stored for: ${fileId}`);
+
+    res.status(201).json({
+      success: true,
+      message: "Metadata stored successfully.",
+    });
+  } catch (error) {
+    console.error("❌ Metadata storage error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Internal server error storing metadata.",
+    });
+  }
+});
+
+/**
+ * GET /metadata/:fileId - Retrieve file metadata
+ */
+app.get("/metadata/:fileId", (req, res) => {
+  try {
+    const fileId = req.params.fileId;
+
+    // Validate fileId format
+    if (!/^file-\d+-[a-f0-9]+\.bin$/.test(fileId)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid file ID format.",
+      });
+    }
+
+    const metadataFilename = fileId.replace(".bin", ".json");
+    const metadataPath = path.join(
+      METADATA_DIR,
+      path.basename(metadataFilename)
+    );
+
+    if (!fs.existsSync(metadataPath)) {
+      return res.status(404).json({
+        success: false,
+        error: "Metadata not found.",
+      });
+    }
+
+    const metadata = JSON.parse(fs.readFileSync(metadataPath, "utf8"));
+
+    console.log(`📋 Metadata retrieved for: ${fileId}`);
+
+    res.json(metadata);
+  } catch (error) {
+    console.error("❌ Metadata retrieval error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Internal server error retrieving metadata.",
+    });
+  }
+});
+
+// =============================================================================
+// Public Key Directory Routes (Optional - for key discovery)
+// =============================================================================
+
+/**
+ * POST /pubkey - Register a public key
+ *
+ * Users can optionally register their public key for discovery.
+ * This enables others to find and share files with them.
+ */
+app.post("/pubkey", (req, res) => {
+  try {
+    const {
+      id,
+      displayName,
+      encryptionPublicKey,
+      signingPublicKey,
+      fingerprint,
+    } = req.body;
+
+    if (!id || !encryptionPublicKey || !fingerprint) {
+      return res.status(400).json({
+        success: false,
+        error: "Missing required fields: id, encryptionPublicKey, fingerprint",
+      });
+    }
+
+    // Validate fingerprint matches the public key (client should compute this)
+    // Server stores it but cannot verify without implementing crypto
+
+    const pubkeyData = {
+      id,
+      displayName: displayName || `User-${fingerprint.substring(0, 8)}`,
+      encryptionPublicKey,
+      signingPublicKey,
+      fingerprint,
+      registeredAt: new Date().toISOString(),
+    };
+
+    const pubkeyPath = path.join(PUBKEYS_DIR, `${id}.json`);
+    fs.writeFileSync(pubkeyPath, JSON.stringify(pubkeyData, null, 2));
+
+    console.log(`🔑 Public key registered: ${id}`);
+
+    res.status(201).json({
+      success: true,
+      message: "Public key registered successfully.",
+    });
+  } catch (error) {
+    console.error("❌ Public key registration error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Internal server error.",
+    });
+  }
+});
+
+/**
+ * GET /pubkey/:id - Retrieve a public key by ID
+ */
+app.get("/pubkey/:id", (req, res) => {
+  try {
+    const id = req.params.id;
+
+    // Sanitize ID
+    if (!/^[a-f0-9]{32}$/.test(id)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid ID format.",
+      });
+    }
+
+    const pubkeyPath = path.join(PUBKEYS_DIR, `${id}.json`);
+
+    if (!fs.existsSync(pubkeyPath)) {
+      return res.status(404).json({
+        success: false,
+        error: "Public key not found.",
+      });
+    }
+
+    const pubkeyData = JSON.parse(fs.readFileSync(pubkeyPath, "utf8"));
+    res.json(pubkeyData);
+  } catch (error) {
+    console.error("❌ Public key retrieval error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Internal server error.",
+    });
+  }
+});
+
+/**
+ * GET /pubkey/fingerprint/:fingerprint - Lookup by fingerprint
+ */
+app.get("/pubkey/fingerprint/:fingerprint", (req, res) => {
+  try {
+    const fingerprint = req.params.fingerprint.toLowerCase();
+
+    // Validate fingerprint format
+    if (!/^[a-f0-9]{64}$/.test(fingerprint)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid fingerprint format.",
+      });
+    }
+
+    // Search for matching public key
+    const files = fs.readdirSync(PUBKEYS_DIR);
+    for (const file of files) {
+      if (file.endsWith(".json")) {
+        const pubkeyPath = path.join(PUBKEYS_DIR, file);
+        const pubkeyData = JSON.parse(fs.readFileSync(pubkeyPath, "utf8"));
+
+        if (pubkeyData.fingerprint === fingerprint) {
+          return res.json(pubkeyData);
+        }
+      }
+    }
+
+    res.status(404).json({
+      success: false,
+      error: "Public key not found.",
+    });
+  } catch (error) {
+    console.error("❌ Public key lookup error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Internal server error.",
+    });
+  }
+});
+
+// =============================================================================
 // Error Handling Middleware
 // =============================================================================
 
-// Handle Multer errors (e.g., file too large)
 app.use((error, req, res, next) => {
   if (error instanceof multer.MulterError) {
     if (error.code === "LIMIT_FILE_SIZE") {
       return res.status(413).json({
         success: false,
-        error: "File too large. Maximum size is 100MB.",
+        error: "File too large. Maximum size is 1GB.",
       });
     }
     return res.status(400).json({
@@ -329,7 +554,6 @@ app.use((error, req, res, next) => {
   next(error);
 });
 
-// Generic error handler
 app.use((error, req, res, next) => {
   console.error("❌ Unhandled error:", error);
   res.status(500).json({
@@ -343,15 +567,21 @@ app.use((error, req, res, next) => {
 // =============================================================================
 app.listen(PORT, () => {
   console.log("=".repeat(60));
-  console.log("🔐 CrypShare Backend Server");
+  console.log("🔐 CrypShare Backend Server (E2EE)");
   console.log("=".repeat(60));
   console.log(`🚀 Server running on port: ${PORT}`);
   console.log(`📁 Uploads directory: ${UPLOADS_DIR}`);
+  console.log(`📋 Metadata directory: ${METADATA_DIR}`);
+  console.log(`🔑 Public keys directory: ${PUBKEYS_DIR}`);
   console.log("=".repeat(60));
   console.log("Endpoints:");
-  console.log(`  GET  /           - Serve upload page`);
-  console.log(`  GET  /download   - Serve download page (clean URL)`);
-  console.log(`  POST /upload     - Upload encrypted file`);
-  console.log(`  GET  /download/:fileId - Download encrypted file`);
+  console.log(`  GET  /                     - Upload page`);
+  console.log(`  GET  /download             - Download page`);
+  console.log(`  POST /upload               - Upload encrypted file`);
+  console.log(`  GET  /download/:fileId     - Download encrypted file`);
+  console.log(`  POST /metadata/:fileId     - Store file metadata`);
+  console.log(`  GET  /metadata/:fileId     - Retrieve file metadata`);
+  console.log(`  POST /pubkey               - Register public key`);
+  console.log(`  GET  /pubkey/:id           - Retrieve public key`);
   console.log("=".repeat(60));
 });
