@@ -16,6 +16,73 @@ let currentIdentity = null;
 let selectedRecipients = [];
 
 // =============================================================================
+// Access Configuration Validation
+// =============================================================================
+
+function validateAccessConfig() {
+  const includeLinkKey =
+    document.getElementById("includeLinkKey")?.checked !== false;
+  const enableSigning =
+    document.getElementById("enableSigning")?.checked || false;
+  const uploadBtn = document.getElementById("uploadBtn");
+  const warningEl = document.getElementById("accessWarning");
+  const warningTitle = document.getElementById("accessWarningTitle");
+  const warningMessage = document.getElementById("accessWarningMessage");
+
+  if (!warningEl || !uploadBtn) return { valid: true, canUpload: true };
+
+  let isValid = true;
+  let canUpload = true;
+  let warningType = "error"; // "error" or "warning"
+
+  // Check 1: No decryption method at all (BLOCKING)
+  if (!includeLinkKey && selectedRecipients.length === 0) {
+    isValid = false;
+    canUpload = false;
+    warningTitle.textContent = "No Decryption Method";
+    warningMessage.textContent =
+      "Enable 'Include key in link' OR select at least one recipient. Without either, no one can decrypt the file.";
+    warningType = "error";
+  }
+  // Check 2: Signing enabled but no identity (WARNING only)
+  else if (enableSigning && !currentIdentity) {
+    isValid = false;
+    canUpload = true; // Still allow upload, just warn
+    warningTitle.textContent = "Cannot Sign File";
+    warningMessage.textContent =
+      "You enabled signing but have no identity. Create an identity first, or disable signing to continue.";
+    warningType = "warning";
+  }
+  // Check 3: Identity-only mode with no recipients selected (BLOCKING)
+  else if (!includeLinkKey && selectedRecipients.length === 0) {
+    isValid = false;
+    canUpload = false;
+    warningTitle.textContent = "No Recipients Selected";
+    warningMessage.textContent =
+      "Identity-only mode requires at least one recipient. Add contacts and select who should access this file.";
+    warningType = "error";
+  }
+
+  // Update UI
+  if (!isValid) {
+    warningEl.classList.add("show");
+    warningEl.classList.toggle("warning", warningType === "warning");
+  } else {
+    warningEl.classList.remove("show", "warning");
+  }
+
+  // Enable/disable upload button
+  uploadBtn.disabled = !canUpload;
+  if (!canUpload) {
+    uploadBtn.classList.add("disabled");
+  } else {
+    uploadBtn.classList.remove("disabled");
+  }
+
+  return { valid: isValid, canUpload: canUpload };
+}
+
+// =============================================================================
 // UI Helper Functions
 // =============================================================================
 
@@ -154,6 +221,7 @@ async function createIdentity() {
   try {
     currentIdentity = await IdentityManager.generateIdentity(displayName);
     updateIdentityUI();
+    validateAccessConfig(); // Re-validate now that we have an identity
     showAlert(
       "Identity Created",
       "Your cryptographic identity has been generated and stored securely."
@@ -250,6 +318,7 @@ function toggleRecipient(contactId, selected) {
     selectedRecipients = selectedRecipients.filter((id) => id !== contactId);
   }
   updateRecipientCount();
+  validateAccessConfig(); // Revalidate when recipients change
 }
 
 function updateRecipientCount() {
@@ -389,6 +458,9 @@ document.addEventListener("DOMContentLoaded", () => {
   initializeIdentityPanel();
   loadContacts();
 
+  // Initial validation check (after a short delay to ensure identity is loaded)
+  setTimeout(validateAccessConfig, 100);
+
   // Drag events
   ["dragenter", "dragover"].forEach((event) => {
     dropZone.addEventListener(event, (e) => {
@@ -457,6 +529,16 @@ async function processFile() {
   const uploadBtn = document.getElementById("uploadBtn");
 
   hideAlert();
+
+  // Validate access configuration before proceeding
+  const validation = validateAccessConfig();
+  if (!validation.canUpload) {
+    showAlert(
+      "Invalid Configuration",
+      "Please fix the access configuration issues before uploading."
+    );
+    return;
+  }
 
   if (fileInput.files.length === 0) {
     showAlert(

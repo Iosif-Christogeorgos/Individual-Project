@@ -82,7 +82,12 @@
           <div class="access-options">
             <div class="option-group">
               <label class="option-label">
-                <input type="checkbox" id="includeLinkKey" checked />
+                <input
+                  type="checkbox"
+                  id="includeLinkKey"
+                  checked
+                  onchange="validateAccessConfig()"
+                />
                 <span class="option-text">
                   <span class="option-title">🔗 Include key in link</span>
                   <span class="option-desc"
@@ -94,7 +99,11 @@
 
             <div class="option-group">
               <label class="option-label">
-                <input type="checkbox" id="enableSigning" />
+                <input
+                  type="checkbox"
+                  id="enableSigning"
+                  onchange="validateAccessConfig()"
+                />
                 <span class="option-text">
                   <span class="option-title">✍️ Sign file</span>
                   <span class="option-desc"
@@ -102,6 +111,18 @@
                   >
                 </span>
               </label>
+            </div>
+          </div>
+
+          <!-- Access Validation Warning -->
+          <div class="access-warning" id="accessWarning">
+            <span class="access-warning-icon">⚠️</span>
+            <div class="access-warning-content">
+              <strong id="accessWarningTitle">No Decryption Method</strong>
+              <span id="accessWarningMessage"
+                >Select at least one access method or the file cannot be
+                decrypted.</span
+              >
             </div>
           </div>
 

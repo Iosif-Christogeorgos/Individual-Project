@@ -404,6 +404,68 @@ p {
 }
 
 /* -----------------------------------------------------------------------------
+   Access Validation Warning
+   ----------------------------------------------------------------------------- */
+.access-warning {
+  display: none;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  background: rgba(255, 59, 59, 0.1);
+  border: 1px solid var(--error-red);
+  border-radius: var(--radius);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  animation: fadeIn 0.3s ease;
+}
+
+.access-warning.show {
+  display: flex;
+}
+
+.access-warning.warning {
+  background: rgba(255, 149, 0, 0.1);
+  border-color: var(--warning-orange);
+}
+
+.access-warning.warning .access-warning-icon,
+.access-warning.warning .access-warning-content strong {
+  color: var(--warning-orange);
+}
+
+.access-warning-icon {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+  color: var(--error-red);
+}
+
+.access-warning-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.access-warning-content strong {
+  color: var(--error-red);
+  font-size: 0.85rem;
+}
+
+.access-warning-content span {
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
+/* Disabled upload button state */
+.btn-primary.disabled,
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* -----------------------------------------------------------------------------
    Progress Bar - Terminal Style
    ----------------------------------------------------------------------------- */
 .progress-container {
