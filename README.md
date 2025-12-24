@@ -267,6 +267,7 @@ const upload = multer({
 
 ## 🚀 Future Roadmap
 
+- **Public Key Server** — Server-side key registration and discovery (endpoints exist, frontend integration pending)
 - **WebRTC Peer-to-Peer** — Direct browser-to-browser file transfer
 - **Key Revocation** — Mechanism to revoke compromised identity keys
 - **Group Encryption** — Key hierarchy for team/group file sharing
