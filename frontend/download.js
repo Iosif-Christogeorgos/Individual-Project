@@ -320,20 +320,25 @@ document.addEventListener("DOMContentLoaded", validateDownloadLink);
 // UI Helper Functions
 // =============================================================================
 
-function showAlert(title, message, type = 'error') {
+function showAlert(title, message, type = "error") {
   const alert = document.getElementById("alert");
   const alertTitle = document.getElementById("alert-title");
   const alertMessage = document.getElementById("alert-message");
   const alertIcon = document.getElementById("alert-icon");
 
   // Set icon based on type
-  const icons = { error: '⚠️', success: '✅', info: 'ℹ️', warning: '⚡' };
+  const icons = { error: "⚠️", success: "✅", info: "ℹ️", warning: "⚡" };
   if (alertIcon) {
     alertIcon.textContent = icons[type] || icons.error;
   }
 
   // Update alert styling based on type
-  alert.classList.remove('alert-error', 'alert-success', 'alert-info', 'alert-warning');
+  alert.classList.remove(
+    "alert-error",
+    "alert-success",
+    "alert-info",
+    "alert-warning"
+  );
   alert.classList.add(`alert-${type}`);
 
   alertTitle.textContent = title;
