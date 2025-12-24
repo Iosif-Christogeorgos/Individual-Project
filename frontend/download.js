@@ -103,21 +103,46 @@ async function fetchMetadata(fileId) {
 async function loadUserIdentity() {
   try {
     if (typeof IdentityManager !== "undefined") {
-      currentIdentity = await IdentityManager.getLoadedIdentity();
+      // First check if identity exists (simpler check)
+      const hasIdentity = await IdentityManager.hasIdentity();
+      if (hasIdentity) {
+        // Then load with CryptoKey objects for decryption
+        currentIdentity = await IdentityManager.getLoadedIdentity();
+      } else {
+        currentIdentity = null;
+      }
     }
   } catch (error) {
-    console.log("No identity available:", error.message);
+    console.error("Failed to load identity:", error.message);
     currentIdentity = null;
   }
 }
 
 function canDecryptWithIdentity() {
-  if (!currentIdentity || !fileMetadata?.encryptedKeys) return false;
+  if (!currentIdentity || !fileMetadata?.encryptedKeys) {
+    console.log("canDecryptWithIdentity: No identity or no encrypted keys", {
+      hasIdentity: !!currentIdentity,
+      hasEncryptedKeys: !!fileMetadata?.encryptedKeys,
+      encryptedKeysCount: fileMetadata?.encryptedKeys?.length || 0,
+    });
+    return false;
+  }
 
   // Check if any encrypted key matches our identity
-  return fileMetadata.encryptedKeys.some(
+  const match = fileMetadata.encryptedKeys.some(
     (ek) => ek.recipientFingerprint === currentIdentity.fingerprint
   );
+
+  if (!match) {
+    console.log("canDecryptWithIdentity: Fingerprint mismatch", {
+      ourFingerprint: currentIdentity.fingerprint,
+      recipientFingerprints: fileMetadata.encryptedKeys.map(
+        (ek) => ek.recipientFingerprint
+      ),
+    });
+  }
+
+  return match;
 }
 
 function getMatchingEncryptedKey() {
@@ -276,6 +301,16 @@ function escapeHtml(text) {
   const div = document.createElement("div");
   div.textContent = text;
   return div.innerHTML;
+}
+
+/**
+ * Show the signature verification step in the UI.
+ */
+function showSignatureStep() {
+  const step5 = document.getElementById("step5");
+  if (step5) {
+    step5.style.display = "flex";
+  }
 }
 
 // Run validation when page loads
@@ -443,6 +478,7 @@ async function startDownload() {
 
     // Step 4: Verify signature if present
     if (fileMetadata?.signature) {
+      showSignatureStep(); // Make signature step visible
       updateStep("step5", "pending"); // Optional signature step
       try {
         const signerPublicKey = await CryptoModule.importSigningPublicKey(
@@ -474,14 +510,24 @@ async function startDownload() {
       originalFilename.replace(/[/\\]/g, "_").replace(/\x00/g, "").trim() ||
       "download";
 
-    // Verify content hash if metadata available
+    // Verify content hash if metadata available (hash of original file before encryption)
     if (fileMetadata?.contentHash) {
-      const downloadedHash = await CryptoModule.sha256(fileContent.buffer);
-      if (downloadedHash !== fileMetadata.contentHash) {
-        showAlert(
-          "Warning",
-          "File integrity check failed. The file may have been tampered with."
-        );
+      try {
+        const decryptedHash = await CryptoModule.sha256(fileContent.buffer);
+        if (decryptedHash !== fileMetadata.contentHash) {
+          console.warn("Content hash mismatch:", {
+            expected: fileMetadata.contentHash,
+            actual: decryptedHash,
+          });
+          showAlert(
+            "Warning",
+            "File integrity check failed. The file may have been tampered with."
+          );
+        } else {
+          console.log("✅ File integrity verified successfully");
+        }
+      } catch (hashError) {
+        console.error("Hash verification error:", hashError);
       }
     }
 

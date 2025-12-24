@@ -698,41 +698,49 @@ const CryptoModule = (function () {
   }
 
   /**
-   * Compute SHA-256 hash of a file in chunks (memory efficient).
-   * Note: WebCrypto doesn't support incremental hashing, so we hash the full file.
-   * For very large files, consider using a streaming library.
+   * Compute SHA-256 hash of a file.
+   * For memory efficiency on large files, we read in chunks but need to
+   * accumulate all data since WebCrypto doesn't support incremental hashing.
+   *
+   * Note: For files > 100MB, this may cause memory pressure. Consider using
+   * a WebAssembly-based streaming hash library for production.
    *
    * @param {File} file - File to hash
    * @returns {Promise<string>} Hex-encoded hash
    */
   async function hashFile(file) {
-    // For large files, use streaming approach to avoid memory issues
-    // Unfortunately, WebCrypto's digest doesn't support streaming natively,
-    // but we can read in chunks and use a fallback approach
-    if (file.size <= 50 * 1024 * 1024) {
-      // For files <= 50MB, use simple approach
+    // For files <= 100MB, read entire file into memory
+    // This ensures consistent hash results between upload and download
+    if (file.size <= 100 * 1024 * 1024) {
       const buffer = await file.arrayBuffer();
       return await sha256(buffer);
     }
 
-    // For larger files, read in chunks and create combined hash
-    // Note: This creates a hash of hashes approach for memory efficiency
-    const chunkSize = 10 * 1024 * 1024; // 10MB chunks
+    // For larger files, we still need to read the entire file to get a proper hash
+    // WebCrypto doesn't support streaming/incremental hashing natively
+    // Read in chunks to avoid blocking the UI, then combine
+    const chunkSize = 50 * 1024 * 1024; // 50MB chunks
     const chunks = Math.ceil(file.size / chunkSize);
-    let combinedHashes = "";
+    const allChunks = [];
 
     for (let i = 0; i < chunks; i++) {
       const start = i * chunkSize;
       const end = Math.min(start + chunkSize, file.size);
       const chunk = file.slice(start, end);
       const buffer = await chunk.arrayBuffer();
-      const chunkHash = await sha256(buffer);
-      combinedHashes += chunkHash;
+      allChunks.push(new Uint8Array(buffer));
     }
 
-    // Hash the combined hashes
-    const encoder = new TextEncoder();
-    return await sha256(encoder.encode(combinedHashes).buffer);
+    // Combine all chunks into a single buffer
+    const totalLength = allChunks.reduce((sum, chunk) => sum + chunk.length, 0);
+    const combined = new Uint8Array(totalLength);
+    let offset = 0;
+    for (const chunk of allChunks) {
+      combined.set(chunk, offset);
+      offset += chunk.length;
+    }
+
+    return await sha256(combined.buffer);
   }
 
   // ===========================================================================

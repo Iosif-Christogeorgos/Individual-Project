@@ -670,14 +670,15 @@ async function executeUpload() {
     // Step 3: Prepare metadata
     updateProgress(55, "Preparing metadata...");
 
-    // For content hash, read file in chunks to avoid memory issues
-    const contentHash = await CryptoModule.hashFile(file);
+    // Hash the ORIGINAL file for integrity verification after decryption
+    // This hash is of the plaintext file, verified after decryption
+    const originalFileHash = await CryptoModule.hashFile(file);
 
     const metadata = {
       version: 2, // Chunked encryption format
       filename: file.name,
       size: file.size,
-      contentHash: contentHash,
+      contentHash: originalFileHash, // Hash of original file, verified after decryption
       timestamp: new Date().toISOString(),
       accessModes: [],
       encryptedKeys: [],
@@ -722,7 +723,7 @@ async function executeUpload() {
       );
 
       const signatureBundle = await CryptoModule.signFileMetadata(
-        { filename: file.name, size: file.size, contentHash: contentHash },
+        { filename: file.name, size: file.size, contentHash: originalFileHash },
         loadedIdentity.signing.privateKey
       );
 
@@ -874,6 +875,9 @@ function showSignatureStatusInfo(enableSigning, identity) {
   if (!infoEl) return;
 
   if (enableSigning && identity) {
+    const shortFingerprint = identity.fingerprint
+      .substring(0, 16)
+      .toUpperCase();
     infoEl.innerHTML = `
       <div class="sig-status sig-signed">
         <span class="sig-icon">✅</span>
@@ -881,7 +885,7 @@ function showSignatureStatusInfo(enableSigning, identity) {
           <strong>File Signed</strong>
           <span class="sig-detail">Signed by: ${escapeHtml(
             identity.displayName
-          )} (${identity.fingerprint})</span>
+          )} (${shortFingerprint})</span>
           <span class="sig-note">Recipients can verify this file came from you.</span>
         </div>
       </div>

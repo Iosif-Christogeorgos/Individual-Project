@@ -249,17 +249,35 @@ const IdentityManager = (function () {
    * Export public identity (safe to share with others).
    * Includes only public keys - no private keys.
    *
+   * IMPORTANT: Always exports JWK format, not CryptoKey objects.
+   * CryptoKey objects cannot be serialized to JSON.
+   *
    * @param {Object} identity - The full identity object
    * @returns {Object} Public identity bundle
    */
   function exportPublicIdentity(identity) {
+    // Prefer JWK versions to avoid accidentally exporting CryptoKey objects
+    // which cannot be serialized to JSON
+    const encryptionPubKey =
+      identity.encryption.publicKeyJWK || identity.encryption.publicKey;
+    const signingPubKey =
+      identity.signing.publicKeyJWK || identity.signing.publicKey;
+
+    // Validate that we're exporting JWKs, not CryptoKey objects
+    if (
+      encryptionPubKey instanceof CryptoKey ||
+      signingPubKey instanceof CryptoKey
+    ) {
+      throw new Error(
+        "Cannot export CryptoKey objects. Identity must have JWK keys."
+      );
+    }
+
     return {
       id: identity.id,
       displayName: identity.displayName,
-      encryptionPublicKey:
-        identity.encryption.publicKey || identity.encryption.publicKeyJWK,
-      signingPublicKey:
-        identity.signing.publicKey || identity.signing.publicKeyJWK,
+      encryptionPublicKey: encryptionPubKey,
+      signingPublicKey: signingPubKey,
       fingerprint: identity.fingerprint,
     };
   }
@@ -315,6 +333,46 @@ const IdentityManager = (function () {
    * @returns {Promise<void>}
    */
   async function addContact(publicIdentity) {
+    // Validate the public identity has valid JWK keys
+    if (
+      !publicIdentity.encryptionPublicKey ||
+      typeof publicIdentity.encryptionPublicKey !== "object" ||
+      !publicIdentity.encryptionPublicKey.kty
+    ) {
+      throw new Error(
+        "Invalid encryption public key format. Expected a JWK object with 'kty' property."
+      );
+    }
+
+    if (
+      !publicIdentity.signingPublicKey ||
+      typeof publicIdentity.signingPublicKey !== "object" ||
+      !publicIdentity.signingPublicKey.kty
+    ) {
+      throw new Error(
+        "Invalid signing public key format. Expected a JWK object with 'kty' property."
+      );
+    }
+
+    if (
+      !publicIdentity.fingerprint ||
+      typeof publicIdentity.fingerprint !== "string"
+    ) {
+      throw new Error("Invalid or missing fingerprint.");
+    }
+
+    // Try to import the keys to validate they work
+    try {
+      await CryptoModule.importECDHPublicKey(
+        publicIdentity.encryptionPublicKey
+      );
+      await CryptoModule.importSigningPublicKey(
+        publicIdentity.signingPublicKey
+      );
+    } catch (importError) {
+      throw new Error("Failed to validate public keys: " + importError.message);
+    }
+
     const contacts = await getContacts();
 
     // Check if contact already exists

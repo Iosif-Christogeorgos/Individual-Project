@@ -63,23 +63,38 @@ function cleanupExpiredFiles() {
 
         if (age > FILE_EXPIRY_MS) {
           const filePath = path.join(UPLOADS_DIR, file);
-          fs.unlinkSync(filePath);
-          deletedCount++;
 
-          // Also delete associated metadata
-          const metadataPath = path.join(
-            METADATA_DIR,
-            file.replace(".bin", ".json")
-          );
-          if (fs.existsSync(metadataPath)) {
-            fs.unlinkSync(metadataPath);
+          try {
+            fs.unlinkSync(filePath);
+            deletedCount++;
+
+            // Also delete associated metadata
+            const metadataPath = path.join(
+              METADATA_DIR,
+              file.replace(".bin", ".json")
+            );
+            if (fs.existsSync(metadataPath)) {
+              fs.unlinkSync(metadataPath);
+            }
+
+            console.log(
+              `🗑️  Expired file deleted: ${file} (age: ${Math.round(
+                age / 3600000
+              )}h)`
+            );
+          } catch (deleteError) {
+            // Handle file in use (EBUSY) or other deletion errors gracefully
+            if (deleteError.code === "EBUSY" || deleteError.code === "ENOENT") {
+              console.log(
+                `⏳ Skipping file in use or already deleted: ${file}`
+              );
+            } else {
+              console.error(
+                `❌ Failed to delete ${file}:`,
+                deleteError.message
+              );
+            }
           }
-
-          console.log(
-            `🗑️  Expired file deleted: ${file} (age: ${Math.round(
-              age / 3600000
-            )}h)`
-          );
         }
       }
     }
@@ -387,7 +402,16 @@ app.get("/metadata/:fileId", (req, res) => {
       });
     }
 
-    const metadata = JSON.parse(fs.readFileSync(metadataPath, "utf8"));
+    let metadata;
+    try {
+      metadata = JSON.parse(fs.readFileSync(metadataPath, "utf8"));
+    } catch (parseError) {
+      console.error("❌ Metadata parse error:", parseError);
+      return res.status(500).json({
+        success: false,
+        error: "Metadata file is corrupted.",
+      });
+    }
 
     console.log(`📋 Metadata retrieved for: ${fileId}`);
 
@@ -459,6 +483,53 @@ app.post("/pubkey", (req, res) => {
 });
 
 /**
+ * GET /pubkey/fingerprint/:fingerprint - Lookup by fingerprint
+ * NOTE: This route MUST come BEFORE /pubkey/:id to avoid Express matching "fingerprint" as an :id
+ */
+app.get("/pubkey/fingerprint/:fingerprint", (req, res) => {
+  try {
+    const fingerprint = req.params.fingerprint.toLowerCase();
+
+    // Validate fingerprint format
+    if (!/^[a-f0-9]{64}$/.test(fingerprint)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid fingerprint format.",
+      });
+    }
+
+    // Search for matching public key
+    const files = fs.readdirSync(PUBKEYS_DIR);
+    for (const file of files) {
+      if (file.endsWith(".json")) {
+        const pubkeyPath = path.join(PUBKEYS_DIR, file);
+        try {
+          const pubkeyData = JSON.parse(fs.readFileSync(pubkeyPath, "utf8"));
+
+          if (pubkeyData.fingerprint === fingerprint) {
+            return res.json(pubkeyData);
+          }
+        } catch (parseError) {
+          console.error(`❌ Error parsing pubkey file ${file}:`, parseError);
+          // Continue to next file
+        }
+      }
+    }
+
+    res.status(404).json({
+      success: false,
+      error: "Public key not found.",
+    });
+  } catch (error) {
+    console.error("❌ Public key lookup error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Internal server error.",
+    });
+  }
+});
+
+/**
  * GET /pubkey/:id - Retrieve a public key by ID
  */
 app.get("/pubkey/:id", (req, res) => {
@@ -482,51 +553,19 @@ app.get("/pubkey/:id", (req, res) => {
       });
     }
 
-    const pubkeyData = JSON.parse(fs.readFileSync(pubkeyPath, "utf8"));
+    let pubkeyData;
+    try {
+      pubkeyData = JSON.parse(fs.readFileSync(pubkeyPath, "utf8"));
+    } catch (parseError) {
+      console.error("❌ Pubkey parse error:", parseError);
+      return res.status(500).json({
+        success: false,
+        error: "Public key file is corrupted.",
+      });
+    }
     res.json(pubkeyData);
   } catch (error) {
     console.error("❌ Public key retrieval error:", error);
-    res.status(500).json({
-      success: false,
-      error: "Internal server error.",
-    });
-  }
-});
-
-/**
- * GET /pubkey/fingerprint/:fingerprint - Lookup by fingerprint
- */
-app.get("/pubkey/fingerprint/:fingerprint", (req, res) => {
-  try {
-    const fingerprint = req.params.fingerprint.toLowerCase();
-
-    // Validate fingerprint format
-    if (!/^[a-f0-9]{64}$/.test(fingerprint)) {
-      return res.status(400).json({
-        success: false,
-        error: "Invalid fingerprint format.",
-      });
-    }
-
-    // Search for matching public key
-    const files = fs.readdirSync(PUBKEYS_DIR);
-    for (const file of files) {
-      if (file.endsWith(".json")) {
-        const pubkeyPath = path.join(PUBKEYS_DIR, file);
-        const pubkeyData = JSON.parse(fs.readFileSync(pubkeyPath, "utf8"));
-
-        if (pubkeyData.fingerprint === fingerprint) {
-          return res.json(pubkeyData);
-        }
-      }
-    }
-
-    res.status(404).json({
-      success: false,
-      error: "Public key not found.",
-    });
-  } catch (error) {
-    console.error("❌ Public key lookup error:", error);
     res.status(500).json({
       success: false,
       error: "Internal server error.",
