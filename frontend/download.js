@@ -488,7 +488,7 @@ async function startDownload() {
     if (useStreaming) {
       // Memory-efficient streaming download for large files
       console.log(
-        `Using streaming download for ${(contentLength / (1024 * 1024)).toFixed(
+        `⬇️ Using STREAMING download for ${(contentLength / (1024 * 1024)).toFixed(
           1
         )}MB file`
       );
@@ -515,6 +515,7 @@ async function startDownload() {
       updateStep("step3", "complete");
     } else {
       // Buffered download for small files (original approach)
+      console.log(`⬇️ Using BUFFERED download for ${(contentLength / (1024 * 1024)).toFixed(1)}MB file`);
       const response = await fetch(downloadUrl);
 
       if (!response.ok) {

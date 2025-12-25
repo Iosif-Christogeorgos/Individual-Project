@@ -640,34 +640,46 @@ const CryptoModule = (function () {
     );
     const reader = response.body.getReader();
 
-    // Read stream in chunks and accumulate (but browser manages memory better this way)
-    const chunks = [];
+    // Pre-allocate buffer if Content-Length is known (avoids chunk array accumulation)
+    let encryptedData;
     let receivedLength = 0;
 
-    while (true) {
-      const { done, value } = await reader.read();
+    if (contentLength > 0) {
+      // Pre-allocate exact size - more memory efficient
+      encryptedData = new Uint8Array(contentLength);
 
-      if (done) break;
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
 
-      chunks.push(value);
-      receivedLength += value.length;
+        // Write directly to pre-allocated buffer
+        encryptedData.set(value, receivedLength);
+        receivedLength += value.length;
 
-      if (contentLength > 0) {
         const progress = Math.round((receivedLength / contentLength) * 100);
         onDownloadProgress(progress);
       }
-    }
+    } else {
+      // Fallback: accumulate chunks if Content-Length unknown
+      const chunks = [];
 
-    // Combine chunks into single ArrayBuffer
-    const encryptedData = new Uint8Array(receivedLength);
-    let position = 0;
-    for (const chunk of chunks) {
-      encryptedData.set(chunk, position);
-      position += chunk.length;
-    }
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
 
-    // Clear chunks array to free memory before decryption
-    chunks.length = 0;
+        chunks.push(value);
+        receivedLength += value.length;
+      }
+
+      // Combine chunks
+      encryptedData = new Uint8Array(receivedLength);
+      let position = 0;
+      for (const chunk of chunks) {
+        encryptedData.set(chunk, position);
+        position += chunk.length;
+      }
+      chunks.length = 0; // Free chunks array
+    }
 
     // Detect format and decrypt
     const format = detectEncryptionFormat(encryptedData.buffer);
