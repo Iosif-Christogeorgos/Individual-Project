@@ -125,7 +125,9 @@ async function fetchMetadata(fileId) {
   }
 }
 
-async function loadUserIdentity() {
+async function loadUserIdentity(retryCount = 0) {
+  const MAX_RETRIES = 2;
+
   try {
     if (typeof IdentityManager === "undefined") {
       console.warn("🔑 IdentityManager not available");
@@ -152,6 +154,20 @@ async function loadUserIdentity() {
   } catch (error) {
     console.error("❌ Failed to load identity:", error);
     console.error("❌ Error stack:", error.stack);
+
+    // Retry on failure (IndexedDB can be flaky on some browsers)
+    if (retryCount < MAX_RETRIES) {
+      console.log(
+        `🔄 Retrying identity load (attempt ${retryCount + 2}/${
+          MAX_RETRIES + 1
+        })...`
+      );
+      await new Promise((resolve) =>
+        setTimeout(resolve, 100 * (retryCount + 1))
+      );
+      return loadUserIdentity(retryCount + 1);
+    }
+
     currentIdentity = null;
   }
 }
@@ -352,7 +368,32 @@ function showSignatureStep() {
 }
 
 // Run validation when page loads
-document.addEventListener("DOMContentLoaded", validateDownloadLink);
+// Use a more robust initialization that ensures all modules are ready
+async function initializeDownloadPage() {
+  console.log("🚀 Initializing download page...");
+
+  // Wait for all required modules to be available
+  const checkModules = () => {
+    return (
+      typeof CryptoModule !== "undefined" &&
+      typeof IdentityManager !== "undefined"
+    );
+  };
+
+  // If modules aren't ready, wait a bit
+  if (!checkModules()) {
+    console.log("⏳ Waiting for modules to load...");
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    if (!checkModules()) {
+      console.error("❌ Required modules not available after wait");
+    }
+  }
+
+  console.log("✅ Modules ready, running validation...");
+  await validateDownloadLink();
+}
+
+document.addEventListener("DOMContentLoaded", initializeDownloadPage);
 
 // =============================================================================
 // UI Helper Functions

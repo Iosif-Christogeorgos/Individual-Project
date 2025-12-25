@@ -217,34 +217,45 @@ const IdentityManager = (function () {
     });
 
     // Import keys one by one with error handling
-    let encryptionPublicKey, encryptionPrivateKey, signingPublicKey, signingPrivateKey;
-    
+    let encryptionPublicKey,
+      encryptionPrivateKey,
+      signingPublicKey,
+      signingPrivateKey;
+
     try {
-      encryptionPublicKey = await CryptoModule.importECDHPublicKey(identity.encryption.publicKey);
+      encryptionPublicKey = await CryptoModule.importECDHPublicKey(
+        identity.encryption.publicKey
+      );
       console.log("🔑 Imported ECDH public key");
     } catch (e) {
       console.error("🔑 Failed to import ECDH public key:", e);
       throw e;
     }
-    
+
     try {
-      encryptionPrivateKey = await CryptoModule.importECDHPrivateKey(identity.encryption.privateKey);
+      encryptionPrivateKey = await CryptoModule.importECDHPrivateKey(
+        identity.encryption.privateKey
+      );
       console.log("🔑 Imported ECDH private key");
     } catch (e) {
       console.error("🔑 Failed to import ECDH private key:", e);
       throw e;
     }
-    
+
     try {
-      signingPublicKey = await CryptoModule.importSigningPublicKey(identity.signing.publicKey);
+      signingPublicKey = await CryptoModule.importSigningPublicKey(
+        identity.signing.publicKey
+      );
       console.log("🔑 Imported ECDSA public key");
     } catch (e) {
       console.error("🔑 Failed to import ECDSA public key:", e);
       throw e;
     }
-    
+
     try {
-      signingPrivateKey = await CryptoModule.importSigningPrivateKey(identity.signing.privateKey);
+      signingPrivateKey = await CryptoModule.importSigningPrivateKey(
+        identity.signing.privateKey
+      );
       console.log("🔑 Imported ECDSA private key");
     } catch (e) {
       console.error("🔑 Failed to import ECDSA private key:", e);
