@@ -94,11 +94,20 @@ async function fetchMetadata(fileId) {
   try {
     const response = await fetch(`/metadata/${encodeURIComponent(fileId)}`);
     if (response.ok) {
-      fileMetadata = await response.json();
-      console.log("Metadata loaded:", fileMetadata);
+      const data = await response.json();
+      if (data) {
+        fileMetadata = data;
+        console.log("📋 Metadata loaded:", fileMetadata);
+      } else {
+        // Server returned null - no metadata exists (normal for link-only uploads)
+        fileMetadata = null;
+      }
+    } else {
+      console.warn("Metadata fetch returned:", response.status);
+      fileMetadata = null;
     }
   } catch (error) {
-    console.log("No metadata available (legacy file):", error.message);
+    console.log("No metadata available:", error.message);
     fileMetadata = null;
   }
 }

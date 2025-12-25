@@ -488,10 +488,9 @@ app.get("/metadata/:fileId", (req, res) => {
     );
 
     if (!fs.existsSync(metadataPath)) {
-      return res.status(404).json({
-        success: false,
-        error: "Metadata not found.",
-      });
+      // Return empty metadata instead of 404 to avoid browser console errors
+      // This is normal for link-only uploads or legacy files
+      return res.json(null);
     }
 
     let metadata;
