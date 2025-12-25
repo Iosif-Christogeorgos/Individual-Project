@@ -67,18 +67,31 @@ async function validateDownloadLink() {
     // Load user identity
     await loadUserIdentity();
 
+    // Log decision state
+    console.log("🔍 Access decision state:", {
+      keyString: keyString ? `${keyString.substring(0, 20)}...` : "(empty)",
+      hasMetadata: !!fileMetadata,
+      encryptedKeysCount: fileMetadata?.encryptedKeys?.length || 0,
+      hasIdentity: !!currentIdentity,
+      identityFingerprint: currentIdentity?.fingerprint,
+    });
+
     // Determine access mode
     if (keyString) {
       // Link-based access available
+      console.log("✅ Using link-based access");
       showDownloadReady("link");
     } else if (fileMetadata && canDecryptWithIdentity()) {
       // Identity-based access available
+      console.log("✅ Using identity-based access");
       showDownloadReady("identity");
     } else if (fileMetadata && fileMetadata.encryptedKeys?.length > 0) {
       // Identity-based access required but user doesn't have matching identity
+      console.log("❌ Identity required - no match found");
       showIdentityRequiredPage();
     } else {
       // No key in URL and no identity access
+      console.log("❌ Missing decryption key");
       showInvalidLinkPage(
         "Missing Decryption Key",
         "This link does not contain the decryption key. You may need to use identity-based access or request a new link."
@@ -114,18 +127,31 @@ async function fetchMetadata(fileId) {
 
 async function loadUserIdentity() {
   try {
-    if (typeof IdentityManager !== "undefined") {
-      // First check if identity exists (simpler check)
-      const hasIdentity = await IdentityManager.hasIdentity();
-      if (hasIdentity) {
-        // Then load with CryptoKey objects for decryption
-        currentIdentity = await IdentityManager.getLoadedIdentity();
-      } else {
-        currentIdentity = null;
-      }
+    if (typeof IdentityManager === "undefined") {
+      console.warn("🔑 IdentityManager not available");
+      currentIdentity = null;
+      return;
+    }
+
+    // First check if identity exists (simpler check)
+    const hasIdentity = await IdentityManager.hasIdentity();
+    console.log("🔑 Has identity in IndexedDB:", hasIdentity);
+
+    if (hasIdentity) {
+      // Then load with CryptoKey objects for decryption
+      currentIdentity = await IdentityManager.getLoadedIdentity();
+      console.log("🔑 Loaded identity:", {
+        displayName: currentIdentity?.displayName,
+        fingerprint: currentIdentity?.fingerprint,
+        hasEncryptionKeys: !!currentIdentity?.encryption,
+        hasSigningKeys: !!currentIdentity?.signing,
+      });
+    } else {
+      currentIdentity = null;
     }
   } catch (error) {
-    console.error("Failed to load identity:", error.message);
+    console.error("❌ Failed to load identity:", error);
+    console.error("❌ Error stack:", error.stack);
     currentIdentity = null;
   }
 }

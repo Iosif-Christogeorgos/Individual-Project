@@ -206,25 +206,62 @@ const IdentityManager = (function () {
   async function loadIdentityKeys(identity) {
     if (!identity) return null;
 
+    console.log("🔑 Loading identity keys, verifying structure:", {
+      hasEncryption: !!identity.encryption,
+      hasEncryptionPublicKey: !!identity.encryption?.publicKey,
+      hasEncryptionPrivateKey: !!identity.encryption?.privateKey,
+      hasSigning: !!identity.signing,
+      hasSigningPublicKey: !!identity.signing?.publicKey,
+      hasSigningPrivateKey: !!identity.signing?.privateKey,
+      fingerprint: identity.fingerprint,
+    });
+
+    // Import keys one by one with error handling
+    let encryptionPublicKey, encryptionPrivateKey, signingPublicKey, signingPrivateKey;
+    
+    try {
+      encryptionPublicKey = await CryptoModule.importECDHPublicKey(identity.encryption.publicKey);
+      console.log("🔑 Imported ECDH public key");
+    } catch (e) {
+      console.error("🔑 Failed to import ECDH public key:", e);
+      throw e;
+    }
+    
+    try {
+      encryptionPrivateKey = await CryptoModule.importECDHPrivateKey(identity.encryption.privateKey);
+      console.log("🔑 Imported ECDH private key");
+    } catch (e) {
+      console.error("🔑 Failed to import ECDH private key:", e);
+      throw e;
+    }
+    
+    try {
+      signingPublicKey = await CryptoModule.importSigningPublicKey(identity.signing.publicKey);
+      console.log("🔑 Imported ECDSA public key");
+    } catch (e) {
+      console.error("🔑 Failed to import ECDSA public key:", e);
+      throw e;
+    }
+    
+    try {
+      signingPrivateKey = await CryptoModule.importSigningPrivateKey(identity.signing.privateKey);
+      console.log("🔑 Imported ECDSA private key");
+    } catch (e) {
+      console.error("🔑 Failed to import ECDSA private key:", e);
+      throw e;
+    }
+
     return {
       ...identity,
       encryption: {
-        publicKey: await CryptoModule.importECDHPublicKey(
-          identity.encryption.publicKey
-        ),
-        privateKey: await CryptoModule.importECDHPrivateKey(
-          identity.encryption.privateKey
-        ),
+        publicKey: encryptionPublicKey,
+        privateKey: encryptionPrivateKey,
         publicKeyJWK: identity.encryption.publicKey,
         privateKeyJWK: identity.encryption.privateKey,
       },
       signing: {
-        publicKey: await CryptoModule.importSigningPublicKey(
-          identity.signing.publicKey
-        ),
-        privateKey: await CryptoModule.importSigningPrivateKey(
-          identity.signing.privateKey
-        ),
+        publicKey: signingPublicKey,
+        privateKey: signingPrivateKey,
         publicKeyJWK: identity.signing.publicKey,
         privateKeyJWK: identity.signing.privateKey,
       },
@@ -237,8 +274,20 @@ const IdentityManager = (function () {
    */
   async function getLoadedIdentity() {
     const identity = await retrieveIdentity();
+    console.log(
+      "🔑 Retrieved raw identity from IndexedDB:",
+      identity ? "exists" : "null"
+    );
     if (!identity) return null;
-    return await loadIdentityKeys(identity);
+
+    try {
+      const loaded = await loadIdentityKeys(identity);
+      console.log("🔑 Successfully loaded identity keys");
+      return loaded;
+    } catch (error) {
+      console.error("🔑 Failed to load identity keys:", error);
+      throw error;
+    }
   }
 
   // ===========================================================================
