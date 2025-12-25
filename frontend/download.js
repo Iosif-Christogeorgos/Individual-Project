@@ -619,14 +619,14 @@ async function startDownload() {
 
     // Create download
     const blob = new Blob([fileContent]);
-    const downloadUrl = URL.createObjectURL(blob);
+    const blobUrl = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = downloadUrl;
+    a.href = blobUrl;
     a.download = sanitizedFilename;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    URL.revokeObjectURL(downloadUrl);
+    URL.revokeObjectURL(blobUrl);
 
     // Success state
     btn.disabled = false;
