@@ -173,7 +173,7 @@ function showInvalidLinkPage(title, message) {
   const card = document.querySelector(".card");
   card.innerHTML = `
     <div class="logo" style="justify-content: center">
-      <img src="CrypShareLogo.png" alt="CrypShare" class="logo-icon" style="width:48px;height:48px;" />
+      <img src="logo.svg" alt="CrypShare" class="logo-icon" />
       <div class="logo-text">Cryp<span>Share</span></div>
     </div>
 
@@ -201,7 +201,7 @@ function showIdentityRequiredPage() {
 
   card.innerHTML = `
     <div class="logo" style="justify-content: center">
-      <img src="CrypShareLogo.png" alt="CrypShare" class="logo-icon" style="width:48px;height:48px;" />
+      <img src="logo.svg" alt="CrypShare" class="logo-icon" />
       <div class="logo-text">Cryp<span>Share</span></div>
     </div>
 
