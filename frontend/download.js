@@ -376,6 +376,8 @@ function showSignatureStep() {
 // Use a more robust initialization that ensures all modules are ready
 async function initializeDownloadPage() {
   console.log("🚀 Initializing download page...");
+  console.log("📍 Current origin:", window.location.origin);
+  console.log("📍 Full URL:", window.location.href);
 
   // Wait for all required modules to be available
   const checkModules = () => {
