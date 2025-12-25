@@ -174,7 +174,7 @@ async function loadUserIdentity(retryCount = 0) {
 
 function canDecryptWithIdentity() {
   if (!currentIdentity || !fileMetadata?.encryptedKeys) {
-    console.log("canDecryptWithIdentity: No identity or no encrypted keys", {
+    console.log("🔍 canDecryptWithIdentity: No identity or no encrypted keys", {
       hasIdentity: !!currentIdentity,
       hasEncryptedKeys: !!fileMetadata?.encryptedKeys,
       encryptedKeysCount: fileMetadata?.encryptedKeys?.length || 0,
@@ -182,18 +182,23 @@ function canDecryptWithIdentity() {
     return false;
   }
 
+  // Log the comparison
+  console.log("🔍 Comparing fingerprints:", {
+    ourFingerprint: currentIdentity.fingerprint,
+    recipientFingerprints: fileMetadata.encryptedKeys.map(
+      (ek) => ek.recipientFingerprint
+    ),
+  });
+
   // Check if any encrypted key matches our identity
   const match = fileMetadata.encryptedKeys.some(
     (ek) => ek.recipientFingerprint === currentIdentity.fingerprint
   );
 
-  if (!match) {
-    console.log("canDecryptWithIdentity: Fingerprint mismatch", {
-      ourFingerprint: currentIdentity.fingerprint,
-      recipientFingerprints: fileMetadata.encryptedKeys.map(
-        (ek) => ek.recipientFingerprint
-      ),
-    });
+  if (match) {
+    console.log("✅ canDecryptWithIdentity: Fingerprint match found!");
+  } else {
+    console.log("❌ canDecryptWithIdentity: No fingerprint match");
   }
 
   return match;
