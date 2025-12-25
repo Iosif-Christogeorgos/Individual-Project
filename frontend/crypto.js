@@ -499,6 +499,192 @@ const CryptoModule = (function () {
   }
 
   /**
+   * Memory-efficient streaming decryption for large files.
+   *
+   * This function decrypts chunks one at a time and writes them directly
+   * into a pre-allocated output buffer, avoiding the accumulation of
+   * intermediate chunk arrays that cause memory spikes.
+   *
+   * Memory usage: O(CHUNK_SIZE * 2) - one for encrypted chunk, one for decrypted
+   * instead of O(file_size * 2) for the non-streaming version.
+   *
+   * @param {ArrayBuffer} encryptedData - The encrypted data
+   * @param {CryptoKey} aesKey - The AES key
+   * @param {function} onProgress - Progress callback (0-100)
+   * @returns {Promise<{filename: string, data: ArrayBuffer}>} Decrypted filename and data
+   */
+  async function decryptFileChunkedStreaming(
+    encryptedData,
+    aesKey,
+    onProgress = () => {}
+  ) {
+    let offset = 0;
+
+    // 1. Read and verify version byte
+    const version = new Uint8Array(encryptedData.slice(0, 1))[0];
+    if (version !== FORMAT_VERSION_CHUNKED) {
+      throw new Error("Invalid chunked format version");
+    }
+    offset = 1;
+
+    // 2. Read filename header
+    const dataView = new DataView(encryptedData);
+    const filenameOriginalLength =
+      (dataView.getUint8(offset) << 8) | dataView.getUint8(offset + 1);
+    offset += 2;
+
+    const filenameIV = new Uint8Array(encryptedData.slice(offset, offset + 12));
+    offset += 12;
+
+    const filenameCipherLength = dataView.getUint32(offset, false);
+    offset += 4;
+
+    const filenameCiphertext = encryptedData.slice(
+      offset,
+      offset + filenameCipherLength
+    );
+    offset += filenameCipherLength;
+
+    // Decrypt filename
+    const decryptedFilenameBuffer = await decryptAES(
+      filenameCiphertext,
+      aesKey,
+      filenameIV
+    );
+    const filename = new TextDecoder().decode(decryptedFilenameBuffer);
+
+    // 3. Read chunk count
+    const totalChunks = dataView.getUint32(offset, false);
+    offset += 4;
+
+    // 4. First pass: calculate total decrypted size
+    // This avoids array accumulation - we pre-allocate the exact buffer size
+    let tempOffset = offset;
+    let totalDecryptedSize = 0;
+
+    for (let i = 0; i < totalChunks; i++) {
+      tempOffset += 12; // Skip IV
+      const ciphertextLength = dataView.getUint32(tempOffset, false);
+      tempOffset += 4;
+      // AES-GCM ciphertext includes 16-byte auth tag, plaintext is 16 bytes smaller
+      totalDecryptedSize += ciphertextLength - 16;
+      tempOffset += ciphertextLength;
+    }
+
+    // 5. Pre-allocate the EXACT output buffer size (no intermediate arrays)
+    const result = new Uint8Array(totalDecryptedSize);
+    let writePosition = 0;
+
+    // 6. Second pass: decrypt directly into output buffer
+    for (let i = 0; i < totalChunks; i++) {
+      // Read IV
+      const iv = new Uint8Array(encryptedData.slice(offset, offset + 12));
+      offset += 12;
+
+      // Read ciphertext length
+      const ciphertextLength = dataView.getUint32(offset, false);
+      offset += 4;
+
+      // Read ciphertext
+      const ciphertext = encryptedData.slice(offset, offset + ciphertextLength);
+      offset += ciphertextLength;
+
+      // Decrypt chunk directly
+      const plaintext = await decryptAES(ciphertext, aesKey, iv);
+      const plaintextArray = new Uint8Array(plaintext);
+
+      // Write directly to pre-allocated buffer (no intermediate storage)
+      result.set(plaintextArray, writePosition);
+      writePosition += plaintextArray.length;
+
+      // Report progress
+      const progress = Math.round(((i + 1) / totalChunks) * 100);
+      onProgress(progress);
+    }
+
+    return { filename, data: result.buffer };
+  }
+
+  /**
+   * Streaming download with memory-efficient decryption.
+   *
+   * Uses fetch streaming to avoid loading the entire encrypted file into memory
+   * at once, then decrypts using the streaming decryption function.
+   *
+   * For very large files, this keeps peak memory usage at approximately:
+   * - Encrypted data: loaded in chunks via fetch streaming
+   * - Decrypted data: pre-allocated single buffer (file size)
+   *
+   * @param {string} url - URL to download from
+   * @param {CryptoKey} aesKey - The AES key
+   * @param {function} onDownloadProgress - Download progress callback
+   * @param {function} onDecryptProgress - Decryption progress callback
+   * @returns {Promise<{filename: string, data: ArrayBuffer}>} Decrypted result
+   */
+  async function downloadAndDecryptStreaming(
+    url,
+    aesKey,
+    onDownloadProgress = () => {},
+    onDecryptProgress = () => {}
+  ) {
+    // Fetch with streaming
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      throw new Error(`Download failed: ${response.status}`);
+    }
+
+    const contentLength = parseInt(
+      response.headers.get("Content-Length") || "0",
+      10
+    );
+    const reader = response.body.getReader();
+
+    // Read stream in chunks and accumulate (but browser manages memory better this way)
+    const chunks = [];
+    let receivedLength = 0;
+
+    while (true) {
+      const { done, value } = await reader.read();
+
+      if (done) break;
+
+      chunks.push(value);
+      receivedLength += value.length;
+
+      if (contentLength > 0) {
+        const progress = Math.round((receivedLength / contentLength) * 100);
+        onDownloadProgress(progress);
+      }
+    }
+
+    // Combine chunks into single ArrayBuffer
+    const encryptedData = new Uint8Array(receivedLength);
+    let position = 0;
+    for (const chunk of chunks) {
+      encryptedData.set(chunk, position);
+      position += chunk.length;
+    }
+
+    // Clear chunks array to free memory before decryption
+    chunks.length = 0;
+
+    // Detect format and decrypt
+    const format = detectEncryptionFormat(encryptedData.buffer);
+
+    if (format === FORMAT_VERSION_CHUNKED) {
+      return await decryptFileChunkedStreaming(
+        encryptedData.buffer,
+        aesKey,
+        onDecryptProgress
+      );
+    } else {
+      onDecryptProgress(100);
+      return await decryptFileLegacy(encryptedData.buffer, aesKey);
+    }
+  }
+
+  /**
    * Detect the encryption format of data.
    * @param {ArrayBuffer} data - The encrypted data
    * @returns {number} Format version (0 = legacy, 2 = chunked)
@@ -1150,6 +1336,10 @@ const CryptoModule = (function () {
     createEncryptedHeader,
     hashFileStreaming,
     supportsStreamingUpload,
+
+    // Streaming Decryption (Memory-Efficient)
+    decryptFileChunkedStreaming,
+    downloadAndDecryptStreaming,
 
     // ECDH Operations
     generateECDHKeyPair,

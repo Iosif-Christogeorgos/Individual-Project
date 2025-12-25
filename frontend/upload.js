@@ -695,7 +695,16 @@ async function executeUpload() {
       file.size > STREAMING_THRESHOLD && CryptoModule.supportsStreamingUpload();
 
     if (useStreaming) {
-      await executeStreamingUpload(file, enableSigning, includeLinkKey);
+      try {
+        await executeStreamingUpload(file, enableSigning, includeLinkKey);
+      } catch (streamError) {
+        console.warn(
+          "Streaming upload failed, falling back to buffered:",
+          streamError.message
+        );
+        // Fall back to buffered upload if streaming fails
+        await executeBufferedUpload(file, enableSigning, includeLinkKey);
+      }
     } else {
       await executeBufferedUpload(file, enableSigning, includeLinkKey);
     }

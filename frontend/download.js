@@ -9,6 +9,9 @@
 let currentIdentity = null;
 let fileMetadata = null;
 
+// Threshold for streaming download (100MB)
+const STREAMING_DOWNLOAD_THRESHOLD = 100 * 1024 * 1024;
+
 // =============================================================================
 // Link Validation on Page Load
 // =============================================================================
@@ -409,20 +412,30 @@ async function startDownload() {
       throw new Error("Invalid file ID format.");
     }
 
-    // Step 1: Fetch encrypted file
-    const response = await fetch(`/download/${encodeURIComponent(fileId)}`);
+    // Step 1: Check file size to decide streaming vs buffered
+    const headResponse = await fetch(
+      `/download/${encodeURIComponent(fileId)}`,
+      {
+        method: "HEAD",
+      }
+    );
 
-    if (!response.ok) {
-      if (response.status === 404) {
+    if (!headResponse.ok) {
+      if (headResponse.status === 404) {
         throw new Error(
           "File not found. It may have been deleted or the link is invalid."
         );
       }
-      throw new Error(`Failed to fetch file: ${response.status}`);
+      throw new Error(`Failed to fetch file: ${headResponse.status}`);
     }
 
-    const encryptedBlob = await response.arrayBuffer();
-    updateStep("step1", "complete");
+    const contentLength = parseInt(
+      headResponse.headers.get("Content-Length") || "0",
+      10
+    );
+    const useStreaming = contentLength > STREAMING_DOWNLOAD_THRESHOLD;
+
+    updateStep("step1", "pending");
 
     // Step 2: Get decryption key (link-based or identity-based)
     let key;
@@ -468,25 +481,72 @@ async function startDownload() {
     }
     updateStep("step2", "complete");
 
-    // Step 3: Decrypt file using auto-detection (handles legacy and chunked formats)
+    // Step 3: Download and decrypt
     let decryptedResult;
-    try {
-      decryptedResult = await CryptoModule.decryptFileAuto(
-        encryptedBlob,
+    const downloadUrl = `/download/${encodeURIComponent(fileId)}`;
+
+    if (useStreaming) {
+      // Memory-efficient streaming download for large files
+      console.log(
+        `Using streaming download for ${(contentLength / (1024 * 1024)).toFixed(
+          1
+        )}MB file`
+      );
+
+      decryptedResult = await CryptoModule.downloadAndDecryptStreaming(
+        downloadUrl,
         key,
-        (progress) => {
-          // Update progress during decryption of large files
-          if (progress < 100) {
-            updateStep("step3", "pending");
+        (downloadProgress) => {
+          // Download progress (step 1)
+          if (downloadProgress < 100) {
+            btn.innerHTML = `<span>⬇️</span> Downloading... ${downloadProgress}%`;
+          } else {
+            updateStep("step1", "complete");
+          }
+        },
+        (decryptProgress) => {
+          // Decryption progress (step 3)
+          if (decryptProgress < 100) {
+            btn.innerHTML = `<span>🔓</span> Decrypting... ${decryptProgress}%`;
           }
         }
       );
-    } catch (decryptError) {
-      throw new Error(
-        "Decryption failed. The file may be corrupted or the key is incorrect."
-      );
+      updateStep("step1", "complete");
+      updateStep("step3", "complete");
+    } else {
+      // Buffered download for small files (original approach)
+      const response = await fetch(downloadUrl);
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          throw new Error(
+            "File not found. It may have been deleted or the link is invalid."
+          );
+        }
+        throw new Error(`Failed to fetch file: ${response.status}`);
+      }
+
+      const encryptedBlob = await response.arrayBuffer();
+      updateStep("step1", "complete");
+
+      // Decrypt using auto-detection
+      try {
+        decryptedResult = await CryptoModule.decryptFileAuto(
+          encryptedBlob,
+          key,
+          (progress) => {
+            if (progress < 100) {
+              updateStep("step3", "pending");
+            }
+          }
+        );
+      } catch (decryptError) {
+        throw new Error(
+          "Decryption failed. The file may be corrupted or the key is incorrect."
+        );
+      }
+      updateStep("step3", "complete");
     }
-    updateStep("step3", "complete");
 
     const { filename: originalFilename, data: fileContentBuffer } =
       decryptedResult;
