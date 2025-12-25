@@ -695,19 +695,36 @@ async function executeUpload() {
       file.size > STREAMING_THRESHOLD && CryptoModule.supportsStreamingUpload();
 
     if (useStreaming) {
-      console.log(`📤 Using STREAMING upload for ${(file.size / (1024 * 1024)).toFixed(1)}MB file`);
+      console.log(
+        `📤 Using STREAMING upload for ${(file.size / (1024 * 1024)).toFixed(
+          1
+        )}MB file`
+      );
       try {
         await executeStreamingUpload(file, enableSigning, includeLinkKey);
       } catch (streamError) {
-        console.warn(
-          "⚠️ Streaming upload failed, falling back to buffered:",
-          streamError.message
-        );
-        // Fall back to buffered upload if streaming fails
+        // ERR_ALPN_NEGOTIATION_FAILED = HTTP/2 required but server is HTTP/1.1
+        // This is expected for local development. Streaming works with HTTP/2 in production.
+        const isHttp2Issue = streamError.message.includes("Failed to fetch") ||
+                            streamError.message.includes("ALPN");
+        if (isHttp2Issue) {
+          console.info(
+            "ℹ️ Streaming requires HTTP/2. Falling back to buffered upload (normal for localhost)."
+          );
+        } else {
+          console.warn(
+            "⚠️ Streaming upload failed, falling back to buffered:",
+            streamError.message
+          );
+        }
         await executeBufferedUpload(file, enableSigning, includeLinkKey);
       }
     } else {
-      console.log(`📤 Using BUFFERED upload for ${(file.size / (1024 * 1024)).toFixed(1)}MB file`);
+      console.log(
+        `📤 Using BUFFERED upload for ${(file.size / (1024 * 1024)).toFixed(
+          1
+        )}MB file`
+      );
       await executeBufferedUpload(file, enableSigning, includeLinkKey);
     }
   } catch (error) {
