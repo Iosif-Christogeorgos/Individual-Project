@@ -705,8 +705,9 @@ async function executeUpload() {
       } catch (streamError) {
         // ERR_ALPN_NEGOTIATION_FAILED = HTTP/2 required but server is HTTP/1.1
         // This is expected for local development. Streaming works with HTTP/2 in production.
-        const isHttp2Issue = streamError.message.includes("Failed to fetch") ||
-                            streamError.message.includes("ALPN");
+        const isHttp2Issue =
+          streamError.message.includes("Failed to fetch") ||
+          streamError.message.includes("ALPN");
         if (isHttp2Issue) {
           console.info(
             "ℹ️ Streaming requires HTTP/2. Falling back to buffered upload (normal for localhost)."
