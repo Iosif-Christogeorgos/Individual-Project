@@ -529,7 +529,16 @@ async function startDownload() {
     // Verify content hash if metadata available (hash of original file before encryption)
     if (fileMetadata?.contentHash) {
       try {
-        const decryptedHash = await CryptoModule.sha256(fileContent.buffer);
+        // Use streaming hash for large files (matches upload algorithm)
+        let decryptedHash;
+        if (fileContent.length > 100 * 1024 * 1024) {
+          // Large file: use streaming hash (Merkle-tree style)
+          decryptedHash = await CryptoModule.hashDataStreaming(fileContent);
+        } else {
+          // Small file: use standard hash
+          decryptedHash = await CryptoModule.sha256(fileContent.buffer);
+        }
+
         if (decryptedHash !== fileMetadata.contentHash) {
           console.warn("Content hash mismatch:", {
             expected: fileMetadata.contentHash,

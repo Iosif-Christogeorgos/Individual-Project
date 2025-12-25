@@ -222,6 +222,282 @@ const CryptoModule = (function () {
     return new Blob(encryptedChunks, { type: "application/octet-stream" });
   }
 
+  // ===========================================================================
+  // TRUE STREAMING Encryption (Memory-Constant for ANY File Size)
+  // ===========================================================================
+
+  /**
+   * Create an encrypted header for streaming upload.
+   * Returns the header parts that should be sent before file chunks.
+   *
+   * @param {File} file - The file being encrypted
+   * @param {CryptoKey} aesKey - The AES key
+   * @param {number} totalChunks - Total number of file chunks
+   * @returns {Promise<Uint8Array[]>} Array of header chunks
+   */
+  async function createEncryptedHeader(file, aesKey, totalChunks) {
+    const headerParts = [];
+
+    // 1. Version byte
+    headerParts.push(new Uint8Array([FORMAT_VERSION_CHUNKED]));
+
+    // 2. Encrypt and store filename
+    const filenameBytes = new TextEncoder().encode(file.name);
+    const filenameIV = generateIV();
+    const encryptedFilename = await encryptAES(
+      filenameBytes.buffer,
+      aesKey,
+      filenameIV
+    );
+    const encryptedFilenameArray = new Uint8Array(encryptedFilename);
+
+    // Filename header: [2-byte original length][12-byte IV][4-byte cipher length][ciphertext]
+    const filenameHeader = new Uint8Array(
+      2 + 12 + 4 + encryptedFilenameArray.length
+    );
+    filenameHeader[0] = (filenameBytes.length >> 8) & 0xff;
+    filenameHeader[1] = filenameBytes.length & 0xff;
+    filenameHeader.set(filenameIV, 2);
+    new DataView(filenameHeader.buffer).setUint32(
+      14,
+      encryptedFilenameArray.length,
+      false
+    );
+    filenameHeader.set(encryptedFilenameArray, 18);
+    headerParts.push(filenameHeader);
+
+    // 3. Chunk count header (4 bytes)
+    const chunkCountHeader = new Uint8Array(4);
+    new DataView(chunkCountHeader.buffer).setUint32(0, totalChunks, false);
+    headerParts.push(chunkCountHeader);
+
+    return headerParts;
+  }
+
+  /**
+   * Create a ReadableStream that encrypts a file on-demand.
+   * Memory usage is O(CHUNK_SIZE) regardless of file size.
+   *
+   * This enables true streaming upload where:
+   * 1. Read one chunk from file
+   * 2. Encrypt it
+   * 3. Yield it to the stream (upload immediately)
+   * 4. Release memory
+   * 5. Repeat
+   *
+   * @param {File} file - The file to encrypt
+   * @param {CryptoKey} aesKey - The AES key
+   * @param {function} onProgress - Progress callback (0-100)
+   * @returns {Promise<{stream: ReadableStream, totalSize: number}>} Encrypted stream and expected size
+   */
+  async function createEncryptedStream(file, aesKey, onProgress = () => {}) {
+    const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+    let chunkIndex = 0;
+    let offset = 0;
+
+    // Pre-create the header
+    const headerParts = await createEncryptedHeader(file, aesKey, totalChunks);
+    let headerIndex = 0;
+    let headerSent = false;
+
+    // Calculate total encrypted size for Content-Length header
+    // Header: version(1) + filenameHeader(2+12+4+encrypted) + chunkCount(4)
+    // Each chunk: IV(12) + length(4) + ciphertext(chunkSize + 16 GCM tag)
+    const headerSize = headerParts.reduce((sum, part) => sum + part.length, 0);
+    const perChunkOverhead = 12 + 4 + 16; // IV + length field + GCM auth tag
+    const totalSize = headerSize + file.size + totalChunks * perChunkOverhead;
+
+    const stream = new ReadableStream({
+      async pull(controller) {
+        // First, send header parts one by one
+        if (!headerSent) {
+          if (headerIndex < headerParts.length) {
+            controller.enqueue(headerParts[headerIndex]);
+            headerIndex++;
+            return;
+          }
+          headerSent = true;
+        }
+
+        // Then stream file chunks
+        if (offset >= file.size) {
+          controller.close();
+          return;
+        }
+
+        // Read ONE chunk from the file
+        const end = Math.min(offset + CHUNK_SIZE, file.size);
+        const chunkBlob = file.slice(offset, end);
+        const chunkData = await chunkBlob.arrayBuffer();
+
+        // Encrypt ONE chunk
+        const iv = generateIV();
+        const ciphertext = await encryptAES(chunkData, aesKey, iv);
+        const ciphertextArray = new Uint8Array(ciphertext);
+
+        // Create packet for ONE chunk: [IV (12)][length (4)][ciphertext]
+        const chunkPacket = new Uint8Array(16 + ciphertextArray.length);
+        chunkPacket.set(iv, 0);
+        new DataView(chunkPacket.buffer).setUint32(
+          12,
+          ciphertextArray.length,
+          false
+        );
+        chunkPacket.set(ciphertextArray, 16);
+
+        // Enqueue the chunk (browser will upload it immediately)
+        controller.enqueue(chunkPacket);
+
+        // Update progress
+        offset = end;
+        chunkIndex++;
+        const progress = Math.round((chunkIndex / totalChunks) * 100);
+        onProgress(progress);
+      },
+    });
+
+    return { stream, totalSize };
+  }
+
+  /**
+   * Compute SHA-256 hash of a file using true streaming (memory-constant).
+   *
+   * Since WebCrypto doesn't support incremental hashing natively, we use a
+   * Merkle-tree inspired approach:
+   * 1. Hash each chunk individually
+   * 2. Concatenate all chunk hashes
+   * 3. Hash the concatenated hashes
+   *
+   * This keeps memory usage at O(number_of_chunks * 32 bytes) for the hash list,
+   * plus O(CHUNK_SIZE) for the current chunk being processed.
+   *
+   * For a 50GB file with 64KB chunks (~780,000 chunks), the hash list is only ~25MB.
+   *
+   * IMPORTANT: Both upload (hashFileStreaming) and download must use the same algorithm.
+   * For backwards compatibility, files < 100MB use the standard single-pass hash.
+   *
+   * @param {File} file - File to hash
+   * @param {function} onProgress - Progress callback (0-100)
+   * @returns {Promise<string>} Hex-encoded hash
+   */
+  async function hashFileStreaming(file, onProgress = () => {}) {
+    // For files <= 100MB, use the standard single-pass hash for compatibility
+    // This matches the original hashFile() behavior for small files
+    if (file.size <= 100 * 1024 * 1024) {
+      const buffer = await file.arrayBuffer();
+      return await sha256(buffer);
+    }
+
+    // For larger files, use streaming chunk-hash approach
+    const chunkSize = CHUNK_SIZE; // 64KB
+    const totalChunks = Math.ceil(file.size / chunkSize);
+    const chunkHashes = [];
+
+    for (let i = 0; i < totalChunks; i++) {
+      const start = i * chunkSize;
+      const end = Math.min(start + chunkSize, file.size);
+
+      // Read ONE chunk
+      const chunkBlob = file.slice(start, end);
+      const chunkData = await chunkBlob.arrayBuffer();
+
+      // Hash this chunk
+      const chunkHash = await window.crypto.subtle.digest("SHA-256", chunkData);
+      chunkHashes.push(new Uint8Array(chunkHash));
+
+      // Progress callback
+      const progress = Math.round(((i + 1) / totalChunks) * 100);
+      onProgress(progress);
+    }
+
+    // Concatenate all chunk hashes (32 bytes each)
+    const concatenatedHashes = new Uint8Array(chunkHashes.length * 32);
+    for (let i = 0; i < chunkHashes.length; i++) {
+      concatenatedHashes.set(chunkHashes[i], i * 32);
+    }
+
+    // Hash the concatenated hashes to get final hash
+    const finalHash = await window.crypto.subtle.digest(
+      "SHA-256",
+      concatenatedHashes
+    );
+
+    return arrayBufferToHex(finalHash);
+  }
+
+  /**
+   * Compute streaming hash of decrypted data (for download verification).
+   * Must match the algorithm used by hashFileStreaming for large files.
+   *
+   * @param {Uint8Array} data - Decrypted file data
+   * @returns {Promise<string>} Hex-encoded hash
+   */
+  async function hashDataStreaming(data) {
+    // For data <= 100MB, use standard single-pass hash
+    if (data.length <= 100 * 1024 * 1024) {
+      return await sha256(data.buffer);
+    }
+
+    // For larger data, use the same chunk-hash approach as upload
+    const chunkSize = CHUNK_SIZE;
+    const totalChunks = Math.ceil(data.length / chunkSize);
+    const chunkHashes = [];
+
+    for (let i = 0; i < totalChunks; i++) {
+      const start = i * chunkSize;
+      const end = Math.min(start + chunkSize, data.length);
+
+      // Get chunk from the data
+      const chunkData = data.slice(start, end);
+
+      // Hash this chunk
+      const chunkHash = await window.crypto.subtle.digest(
+        "SHA-256",
+        chunkData.buffer.slice(
+          chunkData.byteOffset,
+          chunkData.byteOffset + chunkData.byteLength
+        )
+      );
+      chunkHashes.push(new Uint8Array(chunkHash));
+    }
+
+    // Concatenate all chunk hashes
+    const concatenatedHashes = new Uint8Array(chunkHashes.length * 32);
+    for (let i = 0; i < chunkHashes.length; i++) {
+      concatenatedHashes.set(chunkHashes[i], i * 32);
+    }
+
+    // Hash the concatenated hashes
+    const finalHash = await window.crypto.subtle.digest(
+      "SHA-256",
+      concatenatedHashes
+    );
+
+    return arrayBufferToHex(finalHash);
+  }
+
+  /**
+   * Check if the browser supports streaming uploads.
+   * @returns {boolean} True if streaming uploads are supported
+   */
+  function supportsStreamingUpload() {
+    // Check for ReadableStream support
+    if (typeof ReadableStream === "undefined") return false;
+
+    // Check for fetch with streaming body support
+    // This requires the 'duplex' option which is available in modern browsers
+    try {
+      new Request("", {
+        method: "POST",
+        body: new ReadableStream(),
+        duplex: "half",
+      });
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
   /**
    * Detect the encryption format of data.
    * @param {ArrayBuffer} data - The encrypted data
@@ -702,45 +978,49 @@ const CryptoModule = (function () {
    * For memory efficiency on large files, we read in chunks but need to
    * accumulate all data since WebCrypto doesn't support incremental hashing.
    *
-   * Note: For files > 100MB, this may cause memory pressure. Consider using
-   * a WebAssembly-based streaming hash library for production.
+   * For files > 100MB, uses the same Merkle-tree style hashing as hashFileStreaming
+   * to ensure consistency between buffered and streaming uploads.
    *
    * @param {File} file - File to hash
    * @returns {Promise<string>} Hex-encoded hash
    */
   async function hashFile(file) {
-    // For files <= 100MB, read entire file into memory
-    // This ensures consistent hash results between upload and download
+    // For files <= 100MB, read entire file into memory (standard hash)
     if (file.size <= 100 * 1024 * 1024) {
       const buffer = await file.arrayBuffer();
       return await sha256(buffer);
     }
 
-    // For larger files, we still need to read the entire file to get a proper hash
-    // WebCrypto doesn't support streaming/incremental hashing natively
-    // Read in chunks to avoid blocking the UI, then combine
-    const chunkSize = 50 * 1024 * 1024; // 50MB chunks
-    const chunks = Math.ceil(file.size / chunkSize);
-    const allChunks = [];
+    // For larger files, use the same Merkle-tree approach as hashFileStreaming
+    // This ensures buffered and streaming uploads produce identical hashes
+    const chunkSize = CHUNK_SIZE; // 64KB - same as streaming
+    const totalChunks = Math.ceil(file.size / chunkSize);
+    const chunkHashes = [];
 
-    for (let i = 0; i < chunks; i++) {
+    for (let i = 0; i < totalChunks; i++) {
       const start = i * chunkSize;
       const end = Math.min(start + chunkSize, file.size);
       const chunk = file.slice(start, end);
       const buffer = await chunk.arrayBuffer();
-      allChunks.push(new Uint8Array(buffer));
+
+      // Hash this chunk
+      const chunkHash = await window.crypto.subtle.digest("SHA-256", buffer);
+      chunkHashes.push(new Uint8Array(chunkHash));
     }
 
-    // Combine all chunks into a single buffer
-    const totalLength = allChunks.reduce((sum, chunk) => sum + chunk.length, 0);
-    const combined = new Uint8Array(totalLength);
-    let offset = 0;
-    for (const chunk of allChunks) {
-      combined.set(chunk, offset);
-      offset += chunk.length;
+    // Concatenate all chunk hashes (32 bytes each)
+    const concatenatedHashes = new Uint8Array(chunkHashes.length * 32);
+    for (let i = 0; i < chunkHashes.length; i++) {
+      concatenatedHashes.set(chunkHashes[i], i * 32);
     }
 
-    return await sha256(combined.buffer);
+    // Hash the concatenated hashes to get final hash
+    const finalHash = await window.crypto.subtle.digest(
+      "SHA-256",
+      concatenatedHashes
+    );
+
+    return arrayBufferToHex(finalHash);
   }
 
   // ===========================================================================
@@ -865,6 +1145,12 @@ const CryptoModule = (function () {
     decryptFileAuto,
     detectEncryptionFormat,
 
+    // Streaming Encryption (Memory-Constant)
+    createEncryptedStream,
+    createEncryptedHeader,
+    hashFileStreaming,
+    supportsStreamingUpload,
+
     // ECDH Operations
     generateECDHKeyPair,
     exportECDHPublicKey,
@@ -889,6 +1175,7 @@ const CryptoModule = (function () {
     // Hashing
     sha256,
     hashFile,
+    hashDataStreaming,
 
     // Encoding
     arrayBufferToBase64,

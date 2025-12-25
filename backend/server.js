@@ -216,6 +216,98 @@ app.post("/upload", upload.single("encryptedFile"), (req, res) => {
   }
 });
 
+// =============================================================================
+// Streaming Upload Endpoint (Memory-Efficient for Large Files)
+// =============================================================================
+
+/**
+ * POST /upload-stream - Accept encrypted file via streaming
+ *
+ * This endpoint receives the encrypted file as a raw stream, piping it
+ * directly to disk without buffering the entire file in memory.
+ * This enables uploads of any size (50GB+) with constant memory usage.
+ *
+ * Required headers:
+ * - Content-Type: application/octet-stream
+ * - X-File-Size: Expected file size (optional, for validation)
+ */
+app.post("/upload-stream", (req, res) => {
+  try {
+    const filename = generateUniqueFilename();
+    const filePath = path.join(UPLOADS_DIR, filename);
+
+    // Create a write stream to disk
+    const writeStream = fs.createWriteStream(filePath);
+    let bytesReceived = 0;
+
+    // Handle incoming data
+    req.on("data", (chunk) => {
+      bytesReceived += chunk.length;
+    });
+
+    // Pipe the request body directly to the file
+    req.pipe(writeStream);
+
+    // Handle successful completion
+    writeStream.on("finish", () => {
+      console.log(
+        `✅ Stream upload complete: ${filename} (${bytesReceived} bytes)`
+      );
+      res.status(201).json({
+        success: true,
+        fileId: filename,
+        size: bytesReceived,
+      });
+    });
+
+    // Handle write errors
+    writeStream.on("error", (error) => {
+      console.error("❌ Stream write error:", error);
+
+      // Clean up partial file
+      fs.unlink(filePath, () => {});
+
+      if (!res.headersSent) {
+        res.status(500).json({
+          success: false,
+          error: "Failed to write file to disk.",
+        });
+      }
+    });
+
+    // Handle request errors (client disconnect, etc.)
+    req.on("error", (error) => {
+      console.error("❌ Stream request error:", error);
+      writeStream.destroy();
+
+      // Clean up partial file
+      fs.unlink(filePath, () => {});
+
+      if (!res.headersSent) {
+        res.status(500).json({
+          success: false,
+          error: "Upload stream interrupted.",
+        });
+      }
+    });
+
+    // Handle client abort
+    req.on("aborted", () => {
+      console.log("⚠️ Upload aborted by client");
+      writeStream.destroy();
+
+      // Clean up partial file
+      fs.unlink(filePath, () => {});
+    });
+  } catch (error) {
+    console.error("❌ Stream upload error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Internal server error during stream upload.",
+    });
+  }
+});
+
 // Helper: Validate and resolve file path
 function resolveFilePath(fileId) {
   if (!/^file-\d+-[a-f0-9]+\.bin$/.test(fileId)) {
@@ -616,7 +708,12 @@ app.listen(PORT, () => {
   console.log("Endpoints:");
   console.log(`  GET  /                     - Upload page`);
   console.log(`  GET  /download             - Download page`);
-  console.log(`  POST /upload               - Upload encrypted file`);
+  console.log(
+    `  POST /upload               - Upload encrypted file (buffered)`
+  );
+  console.log(
+    `  POST /upload-stream        - Upload encrypted file (streaming)`
+  );
   console.log(`  GET  /download/:fileId     - Download encrypted file`);
   console.log(`  POST /metadata/:fileId     - Store file metadata`);
   console.log(`  GET  /metadata/:fileId     - Retrieve file metadata`);

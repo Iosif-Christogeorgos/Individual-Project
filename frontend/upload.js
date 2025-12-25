@@ -656,6 +656,9 @@ async function processFile() {
   await executeUpload();
 }
 
+// Threshold for using streaming upload (100MB)
+const STREAMING_THRESHOLD = 100 * 1024 * 1024;
+
 async function executeUpload() {
   const fileInput = document.getElementById("fileInput");
   const uploadBtn = document.getElementById("uploadBtn");
@@ -687,157 +690,15 @@ async function executeUpload() {
       );
     }
 
-    // Step 1: Generate AES file key
-    updateProgress(5, "Generating encryption key...");
-    const aesKey = await CryptoModule.generateAESKey();
-    const exportedKey = await CryptoModule.exportAESKey(aesKey);
+    // Decide whether to use streaming based on file size and browser support
+    const useStreaming =
+      file.size > STREAMING_THRESHOLD && CryptoModule.supportsStreamingUpload();
 
-    // Step 2: Encrypt file using chunked encryption (memory-efficient for large files)
-    updateProgress(10, "Encrypting file in chunks...");
-    const encryptedBlob = await CryptoModule.encryptFileChunked(
-      file,
-      aesKey,
-      (chunkProgress) => {
-        // Map chunk progress (0-100) to overall progress (10-50)
-        const overallProgress = 10 + Math.round(chunkProgress * 0.4);
-        updateProgress(overallProgress, `Encrypting... ${chunkProgress}%`);
-      }
-    );
-
-    // Step 3: Prepare metadata
-    updateProgress(55, "Preparing metadata...");
-
-    // Hash the ORIGINAL file for integrity verification after decryption
-    // This hash is of the plaintext file, verified after decryption
-    const originalFileHash = await CryptoModule.hashFile(file);
-
-    const metadata = {
-      version: 2, // Chunked encryption format
-      filename: file.name,
-      size: file.size,
-      contentHash: originalFileHash, // Hash of original file, verified after decryption
-      timestamp: new Date().toISOString(),
-      accessModes: [],
-      encryptedKeys: [],
-      signature: null,
-    };
-
-    // Step 4: Encrypt key for selected recipients (identity-based access)
-    if (selectedRecipients.length > 0) {
-      updateProgress(60, "Encrypting key for recipients...");
-      metadata.accessModes.push("identity");
-
-      for (const recipientId of selectedRecipients) {
-        const contact = await IdentityManager.getContact(recipientId);
-        if (contact) {
-          const recipientPublicKey = await CryptoModule.importECDHPublicKey(
-            contact.encryptionPublicKey
-          );
-          const encryptedKeyBundle = await CryptoModule.encryptKeyForRecipient(
-            aesKey,
-            recipientPublicKey
-          );
-
-          metadata.encryptedKeys.push({
-            recipientId: recipientId,
-            recipientFingerprint: contact.fingerprint,
-            ...encryptedKeyBundle,
-          });
-        }
-      }
-    }
-
-    // Step 5: Add link-based access if enabled
-    if (includeLinkKey) {
-      metadata.accessModes.push("link");
-    }
-
-    // Step 6: Sign metadata if identity exists and signing is enabled
-    if (enableSigning && currentIdentity) {
-      updateProgress(65, "Signing metadata...");
-      const loadedIdentity = await IdentityManager.loadIdentityKeys(
-        currentIdentity
-      );
-
-      const signatureBundle = await CryptoModule.signFileMetadata(
-        { filename: file.name, size: file.size, contentHash: originalFileHash },
-        loadedIdentity.signing.privateKey
-      );
-
-      metadata.signature = {
-        ...signatureBundle,
-        signerId: currentIdentity.id,
-        signerFingerprint: currentIdentity.fingerprint,
-        signerPublicKey: currentIdentity.signing.publicKey,
-      };
-    }
-
-    // Step 7: Upload encrypted file
-    updateProgress(70, "Uploading encrypted file...");
-    const formData = new FormData();
-    formData.append("encryptedFile", encryptedBlob, "encrypted.bin");
-
-    const uploadResponse = await fetch("/upload", {
-      method: "POST",
-      body: formData,
-    });
-
-    if (!uploadResponse.ok) {
-      throw new Error(`Upload failed: ${uploadResponse.status}`);
-    }
-
-    const serverData = await uploadResponse.json();
-
-    if (!serverData.fileId) {
-      throw new Error("Server did not return a file ID.");
-    }
-
-    // Step 8: Upload metadata (if using identity-based access or signatures)
-    if (metadata.encryptedKeys.length > 0 || metadata.signature) {
-      updateProgress(90, "Uploading metadata...");
-
-      const metadataResponse = await fetch(`/metadata/${serverData.fileId}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(metadata),
-      });
-
-      if (!metadataResponse.ok) {
-        console.warn(
-          "Failed to upload metadata, link-based access will still work"
-        );
-      }
-    }
-
-    // Step 9: Generate share link
-    updateProgress(100, "Complete!");
-
-    let shareLink;
-    if (includeLinkKey) {
-      // Include key in URL fragment (original behavior)
-      shareLink = `${window.location.origin}/download?id=${encodeURIComponent(
-        serverData.fileId
-      )}#${exportedKey.k}`;
+    if (useStreaming) {
+      await executeStreamingUpload(file, enableSigning, includeLinkKey);
     } else {
-      // Identity-only access - no key in URL
-      shareLink = `${window.location.origin}/download?id=${encodeURIComponent(
-        serverData.fileId
-      )}`;
+      await executeBufferedUpload(file, enableSigning, includeLinkKey);
     }
-
-    // Show success
-    setTimeout(() => {
-      hideProgress();
-      showShareLink(shareLink);
-      showUploadStatusBadges(
-        includeLinkKey,
-        selectedRecipients.length,
-        enableSigning && currentIdentity
-      );
-      showShareModeInfo(includeLinkKey, selectedRecipients.length);
-      showSignatureStatusInfo(enableSigning, currentIdentity);
-      updateSecurityWarning(includeLinkKey);
-    }, 500);
   } catch (error) {
     hideProgress();
     showAlert(
@@ -849,6 +710,279 @@ async function executeUpload() {
     uploadBtn.disabled = false;
     uploadBtn.innerHTML = "<span>🔒</span> Encrypt & Upload";
   }
+}
+
+/**
+ * Streaming upload for large files (memory-efficient).
+ * Uses ReadableStream to encrypt and upload simultaneously,
+ * keeping memory usage constant regardless of file size.
+ */
+async function executeStreamingUpload(file, enableSigning, includeLinkKey) {
+  // Step 1: Generate AES file key
+  updateProgress(5, "Generating encryption key...");
+  const aesKey = await CryptoModule.generateAESKey();
+  const exportedKey = await CryptoModule.exportAESKey(aesKey);
+
+  // Step 2: Hash file using streaming (memory-efficient)
+  updateProgress(10, "Computing file hash (streaming)...");
+  const originalFileHash = await CryptoModule.hashFileStreaming(
+    file,
+    (hashProgress) => {
+      const overallProgress = 10 + Math.round(hashProgress * 0.15);
+      updateProgress(overallProgress, `Hashing... ${hashProgress}%`);
+    }
+  );
+
+  // Step 3: Prepare metadata before upload
+  updateProgress(25, "Preparing metadata...");
+  const metadata = await prepareMetadata(
+    file,
+    originalFileHash,
+    aesKey,
+    enableSigning,
+    includeLinkKey
+  );
+
+  // Step 4: Create encrypted stream and upload
+  updateProgress(30, "Starting streaming upload...");
+  const { stream: encryptedStream } = await CryptoModule.createEncryptedStream(
+    file,
+    aesKey,
+    (encryptProgress) => {
+      // Map encryption progress to 30-90%
+      const overallProgress = 30 + Math.round(encryptProgress * 0.6);
+      updateProgress(
+        overallProgress,
+        `Encrypting & uploading... ${encryptProgress}%`
+      );
+    }
+  );
+
+  // Step 5: Upload using streaming fetch
+  const uploadResponse = await fetch("/upload-stream", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/octet-stream",
+    },
+    body: encryptedStream,
+    duplex: "half", // Required for streaming upload
+  });
+
+  if (!uploadResponse.ok) {
+    throw new Error(`Upload failed: ${uploadResponse.status}`);
+  }
+
+  const serverData = await uploadResponse.json();
+
+  if (!serverData.fileId) {
+    throw new Error("Server did not return a file ID.");
+  }
+
+  // Step 6: Upload metadata
+  await uploadMetadata(serverData.fileId, metadata);
+
+  // Step 7: Generate and show share link
+  updateProgress(100, "Complete!");
+  const shareLink = generateShareLink(
+    serverData.fileId,
+    exportedKey.k,
+    includeLinkKey
+  );
+  showUploadSuccess(shareLink, includeLinkKey, enableSigning);
+}
+
+/**
+ * Buffered upload for small files or browsers without streaming support.
+ * This is the original implementation.
+ */
+async function executeBufferedUpload(file, enableSigning, includeLinkKey) {
+  // Step 1: Generate AES file key
+  updateProgress(5, "Generating encryption key...");
+  const aesKey = await CryptoModule.generateAESKey();
+  const exportedKey = await CryptoModule.exportAESKey(aesKey);
+
+  // Step 2: Encrypt file using chunked encryption
+  updateProgress(10, "Encrypting file in chunks...");
+  const encryptedBlob = await CryptoModule.encryptFileChunked(
+    file,
+    aesKey,
+    (chunkProgress) => {
+      const overallProgress = 10 + Math.round(chunkProgress * 0.4);
+      updateProgress(overallProgress, `Encrypting... ${chunkProgress}%`);
+    }
+  );
+
+  // Step 3: Hash the original file
+  updateProgress(55, "Computing file hash...");
+  const originalFileHash = await CryptoModule.hashFile(file);
+
+  // Step 4: Prepare metadata
+  updateProgress(60, "Preparing metadata...");
+  const metadata = await prepareMetadata(
+    file,
+    originalFileHash,
+    aesKey,
+    enableSigning,
+    includeLinkKey
+  );
+
+  // Step 5: Upload encrypted file
+  updateProgress(70, "Uploading encrypted file...");
+  const formData = new FormData();
+  formData.append("encryptedFile", encryptedBlob, "encrypted.bin");
+
+  const uploadResponse = await fetch("/upload", {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!uploadResponse.ok) {
+    throw new Error(`Upload failed: ${uploadResponse.status}`);
+  }
+
+  const serverData = await uploadResponse.json();
+
+  if (!serverData.fileId) {
+    throw new Error("Server did not return a file ID.");
+  }
+
+  // Step 6: Upload metadata
+  await uploadMetadata(serverData.fileId, metadata);
+
+  // Step 7: Generate and show share link
+  updateProgress(100, "Complete!");
+  const shareLink = generateShareLink(
+    serverData.fileId,
+    exportedKey.k,
+    includeLinkKey
+  );
+  showUploadSuccess(shareLink, includeLinkKey, enableSigning);
+}
+
+/**
+ * Prepare file metadata including encrypted keys and signature.
+ */
+async function prepareMetadata(
+  file,
+  contentHash,
+  aesKey,
+  enableSigning,
+  includeLinkKey
+) {
+  const metadata = {
+    version: 2,
+    filename: file.name,
+    size: file.size,
+    contentHash: contentHash,
+    timestamp: new Date().toISOString(),
+    accessModes: [],
+    encryptedKeys: [],
+    signature: null,
+  };
+
+  // Encrypt key for selected recipients
+  if (selectedRecipients.length > 0) {
+    metadata.accessModes.push("identity");
+
+    for (const recipientId of selectedRecipients) {
+      const contact = await IdentityManager.getContact(recipientId);
+      if (contact) {
+        const recipientPublicKey = await CryptoModule.importECDHPublicKey(
+          contact.encryptionPublicKey
+        );
+        const encryptedKeyBundle = await CryptoModule.encryptKeyForRecipient(
+          aesKey,
+          recipientPublicKey
+        );
+
+        metadata.encryptedKeys.push({
+          recipientId: recipientId,
+          recipientFingerprint: contact.fingerprint,
+          ...encryptedKeyBundle,
+        });
+      }
+    }
+  }
+
+  // Add link-based access if enabled
+  if (includeLinkKey) {
+    metadata.accessModes.push("link");
+  }
+
+  // Sign metadata if identity exists and signing is enabled
+  if (enableSigning && currentIdentity) {
+    const loadedIdentity = await IdentityManager.loadIdentityKeys(
+      currentIdentity
+    );
+
+    const signatureBundle = await CryptoModule.signFileMetadata(
+      { filename: file.name, size: file.size, contentHash: contentHash },
+      loadedIdentity.signing.privateKey
+    );
+
+    metadata.signature = {
+      ...signatureBundle,
+      signerId: currentIdentity.id,
+      signerFingerprint: currentIdentity.fingerprint,
+      signerPublicKey: currentIdentity.signing.publicKey,
+    };
+  }
+
+  return metadata;
+}
+
+/**
+ * Upload metadata to server.
+ */
+async function uploadMetadata(fileId, metadata) {
+  if (metadata.encryptedKeys.length > 0 || metadata.signature) {
+    updateProgress(95, "Uploading metadata...");
+
+    const metadataResponse = await fetch(`/metadata/${fileId}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(metadata),
+    });
+
+    if (!metadataResponse.ok) {
+      console.warn(
+        "Failed to upload metadata, link-based access will still work"
+      );
+    }
+  }
+}
+
+/**
+ * Generate share link with or without encryption key.
+ */
+function generateShareLink(fileId, keyString, includeLinkKey) {
+  if (includeLinkKey) {
+    return `${window.location.origin}/download?id=${encodeURIComponent(
+      fileId
+    )}#${keyString}`;
+  } else {
+    return `${window.location.origin}/download?id=${encodeURIComponent(
+      fileId
+    )}`;
+  }
+}
+
+/**
+ * Show upload success UI.
+ */
+function showUploadSuccess(shareLink, includeLinkKey, enableSigning) {
+  setTimeout(() => {
+    hideProgress();
+    showShareLink(shareLink);
+    showUploadStatusBadges(
+      includeLinkKey,
+      selectedRecipients.length,
+      enableSigning && currentIdentity
+    );
+    showShareModeInfo(includeLinkKey, selectedRecipients.length);
+    showSignatureStatusInfo(enableSigning, currentIdentity);
+    updateSecurityWarning(includeLinkKey);
+  }, 500);
 }
 
 function showShareModeInfo(hasLinkKey, recipientCount) {
