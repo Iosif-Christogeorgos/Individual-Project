@@ -92,7 +92,7 @@ function updateLinkKeyState() {
     // RULE 1: Disable and uncheck "Include key in link" when recipients selected
     if (includeLinkKeyCheckbox.checked) {
       includeLinkKeyCheckbox.checked = false;
-      showToast("Public link disabled for secure recipient delivery🔐");
+      showToast("Public link disabled for secure recipient delivery 🛡️");
     }
     includeLinkKeyCheckbox.disabled = true;
     linkKeyLabel?.classList.add("disabled");
@@ -1022,13 +1022,13 @@ function showShareModeInfo(hasLinkKey, recipientCount) {
   let icon = "";
 
   if (hasLinkKey && recipientCount > 0) {
-    icon = "🔓";
+    icon = "�";
     message = `Hybrid access: Anyone with link can decrypt + ${recipientCount} identity recipient(s)`;
   } else if (hasLinkKey) {
     icon = "🔗";
     message = "Link-based access: Anyone with this link can decrypt the file";
   } else if (recipientCount > 0) {
-    icon = "🔐";
+    icon = "👤";
     message = `Identity-only access: Only ${recipientCount} selected recipient(s) can decrypt`;
   } else {
     icon = "⚠️";
@@ -1148,7 +1148,7 @@ function updateSecurityWarning(hasLinkKey) {
         This link does not contain the decryption key. Only selected recipients with matching identities can decrypt.
       </p>
       <div class="spw-success-box">
-        <span class="spw-success-icon">🔐</span>
+        <span class="spw-success-icon">�️</span>
         <span class="spw-success-text">
           <strong>ENHANCED SECURITY:</strong> Even if the link is intercepted, 
           the file cannot be decrypted without the recipient's private key.

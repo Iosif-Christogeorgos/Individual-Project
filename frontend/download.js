@@ -173,7 +173,7 @@ function showInvalidLinkPage(title, message) {
   const card = document.querySelector(".card");
   card.innerHTML = `
     <div class="logo" style="justify-content: center">
-      <div class="logo-icon">🔐</div>
+      <img src="CrypShareLogo.png" alt="CrypShare" class="logo-icon" style="width:48px;height:48px;" />
       <div class="logo-text">Cryp<span>Share</span></div>
     </div>
 
@@ -201,7 +201,7 @@ function showIdentityRequiredPage() {
 
   card.innerHTML = `
     <div class="logo" style="justify-content: center">
-      <div class="logo-icon">🔐</div>
+      <img src="CrypShareLogo.png" alt="CrypShare" class="logo-icon" style="width:48px;height:48px;" />
       <div class="logo-text">Cryp<span>Share</span></div>
     </div>
 
@@ -517,7 +517,7 @@ async function startDownload() {
         (decryptProgress) => {
           // Decryption progress (step 3)
           if (decryptProgress < 100) {
-            btn.innerHTML = `<span>🔓</span> Decrypting... ${decryptProgress}%`;
+            btn.innerHTML = `<span>�</span> Decrypting... ${decryptProgress}%`;
           }
         }
       );
