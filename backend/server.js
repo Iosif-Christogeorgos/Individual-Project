@@ -124,6 +124,28 @@ app.use(cors());
 app.use(express.json({ limit: "1mb" })); // For metadata JSON
 
 // =============================================================================
+// Canonical URL Redirect (www → non-www)
+// =============================================================================
+// IndexedDB is isolated per origin, so we must ensure all users access the app
+// from the same origin to share identity/storage. Redirect www to non-www.
+
+app.use((req, res, next) => {
+  const host = req.headers.host || "";
+
+  // Only redirect in production (when host contains actual domain)
+  if (host.startsWith("www.")) {
+    const newHost = host.substring(4); // Remove 'www.'
+    const protocol =
+      req.headers["x-forwarded-proto"] || req.protocol || "https";
+    const newUrl = `${protocol}://${newHost}${req.originalUrl}`;
+    console.log(`🔄 Redirecting www to non-www: ${newUrl}`);
+    return res.redirect(301, newUrl);
+  }
+
+  next();
+});
+
+// =============================================================================
 // Clean URL Routing (MUST be before static middleware)
 // =============================================================================
 

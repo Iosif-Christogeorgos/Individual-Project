@@ -548,8 +548,6 @@ function confirmNewUpload() {
 // =============================================================================
 
 document.addEventListener("DOMContentLoaded", () => {
-  console.log("📍 Upload page origin:", window.location.origin);
-  
   const dropZone = document.getElementById("dropZone");
   const fileInput = document.getElementById("fileInput");
 

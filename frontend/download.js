@@ -67,31 +67,18 @@ async function validateDownloadLink() {
     // Load user identity
     await loadUserIdentity();
 
-    // Log decision state
-    console.log("🔍 Access decision state:", {
-      keyString: keyString ? `${keyString.substring(0, 20)}...` : "(empty)",
-      hasMetadata: !!fileMetadata,
-      encryptedKeysCount: fileMetadata?.encryptedKeys?.length || 0,
-      hasIdentity: !!currentIdentity,
-      identityFingerprint: currentIdentity?.fingerprint,
-    });
-
     // Determine access mode
     if (keyString) {
       // Link-based access available
-      console.log("✅ Using link-based access");
       showDownloadReady("link");
     } else if (fileMetadata && canDecryptWithIdentity()) {
       // Identity-based access available
-      console.log("✅ Using identity-based access");
       showDownloadReady("identity");
     } else if (fileMetadata && fileMetadata.encryptedKeys?.length > 0) {
       // Identity-based access required but user doesn't have matching identity
-      console.log("❌ Identity required - no match found");
       showIdentityRequiredPage();
     } else {
       // No key in URL and no identity access
-      console.log("❌ Missing decryption key");
       showInvalidLinkPage(
         "Missing Decryption Key",
         "This link does not contain the decryption key. You may need to use identity-based access or request a new link."
@@ -130,38 +117,22 @@ async function loadUserIdentity(retryCount = 0) {
 
   try {
     if (typeof IdentityManager === "undefined") {
-      console.warn("🔑 IdentityManager not available");
       currentIdentity = null;
       return;
     }
 
-    // First check if identity exists (simpler check)
     const hasIdentity = await IdentityManager.hasIdentity();
-    console.log("🔑 Has identity in IndexedDB:", hasIdentity);
 
     if (hasIdentity) {
-      // Then load with CryptoKey objects for decryption
       currentIdentity = await IdentityManager.getLoadedIdentity();
-      console.log("🔑 Loaded identity:", {
-        displayName: currentIdentity?.displayName,
-        fingerprint: currentIdentity?.fingerprint,
-        hasEncryptionKeys: !!currentIdentity?.encryption,
-        hasSigningKeys: !!currentIdentity?.signing,
-      });
     } else {
       currentIdentity = null;
     }
   } catch (error) {
-    console.error("❌ Failed to load identity:", error);
-    console.error("❌ Error stack:", error.stack);
+    console.error("Failed to load identity:", error);
 
     // Retry on failure (IndexedDB can be flaky on some browsers)
     if (retryCount < MAX_RETRIES) {
-      console.log(
-        `🔄 Retrying identity load (attempt ${retryCount + 2}/${
-          MAX_RETRIES + 1
-        })...`
-      );
       await new Promise((resolve) =>
         setTimeout(resolve, 100 * (retryCount + 1))
       );
@@ -174,34 +145,13 @@ async function loadUserIdentity(retryCount = 0) {
 
 function canDecryptWithIdentity() {
   if (!currentIdentity || !fileMetadata?.encryptedKeys) {
-    console.log("🔍 canDecryptWithIdentity: No identity or no encrypted keys", {
-      hasIdentity: !!currentIdentity,
-      hasEncryptedKeys: !!fileMetadata?.encryptedKeys,
-      encryptedKeysCount: fileMetadata?.encryptedKeys?.length || 0,
-    });
     return false;
   }
 
-  // Log the comparison
-  console.log("🔍 Comparing fingerprints:", {
-    ourFingerprint: currentIdentity.fingerprint,
-    recipientFingerprints: fileMetadata.encryptedKeys.map(
-      (ek) => ek.recipientFingerprint
-    ),
-  });
-
   // Check if any encrypted key matches our identity
-  const match = fileMetadata.encryptedKeys.some(
+  return fileMetadata.encryptedKeys.some(
     (ek) => ek.recipientFingerprint === currentIdentity.fingerprint
   );
-
-  if (match) {
-    console.log("✅ canDecryptWithIdentity: Fingerprint match found!");
-  } else {
-    console.log("❌ canDecryptWithIdentity: No fingerprint match");
-  }
-
-  return match;
 }
 
 function getMatchingEncryptedKey() {
@@ -375,10 +325,6 @@ function showSignatureStep() {
 // Run validation when page loads
 // Use a more robust initialization that ensures all modules are ready
 async function initializeDownloadPage() {
-  console.log("🚀 Initializing download page...");
-  console.log("📍 Current origin:", window.location.origin);
-  console.log("📍 Full URL:", window.location.href);
-
   // Wait for all required modules to be available
   const checkModules = () => {
     return (
@@ -389,14 +335,12 @@ async function initializeDownloadPage() {
 
   // If modules aren't ready, wait a bit
   if (!checkModules()) {
-    console.log("⏳ Waiting for modules to load...");
     await new Promise((resolve) => setTimeout(resolve, 50));
     if (!checkModules()) {
-      console.error("❌ Required modules not available after wait");
+      console.error("Required modules not available");
     }
   }
 
-  console.log("✅ Modules ready, running validation...");
   await validateDownloadLink();
 }
 
