@@ -127,6 +127,11 @@ app.use(express.json({ limit: "1mb" })); // For metadata JSON
 // Clean URL Routing (MUST be before static middleware)
 // =============================================================================
 
+// Serve favicon (prevent 404 errors)
+app.get("/favicon.ico", (req, res) => {
+  res.sendFile(path.join(__dirname, "../frontend/favicon.ico"));
+});
+
 // Serve upload page at root
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "../frontend/index.html"));
@@ -696,27 +701,6 @@ app.use((error, req, res, next) => {
 // Start Server
 // =============================================================================
 app.listen(PORT, () => {
-  console.log("=".repeat(60));
-  console.log("🔐 CrypShare Backend Server (E2EE)");
-  console.log("=".repeat(60));
-  console.log(`🚀 Server running on port: ${PORT}`);
-  console.log(`📁 Uploads directory: ${UPLOADS_DIR}`);
-  console.log(`📋 Metadata directory: ${METADATA_DIR}`);
-  console.log(`🔑 Public keys directory: ${PUBKEYS_DIR}`);
-  console.log("=".repeat(60));
-  console.log("Endpoints:");
-  console.log(`  GET  /                     - Upload page`);
-  console.log(`  GET  /download             - Download page`);
-  console.log(
-    `  POST /upload               - Upload encrypted file (buffered)`
-  );
-  console.log(
-    `  POST /upload-stream        - Upload encrypted file (streaming)`
-  );
-  console.log(`  GET  /download/:fileId     - Download encrypted file`);
-  console.log(`  POST /metadata/:fileId     - Store file metadata`);
-  console.log(`  GET  /metadata/:fileId     - Retrieve file metadata`);
-  console.log(`  POST /pubkey               - Register public key`);
-  console.log(`  GET  /pubkey/:id           - Retrieve public key`);
-  console.log("=".repeat(60));
+  console.log(`🔐 CrypShare Server running on port ${PORT}`);
+  console.log(`📁 Storage: ${UPLOADS_DIR}`);
 });
