@@ -208,11 +208,14 @@ function hideProgress() {
 }
 
 function showShareLink(link) {
-  const container = document.getElementById("shareContainer");
+  const container = document.querySelector('.container[data-state]');
   const input = document.getElementById("shareLink");
 
-  container.classList.add("show");
+  // Set the link value
   input.value = link;
+  
+  // Transition to success state
+  container.setAttribute('data-state', 'success');
 
   hasActiveLink = true;
   linkCopied = false;
@@ -262,6 +265,49 @@ function clearFile() {
 
   fileInput.value = "";
   fileSelected.classList.remove("show");
+  document.getElementById("dropZone").classList.remove("hidden");
+}
+
+/**
+ * Reset to upload state (back action from success view).
+ * Transitions the container back and clears form state.
+ */
+function resetToUpload() {
+  const container = document.querySelector('.container[data-state]');
+  
+  // Transition back to upload state
+  container.setAttribute('data-state', 'upload');
+  
+  // Reset file selection
+  clearFile();
+  
+  // Reset state flags
+  hasActiveLink = false;
+  overwriteWarningShown = false;
+  linkCopied = false;
+  
+  // Reset UI elements
+  const uploadStatusBadges = document.getElementById("uploadStatusBadges");
+  const shareModeInfo = document.getElementById("shareModeInfo");
+  const signatureStatusInfo = document.getElementById("signatureStatusInfo");
+  
+  if (uploadStatusBadges) {
+    uploadStatusBadges.classList.remove("show");
+    uploadStatusBadges.innerHTML = "";
+  }
+  if (shareModeInfo) {
+    shareModeInfo.classList.remove("show");
+  }
+  if (signatureStatusInfo) {
+    signatureStatusInfo.classList.remove("show");
+  }
+  
+  // Reset copy button
+  const copyBtn = document.getElementById("copyBtn");
+  if (copyBtn) {
+    copyBtn.classList.remove("copied");
+    copyBtn.innerHTML = "<span>📋</span> Copy";
+  }
 }
 
 // =============================================================================
@@ -311,14 +357,9 @@ async function createIdentity() {
     currentIdentity = await IdentityManager.generateIdentity(displayName);
     updateIdentityUI();
     validateAccessConfig(); // Re-validate now that we have an identity
-    showAlert(
-      "Identity Created",
-      "Your cryptographic identity has been generated and stored securely.",
-      "success"
-    );
-    setTimeout(hideAlert, 3000);
+    showToast("Identity created successfully ✓");
   } catch (error) {
-    showAlert("Error", "Failed to create identity: " + error.message, "error");
+    showToast("Failed to create identity ✗");
   }
 }
 
@@ -342,23 +383,28 @@ async function exportIdentity() {
 
 async function copyPublicKey() {
   if (!currentIdentity) {
-    showAlert("No Identity", "Create an identity first.", "warning");
+    showToast("Create an identity first ⚠");
     return;
   }
 
   const publicIdentity = IdentityManager.exportPublicIdentity(currentIdentity);
   const publicKeyData = JSON.stringify(publicIdentity);
+  const btn = document.querySelector('[onclick="copyPublicKey()"]');
 
   try {
     await navigator.clipboard.writeText(publicKeyData);
-    showAlert(
-      "Copied",
-      "Your public identity has been copied to clipboard.",
-      "success"
-    );
-    setTimeout(hideAlert, 2000);
+    // Inline button feedback
+    if (btn) {
+      const originalText = btn.innerHTML;
+      btn.innerHTML = "✓ Key Copied!";
+      btn.classList.add("copied");
+      setTimeout(() => {
+        btn.innerHTML = originalText;
+        btn.classList.remove("copied");
+      }, 2000);
+    }
   } catch (error) {
-    showAlert("Error", "Failed to copy: " + error.message, "error");
+    showToast("Failed to copy ✗");
   }
 }
 
@@ -440,7 +486,7 @@ async function removeContactUI(contactId) {
 async function importContact() {
   const input = document.getElementById("importContactInput");
   if (!input || !input.value.trim()) {
-    showAlert("Error", "Please paste a public identity JSON.", "warning");
+    showToast("Please paste a public identity JSON ⚠");
     return;
   }
 
@@ -459,14 +505,9 @@ async function importContact() {
     await IdentityManager.addContact(publicIdentity);
     input.value = "";
     await loadContacts();
-    showAlert(
-      "Contact Added",
-      `Added ${publicIdentity.displayName} to your contacts.`,
-      "success"
-    );
-    setTimeout(hideAlert, 2000);
+    showToast(`Added ${publicIdentity.displayName} to contacts ✓`);
   } catch (error) {
-    showAlert("Error", "Failed to import contact: " + error.message, "error");
+    showToast("Failed to import contact ✗");
   }
 }
 
@@ -489,14 +530,9 @@ async function importContactFromFile() {
 
       await IdentityManager.addContact(publicIdentity);
       await loadContacts();
-      showAlert(
-        "Contact Added",
-        `Added ${publicIdentity.displayName} to your contacts.`,
-        "success"
-      );
-      setTimeout(hideAlert, 2000);
+      showToast(`Added ${publicIdentity.displayName} to contacts ✓`);
     } catch (error) {
-      showAlert("Error", "Failed to import contact: " + error.message, "error");
+      showToast("Failed to import contact ✗");
     }
   };
 
@@ -616,6 +652,7 @@ function proceedWithFileSelect(file) {
   fileName.textContent = file.name;
   fileSize.textContent = formatFileSize(file.size);
   fileSelected.classList.add("show");
+  document.getElementById("dropZone").classList.add("hidden");
 }
 
 // =============================================================================
@@ -667,7 +704,11 @@ async function executeUpload() {
   const includeLinkKey =
     document.getElementById("includeLinkKey")?.checked !== false; // Default true
 
-  document.getElementById("shareContainer").classList.remove("show");
+  // Ensure we're in upload state (in case of any edge cases)
+  const container = document.querySelector('.container[data-state]');
+  if (container) {
+    container.setAttribute('data-state', 'upload');
+  }
 
   const file = fileInput.files[0];
 
@@ -1022,7 +1063,7 @@ function showShareModeInfo(hasLinkKey, recipientCount) {
   let icon = "";
 
   if (hasLinkKey && recipientCount > 0) {
-    icon = "�";
+    icon = "🔐";
     message = `Hybrid access: Anyone with link can decrypt + ${recipientCount} identity recipient(s)`;
   } else if (hasLinkKey) {
     icon = "🔗";

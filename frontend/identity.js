@@ -89,23 +89,7 @@ const IdentityManager = (function () {
     });
   }
 
-  /**
-   * Delete identity from IndexedDB.
-   * @returns {Promise<void>}
-   */
-  async function deleteIdentity() {
-    const db = await openDatabase();
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction(STORE_NAME, "readwrite");
-      const store = transaction.objectStore(STORE_NAME);
-      const request = store.delete(IDENTITY_KEY);
 
-      request.onerror = () => reject(new Error("Failed to delete identity"));
-      request.onsuccess = () => resolve();
-
-      transaction.oncomplete = () => db.close();
-    });
-  }
 
   // ===========================================================================
   // Identity Generation & Management
@@ -467,7 +451,8 @@ const IdentityManager = (function () {
     getIdentity,
     getOrCreateIdentity,
     getLoadedIdentity,
-    deleteIdentity,
+    getLoadedIdentity,
+    loadIdentityKeys,
     loadIdentityKeys,
 
     // Public Key Export/Import

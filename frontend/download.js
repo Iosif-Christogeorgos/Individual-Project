@@ -563,9 +563,12 @@ async function startDownload() {
       const encryptedBlob = await response.arrayBuffer();
       updateStep("step1", "complete");
 
-      // Decrypt using auto-detection
+      // Verify format and decrypt
+      // The previous code used decryptFileAuto.
+      // We will replace it with decryptFileChunked.
+
       try {
-        decryptedResult = await CryptoModule.decryptFileAuto(
+        decryptedResult = await CryptoModule.decryptFileChunked(
           encryptedBlob,
           key,
           (progress) => {
@@ -576,7 +579,7 @@ async function startDownload() {
         );
       } catch (decryptError) {
         throw new Error(
-          "Decryption failed. The file may be corrupted or the key is incorrect."
+          "Decryption failed: " + decryptError.message || "The file may be corrupted or the key is incorrect."
         );
       }
       updateStep("step3", "complete");

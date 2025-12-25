@@ -132,7 +132,7 @@ const CryptoModule = (function () {
   // ===========================================================================
 
   // Format version markers
-  const FORMAT_VERSION_LEGACY = 0; // Original: [IV][encrypted(filename+data)]
+  // Format version markers
   const FORMAT_VERSION_CHUNKED = 2; // Chunked: [version][filename header][chunks]
 
   /**
@@ -691,8 +691,7 @@ const CryptoModule = (function () {
         onDecryptProgress
       );
     } else {
-      onDecryptProgress(100);
-      return await decryptFileLegacy(encryptedData.buffer, aesKey);
+      throw new Error("Unsupported file format");
     }
   }
 
@@ -707,8 +706,7 @@ const CryptoModule = (function () {
     if (firstByte === FORMAT_VERSION_CHUNKED) {
       return FORMAT_VERSION_CHUNKED;
     }
-    // Legacy format (first 12 bytes are IV, so first byte is random)
-    return FORMAT_VERSION_LEGACY;
+    throw new Error("Unknown encryption format or legacy format not supported.");
   }
 
   /**
@@ -801,61 +799,7 @@ const CryptoModule = (function () {
     return { filename, data: result.buffer };
   }
 
-  /**
-   * Decrypt legacy format (v0) - backward compatibility.
-   * Format: [12-byte IV][encrypted([2-byte filename length][filename][file data])]
-   * @param {ArrayBuffer} encryptedData - The encrypted data (including IV)
-   * @param {CryptoKey} aesKey - The AES key
-   * @returns {Promise<{filename: string, data: ArrayBuffer}>} Decrypted filename and data
-   */
-  async function decryptFileLegacy(encryptedData, aesKey) {
-    const iv = new Uint8Array(encryptedData.slice(0, 12));
-    const ciphertext = encryptedData.slice(12);
 
-    const decryptedBuffer = await decryptAES(ciphertext, aesKey, iv);
-    const decryptedArray = new Uint8Array(decryptedBuffer);
-
-    if (decryptedArray.length < 2) {
-      throw new Error("Invalid file format: data too short.");
-    }
-
-    const filenameLength = (decryptedArray[0] << 8) | decryptedArray[1];
-
-    if (
-      filenameLength === 0 ||
-      filenameLength > 1000 ||
-      2 + filenameLength > decryptedArray.length
-    ) {
-      throw new Error("Invalid file format: corrupted filename data.");
-    }
-
-    const filenameBytes = decryptedArray.slice(2, 2 + filenameLength);
-    let filename = new TextDecoder().decode(filenameBytes);
-    filename =
-      filename.replace(/[/\\]/g, "_").replace(/\x00/g, "").trim() || "download";
-
-    const fileContent = decryptedArray.slice(2 + filenameLength);
-
-    return { filename, data: fileContent.buffer };
-  }
-
-  /**
-   * Unified decrypt function that handles both legacy and chunked formats.
-   * @param {ArrayBuffer} encryptedData - The encrypted data
-   * @param {CryptoKey} aesKey - The AES key
-   * @param {function} onProgress - Progress callback (0-100)
-   * @returns {Promise<{filename: string, data: ArrayBuffer}>} Decrypted filename and data
-   */
-  async function decryptFileAuto(encryptedData, aesKey, onProgress = () => {}) {
-    const format = detectEncryptionFormat(encryptedData);
-
-    if (format === FORMAT_VERSION_CHUNKED) {
-      return await decryptFileChunked(encryptedData, aesKey, onProgress);
-    } else {
-      onProgress(100);
-      return await decryptFileLegacy(encryptedData, aesKey);
-    }
-  }
 
   // ===========================================================================
   // ECDH Operations (Identity-Based Key Exchange)
@@ -1265,18 +1209,7 @@ const CryptoModule = (function () {
       .join("");
   }
 
-  /**
-   * Convert Hex string to ArrayBuffer.
-   * @param {string} hex - The hex string to decode
-   * @returns {ArrayBuffer} Decoded buffer
-   */
-  function hexToArrayBuffer(hex) {
-    const bytes = new Uint8Array(hex.length / 2);
-    for (let i = 0; i < bytes.length; i++) {
-      bytes[i] = parseInt(hex.substr(i * 2, 2), 16);
-    }
-    return bytes.buffer;
-  }
+
 
   /**
    * Generate a random identifier.
@@ -1339,8 +1272,6 @@ const CryptoModule = (function () {
     // Chunked File Encryption
     encryptFileChunked,
     decryptFileChunked,
-    decryptFileLegacy,
-    decryptFileAuto,
     detectEncryptionFormat,
 
     // Streaming Encryption (Memory-Constant)
@@ -1383,7 +1314,6 @@ const CryptoModule = (function () {
     arrayBufferToBase64,
     base64ToArrayBuffer,
     arrayBufferToHex,
-    hexToArrayBuffer,
     generateRandomId,
 
     // Fingerprints

@@ -148,6 +148,12 @@ textarea.panel-input {
   color: var(--text-primary);
 }
 
+.btn-ghost.copied {
+  background: var(--cyber-green);
+  color: var(--bg-primary);
+  border-color: var(--cyber-green);
+}
+
 /* -----------------------------------------------------------------------------
    Identity Card
    ----------------------------------------------------------------------------- */
@@ -188,10 +194,10 @@ textarea.panel-input {
 }
 
 /* -----------------------------------------------------------------------------
-   Contacts List
+   Contacts List - Redesigned for Clarity
    ----------------------------------------------------------------------------- */
 .contacts-list {
-  max-height: 200px;
+  max-height: 220px;
   overflow-y: auto;
   margin-bottom: 0.75rem;
   border: 1px solid var(--border-color);
@@ -200,19 +206,21 @@ textarea.panel-input {
 }
 
 .no-contacts {
-  padding: 1rem;
+  padding: 1.25rem;
   text-align: center;
   color: var(--text-muted);
   font-size: 0.8rem;
+  font-style: italic;
 }
 
 .contact-item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 0.6rem 0.8rem;
+  gap: 12px;
+  padding: 0.75rem 1rem;
   border-bottom: 1px solid var(--border-color);
-  transition: background 0.2s;
+  transition: all 0.2s ease;
+  cursor: pointer;
 }
 
 .contact-item:last-child {
@@ -220,14 +228,50 @@ textarea.panel-input {
 }
 
 .contact-item:hover {
-  background: rgba(0, 255, 65, 0.05);
+  background: rgba(0, 255, 65, 0.08);
 }
 
+/* Selected state for contact item */
+.contact-item:has(.contact-checkbox:checked) {
+  background: rgba(0, 255, 65, 0.12);
+  border-left: 3px solid var(--cyber-green);
+  padding-left: calc(1rem - 3px);
+}
+
+/* Custom checkbox styling */
 .contact-checkbox {
-  width: 16px;
-  height: 16px;
-  accent-color: var(--cyber-green);
+  appearance: none;
+  -webkit-appearance: none;
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--border-color);
+  border-radius: 4px;
+  background: var(--bg-secondary);
   cursor: pointer;
+  position: relative;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.contact-checkbox:hover {
+  border-color: var(--cyber-green);
+  box-shadow: 0 0 8px var(--cyber-green-glow);
+}
+
+.contact-checkbox:checked {
+  background: var(--cyber-green);
+  border-color: var(--cyber-green);
+}
+
+.contact-checkbox:checked::after {
+  content: "✓";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: var(--bg-primary);
+  font-size: 14px;
+  font-weight: bold;
 }
 
 .contact-info {
@@ -237,12 +281,14 @@ textarea.panel-input {
 
 .contact-name {
   font-family: var(--font-mono);
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   color: var(--text-primary);
+  font-weight: 500;
   display: block;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  margin-bottom: 2px;
 }
 
 .contact-fingerprint {
@@ -250,6 +296,7 @@ textarea.panel-input {
   font-size: 0.65rem;
   color: var(--text-muted);
   display: block;
+  letter-spacing: 0.5px;
 }
 
 .contact-remove {
@@ -257,14 +304,21 @@ textarea.panel-input {
   border: none;
   color: var(--text-muted);
   cursor: pointer;
-  padding: 4px 8px;
-  font-size: 1rem;
-  transition: color 0.2s;
+  padding: 6px 10px;
+  font-size: 1.1rem;
+  transition: all 0.2s ease;
   line-height: 1;
+  border-radius: var(--radius);
+  opacity: 0.6;
+}
+
+.contact-item:hover .contact-remove {
+  opacity: 1;
 }
 
 .contact-remove:hover {
   color: var(--error-red);
+  background: rgba(255, 59, 59, 0.1);
 }
 
 .recipient-count {

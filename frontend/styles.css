@@ -61,11 +61,14 @@ body {
   font-family: var(--font-sans);
   background-color: var(--bg-primary);
   color: var(--text-primary);
-  min-height: 100vh;
+  height: 100vh; /* Fixed height */
+  width: 100vw; /* Fixed width */
+  overflow: hidden; /* No scrollbars */
   display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  padding: 40px 20px;
+  align-items: center; /* Vertical center */
+  justify-content: center; /* Horizontal center */
+  padding: 0; /* Remove padding to ensure perfect fit */
+  margin: 0;
   line-height: 1.6;
   position: relative;
 }
@@ -119,9 +122,19 @@ body::after {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 1.5rem;
   width: 100%;
   max-width: 900px;
+  max-height: 100vh;
+  padding: 20px;
+  /* Add internal scroll if content is absolutely too tall for viewport, 
+     though we aim to fit it perfectly with scaling if needed */
+  overflow-y: auto; 
+  scrollbar-width: none; /* Hide internal scrollbar Firefox */
+}
+.app-layout::-webkit-scrollbar {
+  display: none; /* Hide internal scrollbar Chrome/Safari */
 }
 
 /* Main content row */
@@ -233,6 +246,127 @@ p {
     transparent
   );
   opacity: 0.5;
+}
+
+/* -----------------------------------------------------------------------------
+   State-Based View Transitions (Upload ↔ Success)
+   ----------------------------------------------------------------------------- */
+.container[data-state] {
+  position: relative;
+}
+
+.upload-view,
+.success-view {
+  transition: opacity 0.3s ease-out, transform 0.3s ease-out, filter 0.3s ease-out;
+  will-change: opacity, transform;
+}
+
+/* Upload view (default visible state) */
+.container[data-state="upload"] .upload-view {
+  opacity: 1;
+  transform: scale(1);
+  filter: blur(0);
+  position: relative;
+}
+
+.container[data-state="upload"] .success-view {
+  opacity: 0;
+  transform: scale(0.98);
+  filter: blur(4px);
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: 2rem;
+  visibility: hidden;
+}
+
+/* Success view (after upload) */
+.container[data-state="success"] .upload-view {
+  opacity: 0;
+  transform: scale(1.02);
+  filter: blur(4px);
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: 2rem;
+  visibility: hidden;
+}
+
+.container[data-state="success"] .success-view {
+  opacity: 1;
+  transform: scale(1);
+  filter: blur(0);
+  position: relative;
+  visibility: visible;
+}
+
+/* Success header styling */
+.success-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 0.5rem;
+}
+
+.success-header h2 {
+  margin-bottom: 0;
+}
+
+.success-header h2::before {
+  content: none;
+}
+
+.success-icon {
+  font-size: 1.5rem;
+  animation: successPulse 2s ease-in-out infinite;
+}
+
+@keyframes successPulse {
+  0%, 100% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 8px rgba(0, 255, 65, 0.4));
+  }
+  50% {
+    transform: scale(1.1);
+    filter: drop-shadow(0 0 12px rgba(0, 255, 65, 0.6));
+  }
+}
+
+/* Back button styling */
+.btn-ghost {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+  padding: 12px 20px;
+  font-size: 0.85rem;
+}
+
+.btn-ghost:hover {
+  color: var(--cyber-green);
+  border-color: var(--cyber-green);
+  background: rgba(0, 255, 65, 0.05);
+}
+
+.btn-back {
+  margin-top: 1.5rem;
+}
+
+/* Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .upload-view,
+  .success-view {
+    transition: opacity 0.15s ease !important;
+    transform: none !important;
+    filter: none !important;
+  }
+  
+  .success-icon {
+    animation: none !important;
+  }
 }
 
 /* -----------------------------------------------------------------------------
@@ -378,16 +512,22 @@ p {
 }
 
 /* Selected file display */
+/* Selected file display - Replaces drop zone */
+/* Selected file display - Replaces drop zone */
 .file-selected {
   display: none;
+  flex-direction: row; /* Horizontal layout */
   align-items: center;
-  gap: 12px;
-  padding: 1rem;
-  background: rgba(0, 255, 65, 0.1);
-  border: 1px solid var(--cyber-green);
-  border-radius: var(--radius);
-  margin-top: 1rem;
-  margin-bottom: 1rem;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 1.25rem 1.5rem; /* Compact padding */
+  background: rgba(0, 255, 65, 0.05);
+  border: 1px solid var(--cyber-green); /* Thinner border */
+  border-radius: var(--radius-lg);
+  margin-bottom: 1.5rem;
+  text-align: left;
+  min-height: auto; /* Remove fixed height */
+  animation: fadeIn 0.3s ease;
 }
 
 .file-selected.show {
@@ -395,19 +535,33 @@ p {
 }
 
 .file-selected-icon {
-  font-size: 1.5rem;
+  font-size: 2rem; /* Moderate size */
+  margin-bottom: 0;
+  animation: bounce 0.5s ease;
+  flex-shrink: 0;
+}
+
+@keyframes bounce {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
 }
 
 .file-selected-info {
-  flex: 1;
-  text-align: left;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  flex: 1; /* Take available space */
+  min-width: 0; /* Enable truncation */
 }
 
 .file-selected-name {
   font-family: var(--font-mono);
-  color: var(--text-primary);
-  font-size: 0.9rem;
+  color: var(--cyber-green);
+  font-size: 0.95rem;
+  font-weight: 600;
   word-break: break-all;
+  text-align: left;
 }
 
 .file-selected-size {
@@ -416,17 +570,26 @@ p {
 }
 
 .file-selected-remove {
-  background: none;
-  border: none;
-  color: var(--text-muted);
+  margin-top: 0;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
   cursor: pointer;
-  padding: 5px;
-  font-size: 1.2rem;
-  transition: color 0.2s;
+  padding: 8px 14px;
+  font-size: 0.8rem;
+  border-radius: var(--radius);
+  transition: all 0.2s ease;
+  font-family: var(--font-mono);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
 .file-selected-remove:hover {
+  border-color: var(--error-red);
   color: var(--error-red);
+  background: rgba(255, 59, 59, 0.1);
 }
 
 /* -----------------------------------------------------------------------------
@@ -509,20 +672,20 @@ p {
 /* Copy button specific styling */
 .btn-copy {
   background: transparent;
-  color: var(--cyber-blue);
-  border: 1px solid var(--cyber-blue);
-  margin-top: 1rem;
+  color: var(--cyber-green);
+  border: 1px solid var(--cyber-green);
 }
 
 .btn-copy:hover {
-  background: rgba(0, 212, 255, 0.1);
-  box-shadow: 0 0 20px var(--cyber-blue-glow);
+  background: rgba(0, 255, 65, 0.1);
+  box-shadow: 0 0 20px var(--cyber-green-glow);
 }
 
 .btn-copy.copied {
   background: var(--cyber-green);
   color: var(--bg-primary);
   border-color: var(--cyber-green);
+  box-shadow: 0 0 25px var(--cyber-green-glow);
 }
 
 /* -----------------------------------------------------------------------------
@@ -708,17 +871,19 @@ p {
 
 .share-link-wrapper {
   display: flex;
-  gap: 0.75rem;
+  align-items: stretch;
+  gap: 0; /* Remove gap as we want them attached or close */
   margin-bottom: 1rem;
 }
 
 .share-link-input {
   flex: 1;
-  min-width: 0; /* Allow shrinking */
+  min-width: 0;
   padding: 12px 16px;
   background: var(--bg-input);
   border: 1px solid var(--border-color);
-  border-radius: var(--radius);
+  border-right: none; /* Merge with button */
+  border-radius: var(--radius) 0 0 var(--radius);
   color: var(--text-primary);
   font-family: var(--font-mono);
   font-size: 0.8rem;
@@ -727,13 +892,16 @@ p {
 
 .share-link-input:focus {
   border-color: var(--cyber-green);
-  box-shadow: 0 0 0 3px var(--cyber-green-glow);
+  z-index: 2; /* Bring above button border */
 }
 
 .btn-copy {
   flex-shrink: 0;
   width: auto;
   padding: 12px 20px;
+  margin-top: 0;
+  border-radius: 0 var(--radius) var(--radius) 0;
+  align-self: stretch;
 }
 
 /* Share mode info */
@@ -1476,9 +1644,9 @@ p {
    ----------------------------------------------------------------------------- */
 .toast-notification {
   position: fixed;
-  bottom: 30px;
-  left: 50%;
-  transform: translateX(-50%) translateY(100px);
+  top: 20px;
+  right: 20px;
+  transform: translateX(120%);
   background: linear-gradient(135deg, var(--bg-card), #192e1b);
   border: 1px solid var(--cyber-green-dim);
   border-radius: var(--radius);
@@ -1486,7 +1654,7 @@ p {
   display: flex;
   align-items: center;
   gap: 10px;
-  box-shadow: 0 0 25px var(--cyber-green), 0 10px 40px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 0 25px var(--cyber-green-glow), 0 10px 40px rgba(0, 0, 0, 0.4);
   z-index: 10000;
   opacity: 0;
   transition: all 0.3s ease;
@@ -1495,7 +1663,7 @@ p {
 
 .toast-notification.show {
   opacity: 1;
-  transform: translateX(-50%) translateY(0);
+  transform: translateX(0);
 }
 
 .toast-icon {
