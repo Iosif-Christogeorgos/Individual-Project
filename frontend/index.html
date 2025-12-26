@@ -253,9 +253,14 @@
 
         <!-- Identity & Recipients Panel -->
         <div class="side-panel" id="identityPanel">
-          <div class="side-panel-header">
+          <!-- Header shows identity name when available -->
+          <div class="side-panel-header" id="identityHeader">
             <span class="terminal-prompt">$</span>
-            <span class="panel-title">IDENTITY</span>
+            <span class="panel-title" id="headerIdentityName">IDENTITY</span>
+          </div>
+          <div class="identity-fingerprint-header hidden" id="headerFingerprint">
+            <span class="fingerprint-label">Fingerprint:</span>
+            <span class="fingerprint-value" id="identityFingerprint">ABCD1234</span>
           </div>
 
           <!-- No Identity Section -->
@@ -282,21 +287,8 @@
             </button>
           </div>
 
-          <!-- Has Identity Section -->
+          <!-- Has Identity Section (actions only, no card) -->
           <div class="panel-section hidden" id="hasIdentitySection">
-            <div class="panel-section-header">
-              <span class="section-icon">🆔</span>
-              <span>Your Identity</span>
-            </div>
-            <div class="identity-card">
-              <div class="identity-name" id="identityName">User</div>
-              <div class="identity-fingerprint">
-                <span class="fingerprint-label">Fingerprint:</span>
-                <span class="fingerprint-value" id="identityFingerprint"
-                  >ABCD1234</span
-                >
-              </div>
-            </div>
             <div class="identity-actions">
               <button
                 class="btn btn-small btn-ghost"

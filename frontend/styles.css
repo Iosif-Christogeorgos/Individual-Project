@@ -1007,6 +1007,26 @@ input[type="checkbox"] {
   color: var(--text-primary);
 }
 
+/* Fingerprint shown below header when identity exists */
+.identity-fingerprint-header {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  padding-bottom: 0.75rem;
+  margin-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(0, 255, 65, 0.2);
+}
+
+.identity-fingerprint-header .fingerprint-label {
+  color: var(--text-muted);
+  margin-right: 4px;
+}
+
+.identity-fingerprint-header .fingerprint-value {
+  color: var(--cyber-green);
+  opacity: 0.8;
+}
+
 /* Panel Sections */
 .panel-section {
   display: flex;
@@ -1117,11 +1137,99 @@ input[type="checkbox"] {
 
 /* Contacts List */
 .contacts-list {
-  max-height: 150px;
+  max-height: 180px;
   overflow-y: auto;
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-sm);
   padding: 0.5rem;
+  padding-bottom: 0.6rem;
+  margin-bottom: 0.5rem;
+  scrollbar-width: thin;
+  scrollbar-color: var(--cyber-green-dim) transparent;
+}
+
+.contacts-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.contacts-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.contacts-list::-webkit-scrollbar-thumb {
+  background: var(--cyber-green-dim);
+  border-radius: 2px;
+}
+
+.contacts-list::-webkit-scrollbar-thumb:hover {
+  background: var(--cyber-green);
+}
+
+/* Contact Item */
+.contact-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0.6rem 0.75rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  margin-bottom: 6px;
+  transition: all 0.2s;
+}
+
+.contact-item:last-child {
+  margin-bottom: 0;
+}
+
+.contact-item:hover {
+  background: rgba(0, 255, 65, 0.05);
+  border-color: rgba(0, 255, 65, 0.2);
+}
+
+.contact-checkbox {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--cyber-green);
+  cursor: pointer;
+}
+
+.contact-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.contact-name {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+}
+
+.contact-fingerprint {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--text-muted);
+}
+
+.contact-remove {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  transition: color 0.2s;
+  opacity: 0.5;
+}
+
+.contact-remove:hover {
+  color: var(--error);
+  opacity: 1;
 }
 
 .no-contacts {
@@ -1129,21 +1237,24 @@ input[type="checkbox"] {
   color: var(--text-muted);
   font-style: italic;
   text-align: center;
-  padding: 0.75rem;
+  padding: 1rem 0.75rem;
 }
 
 .recipient-count {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   color: var(--cyber-green);
   font-family: var(--font-mono);
-  margin-top: 0.5rem;
+  margin-top: 0.25rem;
 }
 
+/* Add Contact Buttons */
 .add-contact-section {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  margin-top: 0.5rem;
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .add-contact-section .btn {

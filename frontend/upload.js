@@ -329,16 +329,20 @@ async function initializeIdentityPanel() {
 function updateIdentityUI() {
   const noIdentitySection = document.getElementById("noIdentitySection");
   const hasIdentitySection = document.getElementById("hasIdentitySection");
-  const identityName = document.getElementById("identityName");
+  const headerIdentityName = document.getElementById("headerIdentityName");
+  const headerFingerprint = document.getElementById("headerFingerprint");
   const identityFingerprint = document.getElementById("identityFingerprint");
 
   if (currentIdentity) {
     noIdentitySection?.classList.add("hidden");
     hasIdentitySection?.classList.remove("hidden");
+    headerFingerprint?.classList.remove("hidden");
 
-    if (identityName) {
-      identityName.textContent = currentIdentity.displayName;
+    // Update header with identity name
+    if (headerIdentityName) {
+      headerIdentityName.textContent = currentIdentity.displayName || "IDENTITY";
     }
+    // Update fingerprint below header
     if (identityFingerprint) {
       identityFingerprint.textContent =
         IdentityManager.getShortFingerprint(currentIdentity);
@@ -346,6 +350,12 @@ function updateIdentityUI() {
   } else {
     noIdentitySection?.classList.remove("hidden");
     hasIdentitySection?.classList.add("hidden");
+    headerFingerprint?.classList.add("hidden");
+    
+    // Reset header to default
+    if (headerIdentityName) {
+      headerIdentityName.textContent = "IDENTITY";
+    }
   }
 }
 
