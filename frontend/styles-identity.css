@@ -20,10 +20,18 @@
   width: 300px;
   min-width: 280px;
   max-width: 320px;
-  background: var(--bg-card);
+  background: linear-gradient(
+    180deg,
+    rgba(45, 45, 48, 0.95) 0%,
+    rgba(28, 28, 30, 0.98) 50%,
+    rgba(18, 18, 20, 1) 100%
+  );
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
-  box-shadow: 0 0 0 1px rgba(0, 255, 65, 0.1), 0 8px 32px rgba(0, 0, 0, 0.4);
+  box-shadow: 
+    0 0 0 1px rgba(0, 255, 65, 0.1), 
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -154,6 +162,12 @@ textarea.panel-input {
   border-color: var(--cyber-green);
 }
 
+.btn-ghost.copied:hover {
+  background: var(--cyber-green);
+  color: var(--bg-primary);
+  border-color: var(--cyber-green);
+}
+
 /* -----------------------------------------------------------------------------
    Identity Card
    ----------------------------------------------------------------------------- */
@@ -191,6 +205,11 @@ textarea.panel-input {
 .identity-actions {
   display: flex;
   gap: 0.5rem;
+}
+
+.identity-actions .btn {
+  flex: 1;
+  min-width: 0;
 }
 
 /* -----------------------------------------------------------------------------

@@ -808,6 +808,105 @@ input[type="checkbox"] {
   display: block;
 }
 
+.sig-status {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0.875rem 1rem;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+}
+
+.sig-status.sig-signed {
+  background: rgba(0, 255, 65, 0.06);
+  border: 1px solid rgba(0, 255, 65, 0.2);
+}
+
+.sig-status.sig-warning {
+  background: rgba(245, 158, 11, 0.06);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.sig-status.sig-unsigned {
+  background: rgba(100, 100, 100, 0.06);
+  border: 1px solid rgba(100, 100, 100, 0.2);
+}
+
+/* Verified Badge - Professional Custom Visual */
+.sig-verified-badge {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--cyber-green-dim), var(--cyber-green));
+  border-radius: 50%;
+  box-shadow: 
+    0 0 0 2px rgba(0, 255, 65, 0.15),
+    0 0 12px rgba(0, 255, 65, 0.35);
+}
+
+.sig-verified-badge svg {
+  width: 12px;
+  height: 12px;
+  color: #000;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Warning Badge */
+.sig-warning-badge {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #d97706, var(--warning));
+  border-radius: 50%;
+  box-shadow: 
+    0 0 0 2px rgba(245, 158, 11, 0.15),
+    0 0 12px rgba(245, 158, 11, 0.3);
+}
+
+.sig-warning-badge svg {
+  width: 12px;
+  height: 12px;
+  color: #000;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.sig-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 1;
+}
+
+.sig-detail {
+  font-size: 0.8rem;
+  color: var(--text-primary);
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+.sig-status.sig-signed .sig-detail {
+  color: var(--cyber-green);
+}
+
+.sig-status.sig-warning .sig-detail {
+  color: var(--warning);
+}
+
+.sig-note {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  line-height: 1.3;
+}
+
+
 /* Security Protocol Warning */
 .security-protocol-warning {
   margin-top: 1rem;

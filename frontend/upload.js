@@ -406,7 +406,7 @@ async function copyPublicKey() {
     // Inline button feedback
     if (btn) {
       const originalText = btn.innerHTML;
-      btn.innerHTML = "✓ Key Copied!";
+      btn.innerHTML = "✓ Copied";
       btn.classList.add("copied");
       setTimeout(() => {
         btn.innerHTML = originalText;
@@ -1102,20 +1102,15 @@ function showUploadStatusBadges(hasLinkKey, recipientCount, isSigned) {
   );
 
   // Access mode badges
-  if (hasLinkKey) {
-    badges.push(`<span class="status-badge badge-link">🔗 Link Access</span>`);
-  }
   if (recipientCount > 0) {
     badges.push(
       `<span class="status-badge badge-identity">👤 ${recipientCount} Recipient(s)</span>`
     );
   }
 
-  // Signature badge
+  // Signature badge (only shown here, detailed info shown separately below)
   if (isSigned) {
     badges.push(`<span class="status-badge badge-signed">✍️ Signed</span>`);
-  } else {
-    badges.push(`<span class="status-badge badge-unsigned">📝 Unsigned</span>`);
   }
 
   container.innerHTML = badges.join("");
@@ -1132,9 +1127,12 @@ function showSignatureStatusInfo(enableSigning, identity) {
       .toUpperCase();
     infoEl.innerHTML = `
       <div class="sig-status sig-signed">
-        <span class="sig-icon">✅</span>
+        <div class="sig-verified-badge">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M20 6L9 17l-5-5"/>
+          </svg>
+        </div>
         <div class="sig-content">
-          <strong>File Signed</strong>
           <span class="sig-detail">Signed by: ${escapeHtml(
             identity.displayName
           )} (${shortFingerprint})</span>
@@ -1146,25 +1144,23 @@ function showSignatureStatusInfo(enableSigning, identity) {
   } else if (enableSigning && !identity) {
     infoEl.innerHTML = `
       <div class="sig-status sig-warning">
-        <span class="sig-icon">⚠️</span>
+        <div class="sig-warning-badge">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M12 9v4m0 4h.01"/>
+            <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+          </svg>
+        </div>
         <div class="sig-content">
-          <strong>Signature Skipped</strong>
+          <span class="sig-detail">Signature Skipped</span>
           <span class="sig-note">No identity configured. Create an identity to sign files.</span>
         </div>
       </div>
     `;
     infoEl.classList.add("show");
   } else {
-    infoEl.innerHTML = `
-      <div class="sig-status sig-unsigned">
-        <span class="sig-icon">📝</span>
-        <div class="sig-content">
-          <strong>File Not Signed</strong>
-          <span class="sig-note">Recipients cannot verify who uploaded this file.</span>
-        </div>
-      </div>
-    `;
-    infoEl.classList.add("show");
+    // Don't show anything if signing is not enabled - less visual noise
+    infoEl.classList.remove("show");
+    infoEl.innerHTML = "";
   }
 }
 
