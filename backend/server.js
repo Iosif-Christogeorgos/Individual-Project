@@ -34,8 +34,11 @@ const UPLOADS_DIR = path.join(__dirname, "uploads");
 const METADATA_DIR = path.join(__dirname, "metadata");
 const PUBKEYS_DIR = path.join(__dirname, "pubkeys");
 const FILE_EXPIRY_HOURS = 24;
-const FILE_EXPIRY_MS = FILE_EXPIRY_HOURS * 60 * 60 * 1000;
+const DEFAULT_EXPIRY_MS = FILE_EXPIRY_HOURS * 60 * 60 * 1000;
 const CLEANUP_INTERVAL_MS = 15 * 60 * 1000;
+
+// Allowed expiry options (in hours) - validated on upload
+const ALLOWED_EXPIRY_HOURS = [1, 6, 24, 72, 168]; // 1h, 6h, 24h, 3d, 7d
 
 // Ensure directories exist
 [UPLOADS_DIR, METADATA_DIR, PUBKEYS_DIR].forEach((dir) => {
@@ -59,21 +62,36 @@ function cleanupExpiredFiles() {
     for (const file of files) {
       const match = file.match(/^file-(\d+)-[a-f0-9]+\.bin$/);
       if (match) {
-        const timestamp = parseInt(match[1], 10);
-        const age = now - timestamp;
+        const uploadTimestamp = parseInt(match[1], 10);
+        
+        // Check for custom expiry in metadata
+        let expiresAt = uploadTimestamp + DEFAULT_EXPIRY_MS; // Default fallback
+        
+        const metadataPath = path.join(
+          METADATA_DIR,
+          file.replace(".bin", ".json")
+        );
+        
+        if (fs.existsSync(metadataPath)) {
+          try {
+            const metadata = JSON.parse(fs.readFileSync(metadataPath, "utf8"));
+            if (metadata.expiresAt && typeof metadata.expiresAt === "number") {
+              expiresAt = metadata.expiresAt;
+            }
+          } catch (parseError) {
+            // Use default expiry if metadata is corrupted
+          }
+        }
 
-        if (age > FILE_EXPIRY_MS) {
+        if (now > expiresAt) {
           const filePath = path.join(UPLOADS_DIR, file);
+          const age = now - uploadTimestamp;
 
           try {
             fs.unlinkSync(filePath);
             deletedCount++;
 
             // Also delete associated metadata
-            const metadataPath = path.join(
-              METADATA_DIR,
-              file.replace(".bin", ".json")
-            );
             if (fs.existsSync(metadataPath)) {
               fs.unlinkSync(metadataPath);
             }

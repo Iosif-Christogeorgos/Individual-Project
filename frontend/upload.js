@@ -18,6 +18,95 @@ let overwriteWarningShown = false;
 let linkCopied = false;
 let currentIdentity = null;
 let selectedRecipients = [];
+let currentExpiresAt = null; // Timestamp when file expires
+let countdownInterval = null; // For countdown timer
+
+// =============================================================================
+// Expiry Helper Functions
+// =============================================================================
+
+function getSelectedExpiryHours() {
+  const select = document.getElementById("expirySelect");
+  return parseInt(select?.value || "24", 10);
+}
+
+function updateExpiryNotice() {
+  const expiryTimeEl = document.getElementById("expiryNoticeTime");
+  const hours = getSelectedExpiryHours();
+  
+  if (expiryTimeEl) {
+    if (hours < 24) {
+      expiryTimeEl.textContent = `${hours} hour${hours > 1 ? 's' : ''}`;
+    } else {
+      const days = hours / 24;
+      expiryTimeEl.textContent = `${days} day${days > 1 ? 's' : ''}`;
+    }
+  }
+}
+
+function formatCountdown(ms) {
+  if (ms <= 0) return "Expired";
+  
+  const seconds = Math.floor((ms / 1000) % 60);
+  const minutes = Math.floor((ms / (1000 * 60)) % 60);
+  const hours = Math.floor((ms / (1000 * 60 * 60)) % 24);
+  const days = Math.floor(ms / (1000 * 60 * 60 * 24));
+  
+  if (days > 0) {
+    return `${days}d ${hours}h ${minutes}m`;
+  }
+  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+}
+
+function startCountdownTimer(expiresAt) {
+  currentExpiresAt = expiresAt;
+  const totalDuration = expiresAt - Date.now(); // Total time from now to expiry
+  
+  // Clear any existing interval
+  if (countdownInterval) {
+    clearInterval(countdownInterval);
+  }
+  
+  const timerEl = document.getElementById("countdownTimer");
+  const sandTop = document.querySelector(".sand-top");
+  const sandBottom = document.querySelector(".sand-bottom");
+  const sandStream = document.querySelector(".sand-stream");
+  
+  if (!timerEl) return;
+  
+  function updateTimer() {
+    const remaining = currentExpiresAt - Date.now();
+    timerEl.textContent = formatCountdown(remaining);
+    
+    // Calculate progress (0 = full, 1 = empty)
+    const progress = Math.max(0, Math.min(1, 1 - (remaining / totalDuration)));
+    
+    // Animate sand elements if they exist
+    if (sandTop && sandBottom) {
+      // Top sand shrinks (scale from 1 to 0)
+      const topScale = 1 - progress;
+      sandTop.style.transform = `scaleY(${topScale})`;
+      sandTop.style.opacity = topScale > 0.1 ? 1 : 0;
+      
+      // Bottom sand grows (opacity from 0 to 1)
+      sandBottom.style.opacity = progress;
+      
+      // Hide stream when empty or full
+      if (sandStream) {
+        sandStream.style.opacity = (progress > 0.02 && progress < 0.98) ? 1 : 0;
+      }
+    }
+    
+    if (remaining <= 0) {
+      clearInterval(countdownInterval);
+      timerEl.classList.add("expired");
+      if (sandStream) sandStream.style.opacity = 0;
+    }
+  }
+  
+  updateTimer(); // Initial update
+  countdownInterval = setInterval(updateTimer, 1000);
+}
 
 // =============================================================================
 // Access Configuration Validation
@@ -537,6 +626,12 @@ document.addEventListener("DOMContentLoaded", () => {
       handleFileSelect(e.target.files[0]);
     }
   });
+  
+  // Expiry selector change listener
+  const expirySelect = document.getElementById("expirySelect");
+  if (expirySelect) {
+    expirySelect.addEventListener("change", updateExpiryNotice);
+  }
 });
 
 function handleFileSelect(file) {
@@ -759,7 +854,7 @@ async function executeStreamingUpload(file, enableSigning, includeLinkKey) {
     exportedKey.k,
     includeLinkKey
   );
-  showUploadSuccess(shareLink, includeLinkKey, enableSigning);
+  showUploadSuccess(shareLink, includeLinkKey, enableSigning, metadata.expiresAt);
 }
 
 /**
@@ -827,7 +922,7 @@ async function executeBufferedUpload(file, enableSigning, includeLinkKey) {
     exportedKey.k,
     includeLinkKey
   );
-  showUploadSuccess(shareLink, includeLinkKey, enableSigning);
+  showUploadSuccess(shareLink, includeLinkKey, enableSigning, metadata.expiresAt);
 }
 
 /**
@@ -840,12 +935,18 @@ async function prepareMetadata(
   enableSigning,
   includeLinkKey
 ) {
+  // Calculate expiry timestamp
+  const expiryHours = getSelectedExpiryHours();
+  const expiresAt = Date.now() + (expiryHours * 60 * 60 * 1000);
+  
   const metadata = {
     version: 2,
     filename: file.name,
     size: file.size,
     contentHash: contentHash,
     timestamp: new Date().toISOString(),
+    expiresAt: expiresAt, // Custom expiry timestamp
+    expiryHours: expiryHours, // For display purposes
     accessModes: [],
     encryptedKeys: [],
     signature: null,
@@ -906,7 +1007,12 @@ async function prepareMetadata(
  * Upload metadata to server.
  */
 async function uploadMetadata(fileId, metadata) {
-  if (metadata.encryptedKeys.length > 0 || metadata.signature) {
+  // Always upload metadata if we have custom expiry, recipients, or signature
+  const hasCustomExpiry = metadata.expiryHours !== 24;
+  const hasRecipients = metadata.encryptedKeys.length > 0;
+  const hasSignature = metadata.signature !== null;
+  
+  if (hasCustomExpiry || hasRecipients || hasSignature) {
     updateProgress(95, "Uploading metadata...");
 
     const metadataResponse = await fetch(`/metadata/${fileId}`, {
@@ -921,6 +1027,8 @@ async function uploadMetadata(fileId, metadata) {
       );
     }
   }
+  
+  return metadata; // Return for use in success handler
 }
 
 /**
@@ -941,10 +1049,16 @@ function generateShareLink(fileId, keyString, includeLinkKey) {
 /**
  * Show upload success UI.
  */
-function showUploadSuccess(shareLink, includeLinkKey, enableSigning) {
+function showUploadSuccess(shareLink, includeLinkKey, enableSigning, expiresAt) {
   setTimeout(() => {
     hideProgress();
     showShareLink(shareLink);
+    
+    // Start countdown timer
+    if (expiresAt) {
+      startCountdownTimer(expiresAt);
+    }
+    
     showUploadStatusBadges(
       includeLinkKey,
       selectedRecipients.length,

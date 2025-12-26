@@ -117,6 +117,20 @@
                   </span>
                 </label>
               </div>
+
+              <!-- Expiry Selector -->
+              <div class="option-group expiry-selector">
+                <div class="expiry-label">
+                  <span class="option-title">⏳ File expires in</span>
+                </div>
+                <select id="expirySelect" class="expiry-dropdown">
+                  <option value="1">1 hour</option>
+                  <option value="6">6 hours</option>
+                  <option value="24" selected>24 hours</option>
+                  <option value="72">3 days</option>
+                  <option value="168">7 days</option>
+                </select>
+              </div>
             </div>
 
             <!-- Access Validation Warning -->
@@ -158,12 +172,12 @@
               </div>
             </div>
 
-            <!-- Expiry Notice -->
-            <div class="expiry-notice">
+            <!-- Expiry Notice (dynamic) -->
+            <div class="expiry-notice" id="expiryNotice">
               <span class="expiry-notice-icon">⏳</span>
               <span
                 >Files are automatically deleted after
-                <strong>24 hours</strong></span
+                <strong id="expiryNoticeTime">24 hours</strong></span
               >
             </div>
 
@@ -214,6 +228,28 @@
               >
                 <span>📋</span> Copy
               </button>
+            </div>
+
+            <!-- Expiry Countdown -->
+            <div class="expiry-countdown" id="expiryCountdown">
+              <div class="countdown-icon">
+                <svg class="hourglass-svg" viewBox="0 0 40 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <!-- Glass outline -->
+                  <path class="hourglass-glass" d="M5 5 L5 20 L20 30 L5 40 L5 55 L35 55 L35 40 L20 30 L35 20 L35 5 Z" 
+                        stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                  <!-- Top sand (drains) -->
+                  <path class="sand-top" d="M8 8 L8 18 L20 28 L32 18 L32 8 Z" fill="var(--cyber-green)"/>
+                  <!-- Bottom sand (fills) -->
+                  <path class="sand-bottom" d="M8 52 L8 42 L20 32 L32 42 L32 52 Z" fill="var(--cyber-green)" opacity="0"/>
+                  <!-- Falling sand stream -->
+                  <line class="sand-stream" x1="20" y1="30" x2="20" y2="38" 
+                        stroke="var(--cyber-green)" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+              </div>
+              <div class="countdown-info">
+                <span class="countdown-label">Link expires in</span>
+                <span class="countdown-timer" id="countdownTimer">--:--:--</span>
+              </div>
             </div>
 
             <!-- Share Mode Info -->
