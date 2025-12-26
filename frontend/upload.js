@@ -1,10 +1,14 @@
 // =============================================================================
-// CrypShare - Upload & Encryption Module (Hybrid E2EE)
+// CrypShare - Upload & Encryption Module (ES Module - Hybrid E2EE)
 // =============================================================================
 // Supports both:
 // 1. Link-based access (existing) - AES key in URL fragment
 // 2. Identity-based access (new) - AES key encrypted with recipient public keys
 // =============================================================================
+
+import CryptoModule from './crypto.js';
+import IdentityManager from './identity.js';
+import { showAlert, hideAlert, showToast, formatFileSize, escapeHtml, updateProgress, hideProgress } from './ui-utils.js';
 
 const MAX_FILE_SIZE = 1024 * 1024 * 1024; // 1GB
 
@@ -118,94 +122,9 @@ function updateLinkKeyState() {
   validateAccessConfig();
 }
 
-function showToast(message) {
-  // Remove existing toast if any
-  const existingToast = document.querySelector(".toast-notification");
-  if (existingToast) {
-    existingToast.remove();
-  }
-
-  // Create toast element
-  const toast = document.createElement("div");
-  toast.className = "toast-notification";
-  toast.innerHTML = `<span class="toast-icon">ℹ️</span><span class="toast-message">${message}</span>`;
-  document.body.appendChild(toast);
-
-  // Trigger animation
-  requestAnimationFrame(() => {
-    toast.classList.add("show");
-  });
-
-  // Auto-remove after 3 seconds
-  setTimeout(() => {
-    toast.classList.remove("show");
-    setTimeout(() => toast.remove(), 300);
-  }, 3000);
-}
-
 // =============================================================================
-// UI Helper Functions
+// UI Helper Functions (Page-Specific)
 // =============================================================================
-
-/**
- * Show an alert message to the user.
- * @param {string} title - Alert title
- * @param {string} message - Alert message
- * @param {string} type - Alert type: 'error', 'success', 'info', or 'warning'
- */
-function showAlert(title, message, type = "error") {
-  const alert = document.getElementById("alert");
-  const alertTitle = document.getElementById("alert-title");
-  const alertMessage = document.getElementById("alert-message");
-  const alertIcon = alert.querySelector(".alert-icon");
-
-  alertTitle.textContent = title;
-  alertMessage.textContent = message;
-
-  // Remove all type classes and add the correct one
-  alert.classList.remove(
-    "alert-error",
-    "alert-success",
-    "alert-info",
-    "alert-warning"
-  );
-  alert.classList.add(`alert-${type}`);
-
-  // Update icon based on type
-  const icons = {
-    error: "⚠️",
-    success: "✅",
-    info: "ℹ️",
-    warning: "⚡",
-  };
-  alertIcon.textContent = icons[type] || icons.error;
-
-  alert.classList.add("show");
-}
-
-function hideAlert() {
-  document.getElementById("alert").classList.remove("show");
-}
-
-function updateProgress(percent, status) {
-  const container = document.getElementById("progressContainer");
-  const track = document.getElementById("progressTrack");
-  const percentEl = document.getElementById("progressPercent");
-  const statusEl = document.getElementById("progressStatus");
-
-  container.classList.add("show");
-
-  const filled = Math.floor(percent / 4);
-  const empty = 25 - filled;
-  track.textContent = "[" + "#".repeat(filled) + ".".repeat(empty) + "]";
-
-  percentEl.textContent = percent + "%";
-  statusEl.textContent = status;
-}
-
-function hideProgress() {
-  document.getElementById("progressContainer").classList.remove("show");
-}
 
 function showShareLink(link) {
   const container = document.querySelector('.container[data-state]');
@@ -249,14 +168,6 @@ function copyLink() {
         btn.innerHTML = "<span>📋</span> Copy";
       }, 2000);
     });
-}
-
-function formatFileSize(bytes) {
-  if (bytes < 1024) return bytes + " B";
-  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
-  if (bytes < 1024 * 1024 * 1024)
-    return (bytes / (1024 * 1024)).toFixed(2) + " MB";
-  return (bytes / (1024 * 1024 * 1024)).toFixed(2) + " GB";
 }
 
 function clearFile() {
@@ -547,12 +458,6 @@ async function importContactFromFile() {
   };
 
   input.click();
-}
-
-function escapeHtml(text) {
-  const div = document.createElement("div");
-  div.textContent = text;
-  return div.innerHTML;
 }
 
 // =============================================================================
@@ -1190,3 +1095,25 @@ function updateSecurityWarning(hasLinkKey) {
     `;
   }
 }
+
+// =============================================================================
+// Global Function Exports (for onclick handlers in HTML)
+// =============================================================================
+
+// Make functions available globally for HTML onclick handlers
+window.processFile = processFile;
+window.copyLink = copyLink;
+window.clearFile = clearFile;
+window.resetToUpload = resetToUpload;
+window.hideAlert = hideAlert;
+window.createIdentity = createIdentity;
+window.exportIdentity = exportIdentity;
+window.copyPublicKey = copyPublicKey;
+window.importContact = importContact;
+window.importContactFromFile = importContactFromFile;
+window.toggleRecipient = toggleRecipient;
+window.removeContactUI = removeContactUI;
+window.validateAccessConfig = validateAccessConfig;
+window.showOverwriteModal = showOverwriteModal;
+window.hideOverwriteModal = hideOverwriteModal;
+window.confirmNewUpload = confirmNewUpload;

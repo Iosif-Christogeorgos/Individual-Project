@@ -1,10 +1,14 @@
 // =============================================================================
-// CrypShare - Download & Decryption Module (Hybrid E2EE)
+// CrypShare - Download & Decryption Module (ES Module - Hybrid E2EE)
 // =============================================================================
 // Supports both:
 // 1. Link-based access - AES key from URL fragment
 // 2. Identity-based access - Decrypt AES key using user's private key
 // =============================================================================
+
+import CryptoModule from './crypto.js';
+import IdentityManager from './identity.js';
+import { showAlert, hideAlert, escapeHtml, updateStep } from './ui-utils.js';
 
 let currentIdentity = null;
 let fileMetadata = null;
@@ -97,7 +101,6 @@ async function fetchMetadata(fileId) {
       const data = await response.json();
       if (data) {
         fileMetadata = data;
-// [Deleted console.log]
       } else {
         // Server returned null - no metadata exists (normal for link-only uploads)
         fileMetadata = null;
@@ -116,11 +119,6 @@ async function loadUserIdentity(retryCount = 0) {
   const MAX_RETRIES = 2;
 
   try {
-    if (typeof IdentityManager === "undefined") {
-      currentIdentity = null;
-      return;
-    }
-
     const hasIdentity = await IdentityManager.hasIdentity();
 
     if (hasIdentity) {
@@ -324,13 +322,6 @@ function showDownloadReady(accessMode) {
   }
 }
 
-function escapeHtml(text) {
-  if (!text) return "";
-  const div = document.createElement("div");
-  div.textContent = text;
-  return div.innerHTML;
-}
-
 /**
  * Show the signature verification step in the UI.
  */
@@ -344,85 +335,10 @@ function showSignatureStep() {
 // Run validation when page loads
 // Use a more robust initialization that ensures all modules are ready
 async function initializeDownloadPage() {
-  // Wait for all required modules to be available
-  const checkModules = () => {
-    return (
-      typeof CryptoModule !== "undefined" &&
-      typeof IdentityManager !== "undefined"
-    );
-  };
-
-  // If modules aren't ready, wait a bit
-  if (!checkModules()) {
-    await new Promise((resolve) => setTimeout(resolve, 50));
-    if (!checkModules()) {
-      console.error("Required modules not available");
-    }
-  }
-
   await validateDownloadLink();
 }
 
 document.addEventListener("DOMContentLoaded", initializeDownloadPage);
-
-// =============================================================================
-// UI Helper Functions
-// =============================================================================
-
-function showAlert(title, message, type = "error") {
-  const alert = document.getElementById("alert");
-  const alertTitle = document.getElementById("alert-title");
-  const alertMessage = document.getElementById("alert-message");
-  const alertIcon = document.getElementById("alert-icon");
-
-  // Set icon based on type
-  const icons = { error: "⚠️", success: "✅", info: "ℹ️", warning: "⚡" };
-  if (alertIcon) {
-    alertIcon.textContent = icons[type] || icons.error;
-  }
-
-  // Update alert styling based on type
-  alert.classList.remove(
-    "alert-error",
-    "alert-success",
-    "alert-info",
-    "alert-warning"
-  );
-  alert.classList.add(`alert-${type}`);
-
-  alertTitle.textContent = title;
-  alertMessage.textContent = message;
-  alert.classList.add("show");
-}
-
-function hideAlert() {
-  document.getElementById("alert").classList.remove("show");
-}
-
-function updateStep(stepId, status) {
-  const step = document.getElementById(stepId);
-  if (!step) return;
-
-  const icon = step.querySelector(".status-icon");
-
-  step.classList.remove("pending", "complete", "error");
-  step.classList.add(status);
-
-  if (status === "complete") {
-    icon.textContent = "✓";
-  } else if (status === "error") {
-    icon.textContent = "✗";
-  } else {
-    icon.textContent = "○";
-  }
-}
-
-function showStatus() {
-  const container = document.getElementById("statusContainer");
-  if (container) {
-    container.style.display = "block";
-  }
-}
 
 // =============================================================================
 // Main Download & Decryption Process
@@ -570,9 +486,6 @@ async function startDownload() {
       updateStep("step1", "complete");
 
       // Verify format and decrypt
-      // The previous code used decryptFileAuto.
-      // We will replace it with decryptFileChunked.
-
       try {
         decryptedResult = await CryptoModule.decryptFileChunked(
           encryptedBlob,
@@ -652,8 +565,6 @@ async function startDownload() {
             "File integrity check failed. The file may have been tampered with.",
             "warning"
           );
-        } else {
-// Integrity verified
         }
       } catch (hashError) {
         console.error("Hash verification error:", hashError);
@@ -696,6 +607,13 @@ async function startDownload() {
   }
 }
 
+function showStatus() {
+  const container = document.getElementById("statusContainer");
+  if (container) {
+    container.style.display = "block";
+  }
+}
+
 // =============================================================================
 // Signature Verification UI
 // =============================================================================
@@ -725,3 +643,10 @@ function showSignatureWarning() {
   `;
   infoEl.classList.add("show", "warning");
 }
+
+// =============================================================================
+// Global Function Exports (for onclick handlers in HTML)
+// =============================================================================
+
+window.startDownload = startDownload;
+window.hideAlert = hideAlert;

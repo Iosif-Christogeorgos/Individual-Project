@@ -2020,3 +2020,159 @@ input[type="checkbox"] {
   stroke-linecap: round;
   stroke-linejoin: round;
 }
+
+/* -----------------------------------------------------------------------------
+   Download Page - Access Mode Indicator
+   ----------------------------------------------------------------------------- */
+
+.access-mode-indicator {
+  display: none;
+  margin-bottom: 1rem;
+}
+
+.access-mode-indicator.show {
+  display: block;
+}
+
+.access-mode-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 1rem;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--glass-border);
+}
+
+.access-mode-card.access-link {
+  border-color: rgba(0, 212, 255, 0.3);
+  background: rgba(0, 212, 255, 0.05);
+}
+
+.access-mode-card.access-identity {
+  border-color: rgba(0, 255, 65, 0.3);
+  background: rgba(0, 255, 65, 0.05);
+}
+
+.access-details {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.access-label {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.access-mode-card.access-link .access-label {
+  color: var(--accent-blue);
+}
+
+.access-mode-card.access-identity .access-label {
+  color: var(--cyber-green);
+}
+
+.access-user {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+/* -----------------------------------------------------------------------------
+   Download Page - Signature Info
+   ----------------------------------------------------------------------------- */
+
+.signature-info {
+  display: none;
+  margin-bottom: 1rem;
+}
+
+.signature-info.show {
+  display: block;
+}
+
+.signature-info-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0.875rem 1rem;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--glass-border);
+}
+
+.signature-info-card.signed {
+  border-color: rgba(0, 255, 65, 0.25);
+  background: rgba(0, 255, 65, 0.03);
+}
+
+.signature-info-card.unsigned {
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.sig-details {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.sig-label {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.signature-info-card.signed .sig-label {
+  color: var(--cyber-green);
+}
+
+.sig-signer {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+/* -----------------------------------------------------------------------------
+   Download Page - Signature Verification Result
+   ----------------------------------------------------------------------------- */
+
+.signature-verification {
+  display: none;
+  margin-top: 1rem;
+}
+
+.signature-verification.show {
+  display: block;
+}
+
+.signature-verified,
+.signature-warning {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+}
+
+.signature-verified {
+  background: rgba(0, 255, 65, 0.08);
+  border: 1px solid rgba(0, 255, 65, 0.25);
+  color: var(--cyber-green);
+}
+
+.signature-warning {
+  background: rgba(255, 149, 0, 0.08);
+  border: 1px solid rgba(255, 149, 0, 0.25);
+  color: var(--warning);
+}
+
+.signature-verification .sig-icon {
+  font-size: 1rem;
+}
+
