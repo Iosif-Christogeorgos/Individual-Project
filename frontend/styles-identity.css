@@ -498,11 +498,24 @@ textarea.panel-input {
 .access-mode-card {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 0.75rem 1rem;
+  gap: 14px;
+  padding: 1rem;
   border-radius: var(--radius);
   font-family: var(--font-mono);
   margin-bottom: 0.75rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--glass-border);
+  text-align: left;
+}
+
+.access-mode-card.access-identity {
+  background: rgba(0, 255, 65, 0.08);
+  border-color: rgba(0, 255, 65, 0.2);
+}
+
+.access-mode-card.access-link {
+  background: rgba(0, 212, 255, 0.08);
+  border-color: rgba(0, 212, 255, 0.2);
 }
 
 .access-mode-card .access-icon {
@@ -512,28 +525,25 @@ textarea.panel-input {
 .access-mode-card .access-details {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
 }
 
 .access-mode-card .access-label {
   font-size: 0.85rem;
   font-weight: 600;
+  color: var(--text-primary);
 }
 
 .access-mode-card .access-user {
   font-size: 0.7rem;
-  opacity: 0.8;
+  color: var(--text-muted);
 }
 
-.access-mode-card.access-link {
-  background: rgba(0, 212, 255, 0.1);
-  border: 1px solid rgba(0, 212, 255, 0.3);
-  color: var(--cyber-blue);
+.access-mode-card.access-link .access-label {
+  color: var(--accent-blue);
 }
 
-.access-mode-card.access-identity {
-  background: rgba(0, 255, 65, 0.1);
-  border: 1px solid rgba(0, 255, 65, 0.3);
+.access-mode-card.access-identity .access-label {
   color: var(--cyber-green);
 }
 
@@ -543,11 +553,24 @@ textarea.panel-input {
 .signature-info-card {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 0.6rem 1rem;
+  gap: 14px;
+  padding: 1rem;
   border-radius: var(--radius);
   font-family: var(--font-mono);
   margin-bottom: 0.75rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--glass-border);
+  text-align: left;
+}
+
+.signature-info-card.signed {
+  background: rgba(0, 212, 255, 0.08);
+  border-color: rgba(0, 212, 255, 0.2);
+}
+
+.signature-info-card.unsigned {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: var(--glass-border);
 }
 
 .signature-info-card .sig-icon {
@@ -557,28 +580,27 @@ textarea.panel-input {
 .signature-info-card .sig-details {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
 }
 
 .signature-info-card .sig-label {
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   font-weight: 600;
+  line-height: 1.2;
+  color: var(--text-primary);
 }
 
 .signature-info-card .sig-signer {
-  font-size: 0.65rem;
-  opacity: 0.8;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  line-height: 1.2;
 }
 
-.signature-info-card.signed {
-  background: rgba(0, 255, 65, 0.1);
-  border: 1px solid rgba(0, 255, 65, 0.3);
-  color: var(--cyber-green);
+.signature-info-card.signed .sig-label {
+  color: var(--accent-blue);
 }
 
-.signature-info-card.unsigned {
-  background: rgba(100, 100, 100, 0.1);
-  border: 1px solid rgba(100, 100, 100, 0.3);
+.signature-info-card.unsigned .sig-label {
   color: var(--text-muted);
 }
 

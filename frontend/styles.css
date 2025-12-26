@@ -1696,14 +1696,10 @@ input[type="checkbox"] {
 
 /* Access Mode Indicator */
 .access-mode-indicator {
-  padding: 0.75rem 1rem;
+.access-mode-indicator {
   margin-bottom: 1rem;
-  background: rgba(0, 255, 65, 0.08);
-  border: 1px solid rgba(0, 255, 65, 0.2);
-  border-radius: var(--radius-sm);
-  font-family: var(--font-mono);
-  font-size: 0.8rem;
-  color: var(--cyber-green);
+  /* Visuals moved to inner .access-mode-card to prevent double-boxing */
+}
 }
 
 .access-mode-indicator:empty {
@@ -1712,14 +1708,10 @@ input[type="checkbox"] {
 
 /* Signature Info */
 .signature-info {
-  padding: 0.75rem 1rem;
+.signature-info {
   margin-bottom: 1rem;
-  background: rgba(0, 212, 255, 0.08);
-  border: 1px solid rgba(0, 212, 255, 0.2);
-  border-radius: var(--radius-sm);
-  font-family: var(--font-mono);
-  font-size: 0.8rem;
-  color: var(--accent-blue);
+  /* Visuals moved to inner .signature-info-card to prevent double-boxing */
+}
 }
 
 .signature-info:empty {
@@ -1932,4 +1924,99 @@ input[type="checkbox"] {
 
 .toast-close:hover {
   color: var(--text-primary);
+}
+
+/* -----------------------------------------------------------------------------
+   Download Page Custom Icons
+   ----------------------------------------------------------------------------- */
+
+/* Hero Download Icon */
+.download-hero-icon {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, rgba(0, 212, 255, 0.15), rgba(0, 255, 65, 0.15));
+  border: 2px solid rgba(0, 212, 255, 0.4);
+  border-radius: 12px;
+  position: relative;
+}
+
+.download-hero-icon::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border: 1px solid rgba(0, 212, 255, 0.2);
+  border-radius: 16px;
+}
+
+.download-hero-icon svg {
+  width: 28px;
+  height: 28px;
+  color: var(--accent-blue);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Button Icon */
+.btn-icon {
+  width: 18px;
+  height: 18px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex-shrink: 0;
+}
+
+/* Access Mode Icon Badges */
+.access-icon-badge {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.access-icon-badge.identity svg {
+  width: 24px;
+  height: 24px;
+  color: var(--cyber-green);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.access-icon-badge.link svg {
+  width: 24px;
+  height: 24px;
+  color: var(--accent-blue);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Signature Icon Badges */
+.sig-icon-badge {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sig-icon-badge.signed svg {
+  width: 24px;
+  height: 24px;
+  color: var(--cyber-green);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.sig-icon-badge.unsigned svg {
+  width: 20px;
+  height: 20px;
+  color: var(--text-muted);
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
