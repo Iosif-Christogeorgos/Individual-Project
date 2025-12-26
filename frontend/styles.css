@@ -1322,7 +1322,7 @@ input[type="checkbox"] {
 
 /* Contacts List */
 .contacts-list {
-  max-height: 180px;
+  max-height: 55%;
   overflow-y: auto;
   background: rgba(0, 0, 0, 0.3);
   border: 1px solid rgba(255, 255, 255, 0.05);
