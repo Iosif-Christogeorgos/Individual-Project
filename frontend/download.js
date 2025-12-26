@@ -246,7 +246,11 @@ function showDownloadReady(accessMode) {
     if (accessMode === "identity") {
       accessModeEl.innerHTML = `
         <div class="access-mode-card access-identity">
-          <span class="access-icon">🔑</span>
+          <div class="access-icon-badge identity">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
+            </svg>
+          </div>
           <div class="access-details">
             <span class="access-label">Identity-Based Access</span>
             <span class="access-user">Decrypting as: ${escapeHtml(
@@ -259,7 +263,12 @@ function showDownloadReady(accessMode) {
     } else {
       accessModeEl.innerHTML = `
         <div class="access-mode-card access-link">
-          <span class="access-icon">🔗</span>
+          <div class="access-icon-badge link">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+            </svg>
+          </div>
           <div class="access-details">
             <span class="access-label">Link-Based Access</span>
             <span class="access-user">Decryption key included in URL</span>
@@ -281,7 +290,11 @@ function showDownloadReady(accessMode) {
 
     signatureInfo.innerHTML = `
       <div class="signature-info-card signed">
-        <span class="sig-icon">✍️</span>
+        <div class="sig-icon-badge signed">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M20 6L9 17l-5-5"/>
+          </svg>
+        </div>
         <div class="sig-details">
           <span class="sig-label">Digitally Signed</span>
           <span class="sig-signer">By: ${escapeHtml(signerName)} ${
@@ -294,7 +307,13 @@ function showDownloadReady(accessMode) {
   } else if (signatureInfo) {
     signatureInfo.innerHTML = `
       <div class="signature-info-card unsigned">
-        <span class="sig-icon">📝</span>
+        <div class="sig-icon-badge unsigned">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 19l7-7 3 3-7 7-3-3z"/>
+            <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/>
+            <path d="M2 2l7.586 7.586"/>
+          </svg>
+        </div>
         <div class="sig-details">
           <span class="sig-label">Not Signed</span>
           <span class="sig-signer">Uploader identity not verified</span>
