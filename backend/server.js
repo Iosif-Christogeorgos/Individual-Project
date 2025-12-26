@@ -227,7 +227,7 @@ app.post("/upload", upload.single("encryptedFile"), (req, res) => {
     }
 
     const fileId = req.file.filename;
-    console.log(`✅ File uploaded: ${fileId} (${req.file.size} bytes)`);
+    // [Log removed]
 
     res.status(201).json({
       success: true,
@@ -277,9 +277,6 @@ app.post("/upload-stream", (req, res) => {
 
     // Handle successful completion
     writeStream.on("finish", () => {
-      console.log(
-        `✅ Stream upload complete: ${filename} (${bytesReceived} bytes)`
-      );
       res.status(201).json({
         success: true,
         fileId: filename,
@@ -478,8 +475,6 @@ app.post("/metadata/:fileId", (req, res) => {
 
     fs.writeFileSync(metadataPath, JSON.stringify(metadata, null, 2));
 
-    console.log(`📋 Metadata stored for: ${fileId}`);
-
     res.status(201).json({
       success: true,
       message: "Metadata stored successfully.",
@@ -526,12 +521,9 @@ app.get("/metadata/:fileId", (req, res) => {
     } catch (parseError) {
       console.error("❌ Metadata parse error:", parseError);
       return res.status(500).json({
-        success: false,
         error: "Metadata file is corrupted.",
       });
     }
-
-    console.log(`📋 Metadata retrieved for: ${fileId}`);
 
     res.json(metadata);
   } catch (error) {
@@ -584,8 +576,6 @@ app.post("/pubkey", (req, res) => {
 
     const pubkeyPath = path.join(PUBKEYS_DIR, `${id}.json`);
     fs.writeFileSync(pubkeyPath, JSON.stringify(pubkeyData, null, 2));
-
-    console.log(`🔑 Public key registered: ${id}`);
 
     res.status(201).json({
       success: true,

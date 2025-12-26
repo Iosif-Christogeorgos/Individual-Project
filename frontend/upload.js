@@ -746,11 +746,6 @@ async function executeUpload() {
       file.size > STREAMING_THRESHOLD && CryptoModule.supportsStreamingUpload();
 
     if (useStreaming) {
-      console.log(
-        `📤 Using STREAMING upload for ${(file.size / (1024 * 1024)).toFixed(
-          1
-        )}MB file`
-      );
       try {
         await executeStreamingUpload(file, enableSigning, includeLinkKey);
       } catch (streamError) {
@@ -759,11 +754,7 @@ async function executeUpload() {
         const isHttp2Issue =
           streamError.message.includes("Failed to fetch") ||
           streamError.message.includes("ALPN");
-        if (isHttp2Issue) {
-          console.info(
-            "ℹ️ Streaming requires HTTP/2. Falling back to buffered upload (normal for localhost)."
-          );
-        } else {
+        if (!isHttp2Issue) {
           console.warn(
             "⚠️ Streaming upload failed, falling back to buffered:",
             streamError.message
@@ -772,11 +763,6 @@ async function executeUpload() {
         await executeBufferedUpload(file, enableSigning, includeLinkKey);
       }
     } else {
-      console.log(
-        `📤 Using BUFFERED upload for ${(file.size / (1024 * 1024)).toFixed(
-          1
-        )}MB file`
-      );
       await executeBufferedUpload(file, enableSigning, includeLinkKey);
     }
   } catch (error) {
@@ -805,7 +791,7 @@ async function executeStreamingUpload(file, enableSigning, includeLinkKey) {
 
   // Step 2: Hash file using streaming (memory-efficient)
   updateProgress(10, "Computing file hash (streaming)...");
-  const originalFileHash = await CryptoModule.hashFileStreaming(
+  const originalFileHash = await CryptoModule.hashFile(
     file,
     (hashProgress) => {
       const overallProgress = 10 + Math.round(hashProgress * 0.15);

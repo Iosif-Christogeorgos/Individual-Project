@@ -97,7 +97,7 @@ async function fetchMetadata(fileId) {
       const data = await response.json();
       if (data) {
         fileMetadata = data;
-        console.log("📋 Metadata loaded:", fileMetadata);
+// [Deleted console.log]
       } else {
         // Server returned null - no metadata exists (normal for link-only uploads)
         fileMetadata = null;
@@ -107,7 +107,7 @@ async function fetchMetadata(fileId) {
       fileMetadata = null;
     }
   } catch (error) {
-    console.log("No metadata available:", error.message);
+    console.debug("No metadata available:", error.message);
     fileMetadata = null;
   }
 }
@@ -529,19 +529,12 @@ async function startDownload() {
 
     // Step 3: Download and decrypt
     let decryptedResult;
-    const downloadUrl = `/download/${encodeURIComponent(fileId)}`;
 
     if (useStreaming) {
       // Memory-efficient streaming download for large files
-      console.log(
-        `⬇️ Using STREAMING download for ${(
-          contentLength /
-          (1024 * 1024)
-        ).toFixed(1)}MB file`
-      );
 
       decryptedResult = await CryptoModule.downloadAndDecryptStreaming(
-        downloadUrl,
+        `/download/${encodeURIComponent(fileId)}`,
         key,
         (downloadProgress) => {
           // Download progress (step 1)
@@ -562,12 +555,6 @@ async function startDownload() {
       updateStep("step3", "complete");
     } else {
       // Buffered download for small files (original approach)
-      console.log(
-        `⬇️ Using BUFFERED download for ${(
-          contentLength /
-          (1024 * 1024)
-        ).toFixed(1)}MB file`
-      );
       const response = await fetch(downloadUrl);
 
       if (!response.ok) {
@@ -666,7 +653,7 @@ async function startDownload() {
             "warning"
           );
         } else {
-          console.log("✅ File integrity verified successfully");
+// Integrity verified
         }
       } catch (hashError) {
         console.error("Hash verification error:", hashError);
@@ -713,7 +700,7 @@ async function startDownload() {
 // Signature Verification UI
 // =============================================================================
 
-function showSignatureVerified(metadata) {
+function showSignatureVerified() {
   const infoEl = document.getElementById("signatureVerification");
   if (!infoEl) return;
 
