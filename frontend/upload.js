@@ -1,112 +1,34 @@
 // =============================================================================
 // CrypShare - Upload & Encryption Module (ES Module - Hybrid E2EE)
 // =============================================================================
-// Supports both:
-// 1. Link-based access (existing) - AES key in URL fragment
-// 2. Identity-based access (new) - AES key encrypted with recipient public keys
+// Main orchestration module for file encryption and upload.
+// Delegates to specialized modules for specific concerns:
+// - expiry.js: Countdown timer and expiry selection
+// - recipients.js: Contact/recipient management  
+// - file-handler.js: File selection and drag/drop
 // =============================================================================
 
 import CryptoModule from './crypto.js';
 import IdentityManager from './identity.js';
-import { showAlert, hideAlert, showToast, formatFileSize, escapeHtml, updateProgress, hideProgress } from './ui-utils.js';
-
-const MAX_FILE_SIZE = 1024 * 1024 * 1024; // 1GB
+import { showAlert, hideAlert, showToast, escapeHtml, updateProgress, hideProgress } from './ui-utils.js';
+import { getSelectedExpiryHours, updateExpiryNotice, startCountdownTimer } from './expiry.js';
+import { 
+  getSelectedRecipients, 
+  clearSelectedRecipients, 
+  loadContacts, 
+  toggleRecipient as toggleRecipientBase,
+  updateRecipientCount,
+  removeContactUI as removeContactUIBase,
+  importContact,
+  importContactFromFile
+} from './recipients.js';
+import { initializeFileHandler, clearFile, getSelectedFile, getMaxFileSize } from './file-handler.js';
 
 // State tracking
 let hasActiveLink = false;
 let overwriteWarningShown = false;
 let linkCopied = false;
 let currentIdentity = null;
-let selectedRecipients = [];
-let currentExpiresAt = null; // Timestamp when file expires
-let countdownInterval = null; // For countdown timer
-
-// =============================================================================
-// Expiry Helper Functions
-// =============================================================================
-
-function getSelectedExpiryHours() {
-  const select = document.getElementById("expirySelect");
-  return parseInt(select?.value || "24", 10);
-}
-
-function updateExpiryNotice() {
-  const expiryTimeEl = document.getElementById("expiryNoticeTime");
-  const hours = getSelectedExpiryHours();
-  
-  if (expiryTimeEl) {
-    if (hours < 24) {
-      expiryTimeEl.textContent = `${hours} hour${hours > 1 ? 's' : ''}`;
-    } else {
-      const days = hours / 24;
-      expiryTimeEl.textContent = `${days} day${days > 1 ? 's' : ''}`;
-    }
-  }
-}
-
-function formatCountdown(ms) {
-  if (ms <= 0) return "Expired";
-  
-  const seconds = Math.floor((ms / 1000) % 60);
-  const minutes = Math.floor((ms / (1000 * 60)) % 60);
-  const hours = Math.floor((ms / (1000 * 60 * 60)) % 24);
-  const days = Math.floor(ms / (1000 * 60 * 60 * 24));
-  
-  if (days > 0) {
-    return `${days}d ${hours}h ${minutes}m`;
-  }
-  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-}
-
-function startCountdownTimer(expiresAt) {
-  currentExpiresAt = expiresAt;
-  const totalDuration = expiresAt - Date.now(); // Total time from now to expiry
-  
-  // Clear any existing interval
-  if (countdownInterval) {
-    clearInterval(countdownInterval);
-  }
-  
-  const timerEl = document.getElementById("countdownTimer");
-  const sandTop = document.querySelector(".sand-top");
-  const sandBottom = document.querySelector(".sand-bottom");
-  const sandStream = document.querySelector(".sand-stream");
-  
-  if (!timerEl) return;
-  
-  function updateTimer() {
-    const remaining = currentExpiresAt - Date.now();
-    timerEl.textContent = formatCountdown(remaining);
-    
-    // Calculate progress (0 = full, 1 = empty)
-    const progress = Math.max(0, Math.min(1, 1 - (remaining / totalDuration)));
-    
-    // Animate sand elements if they exist
-    if (sandTop && sandBottom) {
-      // Top sand shrinks (scale from 1 to 0)
-      const topScale = 1 - progress;
-      sandTop.style.transform = `scaleY(${topScale})`;
-      sandTop.style.opacity = topScale > 0.1 ? 1 : 0;
-      
-      // Bottom sand grows (opacity from 0 to 1)
-      sandBottom.style.opacity = progress;
-      
-      // Hide stream when empty or full
-      if (sandStream) {
-        sandStream.style.opacity = (progress > 0.02 && progress < 0.98) ? 1 : 0;
-      }
-    }
-    
-    if (remaining <= 0) {
-      clearInterval(countdownInterval);
-      timerEl.classList.add("expired");
-      if (sandStream) sandStream.style.opacity = 0;
-    }
-  }
-  
-  updateTimer(); // Initial update
-  countdownInterval = setInterval(updateTimer, 1000);
-}
 
 // =============================================================================
 // Access Configuration Validation
@@ -125,12 +47,12 @@ function validateAccessConfig() {
     return { valid: true, canUpload: true };
 
   const includeLinkKey = includeLinkKeyCheckbox.checked;
+  const selectedRecipients = getSelectedRecipients();
 
   let isValid = true;
   let canUpload = true;
-  let warningType = "error"; // "error" or "warning"
+  let warningType = "error";
 
-  // Check 1: No decryption method at all (BLOCKING)
   if (!includeLinkKey && selectedRecipients.length === 0) {
     isValid = false;
     canUpload = false;
@@ -138,18 +60,15 @@ function validateAccessConfig() {
     warningMessage.textContent =
       "Enable 'Include key in link' OR select at least one recipient. Without either, no one can decrypt the file.";
     warningType = "error";
-  }
-  // Check 2: Signing enabled but no identity (WARNING only)
-  else if (enableSigning && !currentIdentity) {
+  } else if (enableSigning && !currentIdentity) {
     isValid = false;
-    canUpload = true; // Still allow upload, just warn
+    canUpload = true;
     warningTitle.textContent = "Cannot Sign File";
     warningMessage.textContent =
       "You enabled signing but have no identity. Create an identity first, or disable signing to continue.";
     warningType = "warning";
   }
 
-  // Update UI
   if (!isValid) {
     warningEl.classList.add("show");
     warningEl.classList.toggle("warning", warningType === "warning");
@@ -157,13 +76,8 @@ function validateAccessConfig() {
     warningEl.classList.remove("show", "warning");
   }
 
-  // Enable/disable upload button
   uploadBtn.disabled = !canUpload;
-  if (!canUpload) {
-    uploadBtn.classList.add("disabled");
-  } else {
-    uploadBtn.classList.remove("disabled");
-  }
+  uploadBtn.classList.toggle("disabled", !canUpload);
 
   return { valid: isValid, canUpload: canUpload };
 }
@@ -179,10 +93,9 @@ function updateLinkKeyState() {
 
   if (!includeLinkKeyCheckbox) return;
 
-  const hasRecipients = selectedRecipients.length > 0;
+  const hasRecipients = getSelectedRecipients().length > 0;
 
   if (hasRecipients) {
-    // RULE 1: Disable and uncheck "Include key in link" when recipients selected
     if (includeLinkKeyCheckbox.checked) {
       includeLinkKeyCheckbox.checked = false;
       showToast("Public link disabled for secure recipient delivery 🛡️");
@@ -194,35 +107,38 @@ function updateLinkKeyState() {
         "Disabled — file encrypted for specific recipients";
     }
   } else {
-    // RULE 2: Re-enable and check "Include key in link" when no recipients
     includeLinkKeyCheckbox.disabled = false;
     linkKeyLabel?.classList.remove("disabled");
     if (linkKeyDesc) {
       linkKeyDesc.textContent =
         "Anyone with the link can decrypt (default behavior)";
     }
-    // Reset to default (checked) only if it was disabled before
     if (!includeLinkKeyCheckbox.checked) {
       includeLinkKeyCheckbox.checked = true;
     }
   }
 
-  // Always revalidate after state change
   validateAccessConfig();
 }
 
+// Wrappers for recipient functions that also update link key state
+function toggleRecipient(contactId, selected) {
+  toggleRecipientBase(contactId, selected, updateLinkKeyState);
+}
+
+function removeContactUI(contactId) {
+  removeContactUIBase(contactId, updateLinkKeyState);
+}
+
 // =============================================================================
-// UI Helper Functions (Page-Specific)
+// UI Helper Functions
 // =============================================================================
 
 function showShareLink(link) {
   const container = document.querySelector('.container[data-state]');
   const input = document.getElementById("shareLink");
 
-  // Set the link value
   input.value = link;
-  
-  // Transition to success state
   container.setAttribute('data-state', 'success');
 
   hasActiveLink = true;
@@ -259,34 +175,16 @@ function copyLink() {
     });
 }
 
-function clearFile() {
-  const fileInput = document.getElementById("fileInput");
-  const fileSelected = document.getElementById("fileSelected");
-
-  fileInput.value = "";
-  fileSelected.classList.remove("show");
-  document.getElementById("dropZone").classList.remove("hidden");
-}
-
-/**
- * Reset to upload state (back action from success view).
- * Transitions the container back and clears form state.
- */
 function resetToUpload() {
   const container = document.querySelector('.container[data-state]');
   
-  // Transition back to upload state
   container.setAttribute('data-state', 'upload');
-  
-  // Reset file selection
   clearFile();
   
-  // Reset state flags
   hasActiveLink = false;
   overwriteWarningShown = false;
   linkCopied = false;
   
-  // Reset UI elements
   const uploadStatusBadges = document.getElementById("uploadStatusBadges");
   const shareModeInfo = document.getElementById("shareModeInfo");
   const signatureStatusInfo = document.getElementById("signatureStatusInfo");
@@ -295,14 +193,9 @@ function resetToUpload() {
     uploadStatusBadges.classList.remove("show");
     uploadStatusBadges.innerHTML = "";
   }
-  if (shareModeInfo) {
-    shareModeInfo.classList.remove("show");
-  }
-  if (signatureStatusInfo) {
-    signatureStatusInfo.classList.remove("show");
-  }
+  if (shareModeInfo) shareModeInfo.classList.remove("show");
+  if (signatureStatusInfo) signatureStatusInfo.classList.remove("show");
   
-  // Reset copy button
   const copyBtn = document.getElementById("copyBtn");
   if (copyBtn) {
     copyBtn.classList.remove("copied");
@@ -338,11 +231,9 @@ function updateIdentityUI() {
     hasIdentitySection?.classList.remove("hidden");
     headerFingerprint?.classList.remove("hidden");
 
-    // Update header with identity name
     if (headerIdentityName) {
       headerIdentityName.textContent = currentIdentity.displayName || "IDENTITY";
     }
-    // Update fingerprint below header
     if (identityFingerprint) {
       identityFingerprint.textContent =
         IdentityManager.getShortFingerprint(currentIdentity);
@@ -352,7 +243,6 @@ function updateIdentityUI() {
     hasIdentitySection?.classList.add("hidden");
     headerFingerprint?.classList.add("hidden");
     
-    // Reset header to default
     if (headerIdentityName) {
       headerIdentityName.textContent = "IDENTITY";
     }
@@ -366,7 +256,7 @@ async function createIdentity() {
   try {
     currentIdentity = await IdentityManager.generateIdentity(displayName);
     updateIdentityUI();
-    validateAccessConfig(); // Re-validate now that we have an identity
+    validateAccessConfig();
     showToast("Identity created successfully ✓");
   } catch (error) {
     showToast("Failed to create identity ✗");
@@ -403,7 +293,6 @@ async function copyPublicKey() {
 
   try {
     await navigator.clipboard.writeText(publicKeyData);
-    // Inline button feedback
     if (btn) {
       const originalText = btn.innerHTML;
       btn.innerHTML = "✓ Copied";
@@ -416,137 +305,6 @@ async function copyPublicKey() {
   } catch (error) {
     showToast("Failed to copy ✗");
   }
-}
-
-// =============================================================================
-// Recipient Management
-// =============================================================================
-
-async function loadContacts() {
-  const contactsList = document.getElementById("contactsList");
-  if (!contactsList) return;
-
-  try {
-    const contacts = await IdentityManager.getContacts();
-
-    if (contacts.length === 0) {
-      contactsList.innerHTML =
-        '<div class="no-contacts">No contacts added yet</div>';
-      return;
-    }
-
-    contactsList.innerHTML = contacts
-      .map(
-        (contact) => `
-      <div class="contact-item" data-id="${contact.id}">
-        <input type="checkbox" class="contact-checkbox" 
-               onchange="toggleRecipient('${contact.id}', this.checked)">
-        <div class="contact-info">
-          <span class="contact-name">${escapeHtml(contact.displayName)}</span>
-          <span class="contact-fingerprint">${contact.fingerprint
-            .substring(0, 16)
-            .toUpperCase()}</span>
-        </div>
-        <button class="contact-remove" onclick="removeContactUI('${
-          contact.id
-        }')" title="Remove contact">×</button>
-      </div>
-    `
-      )
-      .join("");
-  } catch (error) {
-    console.error("Failed to load contacts:", error);
-  }
-}
-
-function toggleRecipient(contactId, selected) {
-  if (selected) {
-    if (!selectedRecipients.includes(contactId)) {
-      selectedRecipients.push(contactId);
-    }
-  } else {
-    selectedRecipients = selectedRecipients.filter((id) => id !== contactId);
-  }
-  updateRecipientCount();
-  updateLinkKeyState(); // Enforce mutual exclusivity
-}
-
-function updateRecipientCount() {
-  const countEl = document.getElementById("recipientCount");
-  if (countEl) {
-    countEl.textContent =
-      selectedRecipients.length > 0
-        ? `${selectedRecipients.length} recipient(s) selected`
-        : "";
-  }
-}
-
-async function removeContactUI(contactId) {
-  try {
-    await IdentityManager.removeContact(contactId);
-    selectedRecipients = selectedRecipients.filter((id) => id !== contactId);
-    await loadContacts();
-    updateRecipientCount();
-    updateLinkKeyState(); // Enforce mutual exclusivity
-  } catch (error) {
-    showAlert("Error", "Failed to remove contact: " + error.message, "error");
-  }
-}
-
-async function importContact() {
-  const input = document.getElementById("importContactInput");
-  if (!input || !input.value.trim()) {
-    showToast("Please paste a public identity JSON ⚠");
-    return;
-  }
-
-  try {
-    const publicIdentity = JSON.parse(input.value.trim());
-
-    // Validate required fields
-    if (
-      !publicIdentity.id ||
-      !publicIdentity.encryptionPublicKey ||
-      !publicIdentity.signingPublicKey
-    ) {
-      throw new Error("Invalid public identity format");
-    }
-
-    await IdentityManager.addContact(publicIdentity);
-    input.value = "";
-    await loadContacts();
-    showToast(`Added ${publicIdentity.displayName} to contacts ✓`);
-  } catch (error) {
-    showToast("Failed to import contact ✗");
-  }
-}
-
-async function importContactFromFile() {
-  const input = document.createElement("input");
-  input.type = "file";
-  input.accept = ".json";
-
-  input.onchange = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    try {
-      const text = await file.text();
-      const publicIdentity = JSON.parse(text);
-
-      if (!publicIdentity.id || !publicIdentity.encryptionPublicKey) {
-        throw new Error("Invalid public identity format");
-      }
-
-      await IdentityManager.addContact(publicIdentity);
-      await loadContacts();
-      showToast(`Added ${publicIdentity.displayName} to contacts ✓`);
-    } catch (error) {
-      showToast("Failed to import contact ✗");
-    }
-  };
-
-  input.click();
 }
 
 // =============================================================================
@@ -584,48 +342,21 @@ function confirmNewUpload() {
 }
 
 // =============================================================================
-// Drag & Drop Handlers
+// Initialization
 // =============================================================================
 
 document.addEventListener("DOMContentLoaded", () => {
-  const dropZone = document.getElementById("dropZone");
-  const fileInput = document.getElementById("fileInput");
-
   // Initialize identity panel
   initializeIdentityPanel();
   loadContacts();
 
-  // Initial validation check (after a short delay to ensure identity is loaded)
+  // Initialize file handler
+  initializeFileHandler(() => {
+    // Callback when file is selected - validation happens automatically
+  });
+
+  // Initial validation check
   setTimeout(validateAccessConfig, 100);
-
-  // Drag events
-  ["dragenter", "dragover"].forEach((event) => {
-    dropZone.addEventListener(event, (e) => {
-      e.preventDefault();
-      dropZone.classList.add("drag-over");
-    });
-  });
-
-  ["dragleave", "drop"].forEach((event) => {
-    dropZone.addEventListener(event, (e) => {
-      e.preventDefault();
-      dropZone.classList.remove("drag-over");
-    });
-  });
-
-  dropZone.addEventListener("drop", (e) => {
-    const files = e.dataTransfer.files;
-    if (files.length > 0) {
-      fileInput.files = files;
-      handleFileSelect(files[0]);
-    }
-  });
-
-  fileInput.addEventListener("change", (e) => {
-    if (e.target.files.length > 0) {
-      handleFileSelect(e.target.files[0]);
-    }
-  });
   
   // Expiry selector change listener
   const expirySelect = document.getElementById("expirySelect");
@@ -634,48 +365,16 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 });
 
-function handleFileSelect(file) {
-  hideAlert();
-  proceedWithFileSelect(file);
-}
-
-function proceedWithFileSelect(file) {
-  const fileSelected = document.getElementById("fileSelected");
-  const fileName = document.getElementById("fileName");
-  const fileSize = document.getElementById("fileSize");
-
-  if (file.size > MAX_FILE_SIZE) {
-    showAlert(
-      "File Too Large",
-      `Maximum file size is 1GB. Your file is ${formatFileSize(file.size)}.`,
-      "error"
-    );
-    clearFile();
-    return;
-  }
-
-  const fileInput = document.getElementById("fileInput");
-  const dataTransfer = new DataTransfer();
-  dataTransfer.items.add(file);
-  fileInput.files = dataTransfer.files;
-
-  fileName.textContent = file.name;
-  fileSize.textContent = formatFileSize(file.size);
-  fileSelected.classList.add("show");
-  document.getElementById("dropZone").classList.add("hidden");
-}
-
 // =============================================================================
-// Main Encryption & Upload Process (Hybrid E2EE)
+// Main Upload Process
 // =============================================================================
 
 async function processFile() {
-  const fileInput = document.getElementById("fileInput");
   const uploadBtn = document.getElementById("uploadBtn");
+  const file = getSelectedFile();
 
   hideAlert();
 
-  // Validate access configuration before proceeding
   const validation = validateAccessConfig();
   if (!validation.canUpload) {
     showAlert(
@@ -686,7 +385,7 @@ async function processFile() {
     return;
   }
 
-  if (fileInput.files.length === 0) {
+  if (!file) {
     showAlert(
       "No File Selected",
       "Please select a file to encrypt and upload.",
@@ -696,36 +395,33 @@ async function processFile() {
   }
 
   if (hasActiveLink && !overwriteWarningShown && !linkCopied) {
-    showOverwriteModal(fileInput.files[0]);
+    showOverwriteModal(file);
     return;
   }
 
   await executeUpload();
 }
 
-// Threshold for using streaming upload (100MB)
 const STREAMING_THRESHOLD = 100 * 1024 * 1024;
 
 async function executeUpload() {
-  const fileInput = document.getElementById("fileInput");
   const uploadBtn = document.getElementById("uploadBtn");
   const enableSigning =
     document.getElementById("enableSigning")?.checked || false;
   const includeLinkKey =
-    document.getElementById("includeLinkKey")?.checked !== false; // Default true
+    document.getElementById("includeLinkKey")?.checked !== false;
 
-  // Ensure we're in upload state (in case of any edge cases)
   const container = document.querySelector('.container[data-state]');
   if (container) {
     container.setAttribute('data-state', 'upload');
   }
 
-  const file = fileInput.files[0];
+  const file = getSelectedFile();
 
-  if (file.size > MAX_FILE_SIZE) {
+  if (file.size > getMaxFileSize()) {
     showAlert(
       "File Too Large",
-      `Maximum file size is 1GB. Your file is ${formatFileSize(file.size)}.`,
+      `Maximum file size is 1GB.`,
       "error"
     );
     return;
@@ -741,7 +437,6 @@ async function executeUpload() {
       );
     }
 
-    // Decide whether to use streaming based on file size and browser support
     const useStreaming =
       file.size > STREAMING_THRESHOLD && CryptoModule.supportsStreamingUpload();
 
@@ -749,8 +444,6 @@ async function executeUpload() {
       try {
         await executeStreamingUpload(file, enableSigning, includeLinkKey);
       } catch (streamError) {
-        // ERR_ALPN_NEGOTIATION_FAILED = HTTP/2 required but server is HTTP/1.1
-        // This is expected for local development. Streaming works with HTTP/2 in production.
         const isHttp2Issue =
           streamError.message.includes("Failed to fetch") ||
           streamError.message.includes("ALPN");
@@ -778,18 +471,11 @@ async function executeUpload() {
   }
 }
 
-/**
- * Streaming upload for large files (memory-efficient).
- * Uses ReadableStream to encrypt and upload simultaneously,
- * keeping memory usage constant regardless of file size.
- */
 async function executeStreamingUpload(file, enableSigning, includeLinkKey) {
-  // Step 1: Generate AES file key
   updateProgress(5, "Generating encryption key...");
   const aesKey = await CryptoModule.generateAESKey();
   const exportedKey = await CryptoModule.exportAESKey(aesKey);
 
-  // Step 2: Hash file using streaming (memory-efficient)
   updateProgress(10, "Computing file hash (streaming)...");
   const originalFileHash = await CryptoModule.hashFile(
     file,
@@ -799,7 +485,6 @@ async function executeStreamingUpload(file, enableSigning, includeLinkKey) {
     }
   );
 
-  // Step 3: Prepare metadata before upload
   updateProgress(25, "Preparing metadata...");
   const metadata = await prepareMetadata(
     file,
@@ -809,13 +494,11 @@ async function executeStreamingUpload(file, enableSigning, includeLinkKey) {
     includeLinkKey
   );
 
-  // Step 4: Create encrypted stream and upload
   updateProgress(30, "Starting streaming upload...");
   const { stream: encryptedStream } = await CryptoModule.createEncryptedStream(
     file,
     aesKey,
     (encryptProgress) => {
-      // Map encryption progress to 30-90%
       const overallProgress = 30 + Math.round(encryptProgress * 0.6);
       updateProgress(
         overallProgress,
@@ -824,14 +507,13 @@ async function executeStreamingUpload(file, enableSigning, includeLinkKey) {
     }
   );
 
-  // Step 5: Upload using streaming fetch
   const uploadResponse = await fetch("/upload-stream", {
     method: "POST",
     headers: {
       "Content-Type": "application/octet-stream",
     },
     body: encryptedStream,
-    duplex: "half", // Required for streaming upload
+    duplex: "half",
   });
 
   if (!uploadResponse.ok) {
@@ -844,10 +526,8 @@ async function executeStreamingUpload(file, enableSigning, includeLinkKey) {
     throw new Error("Server did not return a file ID.");
   }
 
-  // Step 6: Upload metadata
   await uploadMetadata(serverData.fileId, metadata);
 
-  // Step 7: Generate and show share link
   updateProgress(100, "Complete!");
   const shareLink = generateShareLink(
     serverData.fileId,
@@ -857,17 +537,11 @@ async function executeStreamingUpload(file, enableSigning, includeLinkKey) {
   showUploadSuccess(shareLink, includeLinkKey, enableSigning, metadata.expiresAt);
 }
 
-/**
- * Buffered upload for small files or browsers without streaming support.
- * This is the original implementation.
- */
 async function executeBufferedUpload(file, enableSigning, includeLinkKey) {
-  // Step 1: Generate AES file key
   updateProgress(5, "Generating encryption key...");
   const aesKey = await CryptoModule.generateAESKey();
   const exportedKey = await CryptoModule.exportAESKey(aesKey);
 
-  // Step 2: Encrypt file using chunked encryption
   updateProgress(10, "Encrypting file in chunks...");
   const encryptedBlob = await CryptoModule.encryptFileChunked(
     file,
@@ -878,11 +552,9 @@ async function executeBufferedUpload(file, enableSigning, includeLinkKey) {
     }
   );
 
-  // Step 3: Hash the original file
   updateProgress(55, "Computing file hash...");
   const originalFileHash = await CryptoModule.hashFile(file);
 
-  // Step 4: Prepare metadata
   updateProgress(60, "Preparing metadata...");
   const metadata = await prepareMetadata(
     file,
@@ -892,7 +564,6 @@ async function executeBufferedUpload(file, enableSigning, includeLinkKey) {
     includeLinkKey
   );
 
-  // Step 5: Upload encrypted file
   updateProgress(70, "Uploading encrypted file...");
   const formData = new FormData();
   formData.append("encryptedFile", encryptedBlob, "encrypted.bin");
@@ -912,10 +583,8 @@ async function executeBufferedUpload(file, enableSigning, includeLinkKey) {
     throw new Error("Server did not return a file ID.");
   }
 
-  // Step 6: Upload metadata
   await uploadMetadata(serverData.fileId, metadata);
 
-  // Step 7: Generate and show share link
   updateProgress(100, "Complete!");
   const shareLink = generateShareLink(
     serverData.fileId,
@@ -925,9 +594,6 @@ async function executeBufferedUpload(file, enableSigning, includeLinkKey) {
   showUploadSuccess(shareLink, includeLinkKey, enableSigning, metadata.expiresAt);
 }
 
-/**
- * Prepare file metadata including encrypted keys and signature.
- */
 async function prepareMetadata(
   file,
   contentHash,
@@ -935,9 +601,9 @@ async function prepareMetadata(
   enableSigning,
   includeLinkKey
 ) {
-  // Calculate expiry timestamp
   const expiryHours = getSelectedExpiryHours();
   const expiresAt = Date.now() + (expiryHours * 60 * 60 * 1000);
+  const selectedRecipients = getSelectedRecipients();
   
   const metadata = {
     version: 2,
@@ -945,14 +611,13 @@ async function prepareMetadata(
     size: file.size,
     contentHash: contentHash,
     timestamp: new Date().toISOString(),
-    expiresAt: expiresAt, // Custom expiry timestamp
-    expiryHours: expiryHours, // For display purposes
+    expiresAt: expiresAt,
+    expiryHours: expiryHours,
     accessModes: [],
     encryptedKeys: [],
     signature: null,
   };
 
-  // Encrypt key for selected recipients
   if (selectedRecipients.length > 0) {
     metadata.accessModes.push("identity");
 
@@ -976,12 +641,10 @@ async function prepareMetadata(
     }
   }
 
-  // Add link-based access if enabled
   if (includeLinkKey) {
     metadata.accessModes.push("link");
   }
 
-  // Sign metadata if identity exists and signing is enabled
   if (enableSigning && currentIdentity) {
     const loadedIdentity = await IdentityManager.loadIdentityKeys(
       currentIdentity
@@ -1003,11 +666,7 @@ async function prepareMetadata(
   return metadata;
 }
 
-/**
- * Upload metadata to server.
- */
 async function uploadMetadata(fileId, metadata) {
-  // Always upload metadata if we have custom expiry, recipients, or signature
   const hasCustomExpiry = metadata.expiryHours !== 24;
   const hasRecipients = metadata.encryptedKeys.length > 0;
   const hasSignature = metadata.signature !== null;
@@ -1028,12 +687,9 @@ async function uploadMetadata(fileId, metadata) {
     }
   }
   
-  return metadata; // Return for use in success handler
+  return metadata;
 }
 
-/**
- * Generate share link with or without encryption key.
- */
 function generateShareLink(fileId, keyString, includeLinkKey) {
   if (includeLinkKey) {
     return `${window.location.origin}/download?id=${encodeURIComponent(
@@ -1046,25 +702,21 @@ function generateShareLink(fileId, keyString, includeLinkKey) {
   }
 }
 
-/**
- * Show upload success UI.
- */
 function showUploadSuccess(shareLink, includeLinkKey, enableSigning, expiresAt) {
   setTimeout(() => {
     hideProgress();
     showShareLink(shareLink);
     
-    // Start countdown timer
     if (expiresAt) {
       startCountdownTimer(expiresAt);
     }
     
     showUploadStatusBadges(
       includeLinkKey,
-      selectedRecipients.length,
+      getSelectedRecipients().length,
       enableSigning && currentIdentity
     );
-    showShareModeInfo(includeLinkKey, selectedRecipients.length);
+    showShareModeInfo(includeLinkKey, getSelectedRecipients().length);
     showSignatureStatusInfo(enableSigning, currentIdentity);
     updateSecurityWarning(includeLinkKey);
   }, 500);
@@ -1101,19 +753,16 @@ function showUploadStatusBadges(hasLinkKey, recipientCount, isSigned) {
 
   let badges = [];
 
-  // Encryption badge (always shown)
   badges.push(
     `<span class="status-badge badge-encrypted">🔒 AES-256-GCM Encrypted</span>`
   );
 
-  // Access mode badges
   if (recipientCount > 0) {
     badges.push(
       `<span class="status-badge badge-identity">👤 ${recipientCount} Recipient(s)</span>`
     );
   }
 
-  // Signature badge (only shown here, detailed info shown separately below)
   if (isSigned) {
     badges.push(`<span class="status-badge badge-signed">✍️ Signed</span>`);
   }
@@ -1163,7 +812,6 @@ function showSignatureStatusInfo(enableSigning, identity) {
     `;
     infoEl.classList.add("show");
   } else {
-    // Don't show anything if signing is not enabled - less visual noise
     infoEl.classList.remove("show");
     infoEl.innerHTML = "";
   }
@@ -1214,7 +862,6 @@ function updateSecurityWarning(hasLinkKey) {
 // Global Function Exports (for onclick handlers in HTML)
 // =============================================================================
 
-// Make functions available globally for HTML onclick handlers
 window.processFile = processFile;
 window.copyLink = copyLink;
 window.clearFile = clearFile;
