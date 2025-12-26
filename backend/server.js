@@ -18,6 +18,7 @@ import path from "path";
 import fs from "fs";
 import crypto from "crypto";
 import { fileURLToPath } from "url";
+import rateLimit from "express-rate-limit";
 
 // =============================================================================
 // ESM Fix: Recreate __dirname
@@ -121,7 +122,35 @@ console.log(
 const app = express();
 
 app.use(cors());
-app.use(express.json({ limit: "1mb" })); // For metadata JSON
+app.use(express.json({ limit: "100kb" })); // Reduced limit for metadata JSON
+
+// =============================================================================
+// Rate Limiting (DoS Protection)
+// =============================================================================
+
+const uploadLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20, // 20 uploads per window per IP
+  message: { success: false, error: "Too many uploads. Please try again later." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const downloadLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100, // 100 downloads per window per IP
+  message: { success: false, error: "Too many downloads. Please try again later." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const metadataLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 50,
+  message: { success: false, error: "Too many requests. Please try again later." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 // =============================================================================
 // Canonical URL Redirect (www → non-www)
@@ -217,7 +246,7 @@ const upload = multer({
 // =============================================================================
 
 // POST /upload - Accept encrypted file
-app.post("/upload", upload.single("encryptedFile"), (req, res) => {
+app.post("/upload", uploadLimiter, upload.single("encryptedFile"), (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({
@@ -258,7 +287,7 @@ app.post("/upload", upload.single("encryptedFile"), (req, res) => {
  * - Content-Type: application/octet-stream
  * - X-File-Size: Expected file size (optional, for validation)
  */
-app.post("/upload-stream", (req, res) => {
+app.post("/upload-stream", uploadLimiter, (req, res) => {
   try {
     const filename = generateUniqueFilename();
     const filePath = path.join(UPLOADS_DIR, filename);
@@ -368,7 +397,7 @@ app.head("/download/:fileId", (req, res) => {
 });
 
 // GET /download/:fileId - Download encrypted file
-app.get("/download/:fileId", (req, res) => {
+app.get("/download/:fileId", downloadLimiter, (req, res) => {
   try {
     const result = resolveFilePath(req.params.fileId);
 
@@ -427,7 +456,7 @@ app.get("/download/:fileId", (req, res) => {
  * The server stores this metadata blindly - it cannot decrypt the file keys
  * because they are encrypted with recipient public keys.
  */
-app.post("/metadata/:fileId", (req, res) => {
+app.post("/metadata/:fileId", metadataLimiter, (req, res) => {
   try {
     const fileId = req.params.fileId;
 
@@ -712,7 +741,28 @@ app.use((error, req, res, next) => {
 // =============================================================================
 // Start Server
 // =============================================================================
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`🔐 CrypShare Server running on port ${PORT}`);
   console.log(`📁 Storage: ${UPLOADS_DIR}`);
 });
+
+// =============================================================================
+// Graceful Shutdown
+// =============================================================================
+function gracefulShutdown(signal) {
+  console.log(`\n🛑 ${signal} received. Shutting down gracefully...`);
+  server.close(() => {
+    console.log('✅ HTTP server closed.');
+    process.exit(0);
+  });
+
+  // Force exit if graceful shutdown takes too long
+  setTimeout(() => {
+    console.error('⚠️ Forcing shutdown after timeout');
+    process.exit(1);
+  }, 10000);
+}
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+

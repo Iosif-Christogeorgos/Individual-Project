@@ -555,7 +555,7 @@ async function startDownload() {
       updateStep("step3", "complete");
     } else {
       // Buffered download for small files (original approach)
-      const response = await fetch(downloadUrl);
+      const response = await fetch(`/download/${encodeURIComponent(fileId)}`);
 
       if (!response.ok) {
         if (response.status === 404) {
