@@ -451,8 +451,6 @@ const IdentityManager = (function () {
     getIdentity,
     getOrCreateIdentity,
     getLoadedIdentity,
-    getLoadedIdentity,
-    loadIdentityKeys,
     loadIdentityKeys,
 
     // Public Key Export/Import

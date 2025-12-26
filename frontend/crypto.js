@@ -132,7 +132,6 @@ const CryptoModule = (function () {
   // ===========================================================================
 
   // Format version markers
-  // Format version markers
   const FORMAT_VERSION_CHUNKED = 2; // Chunked: [version][filename header][chunks]
 
   /**

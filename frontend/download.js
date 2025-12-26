@@ -535,7 +535,7 @@ async function startDownload() {
         (decryptProgress) => {
           // Decryption progress (step 3)
           if (decryptProgress < 100) {
-            btn.innerHTML = `<span>�</span> Decrypting... ${decryptProgress}%`;
+            btn.innerHTML = `<span>🔓</span> Decrypting... ${decryptProgress}%`;
           }
         }
       );

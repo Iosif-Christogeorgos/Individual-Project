@@ -1199,7 +1199,7 @@ function updateSecurityWarning(hasLinkKey) {
         This link does not contain the decryption key. Only selected recipients with matching identities can decrypt.
       </p>
       <div class="spw-success-box">
-        <span class="spw-success-icon">�️</span>
+        <span class="spw-success-icon">🛡️</span>
         <span class="spw-success-text">
           <strong>ENHANCED SECURITY:</strong> Even if the link is intercepted, 
           the file cannot be decrypted without the recipient's private key.
