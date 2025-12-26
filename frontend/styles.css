@@ -75,8 +75,8 @@
   --glass-blur: 24px;
   
   /* Layout */
-  --sidebar-width: 280px;
-  --container-max-width: 680px;
+  --sidebar-width: 300px;
+  --container-max-width: 600px;
 }
 
 /* -----------------------------------------------------------------------------
