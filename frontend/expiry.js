@@ -67,40 +67,67 @@ export function startCountdownTimer(expiresAt) {
   }
   
   const timerEl = document.getElementById("countdownTimer");
-  const sandTop = document.querySelector(".sand-top");
-  const sandBottom = document.querySelector(".sand-bottom");
+  const countdownContainer = document.getElementById("expiryCountdown");
+  const sandTopMask = document.querySelector(".sand-top-mask");
+  const sandBottomMask = document.querySelector(".sand-bottom-mask");
   const sandStream = document.querySelector(".sand-stream");
   
   if (!timerEl) return;
   
   function updateTimer() {
     const remaining = currentExpiresAt - Date.now();
+    
+    // Check if expired
+    if (remaining <= 0) {
+      clearInterval(countdownInterval);
+      showExpiredState(countdownContainer);
+      return;
+    }
+    
     timerEl.textContent = formatCountdown(remaining);
     
     // Calculate progress (0 = full, 1 = empty)
     const progress = Math.max(0, Math.min(1, 1 - (remaining / totalDuration)));
     
-    // Animate sand elements if they exist
-    if (sandTop && sandBottom) {
-      const topScale = 1 - progress;
-      sandTop.style.transform = `scaleY(${topScale})`;
-      sandTop.style.opacity = topScale > 0.1 ? 1 : 0;
-      sandBottom.style.opacity = progress;
+    // Animate sand using clip masks
+    if (sandTopMask && sandBottomMask) {
+      // Top sand: mask moves DOWN to hide sand (drains from bottom)
+      // At progress=0: y=0 (full), at progress=1: y=37 (empty - past the sand shape)
+      const topMaskY = progress * 37;
+      sandTopMask.setAttribute("y", topMaskY);
       
+      // Bottom sand: mask moves UP to reveal sand (fills from top)
+      // At progress=0: y=80 (hidden), at progress=1: y=43 (full)  
+      const bottomMaskY = 80 - (progress * 37);
+      sandBottomMask.setAttribute("y", bottomMaskY);
+      
+      // Sand stream visible while draining
       if (sandStream) {
         sandStream.style.opacity = (progress > 0.02 && progress < 0.98) ? 1 : 0;
       }
-    }
-    
-    if (remaining <= 0) {
-      clearInterval(countdownInterval);
-      timerEl.classList.add("expired");
-      if (sandStream) sandStream.style.opacity = 0;
     }
   }
   
   updateTimer();
   countdownInterval = setInterval(updateTimer, 1000);
+}
+
+/**
+ * Show the expired state UI.
+ */
+function showExpiredState(container) {
+  if (!container) return;
+  
+  container.innerHTML = `
+    <div class="expired-message">
+      <div class="expired-icon">⛔</div>
+      <div class="expired-content">
+        <span class="expired-title">File Has Expired</span>
+        <span class="expired-subtitle">This link is no longer accessible</span>
+      </div>
+    </div>
+  `;
+  container.classList.add("expired");
 }
 
 /**

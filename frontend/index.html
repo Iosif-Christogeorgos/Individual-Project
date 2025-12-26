@@ -233,17 +233,37 @@
             <!-- Expiry Countdown -->
             <div class="expiry-countdown" id="expiryCountdown">
               <div class="countdown-icon">
-                <svg class="hourglass-svg" viewBox="0 0 40 60" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <!-- Glass outline -->
-                  <path class="hourglass-glass" d="M5 5 L5 20 L20 30 L5 40 L5 55 L35 55 L35 40 L20 30 L35 20 L35 5 Z" 
-                        stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-                  <!-- Top sand (drains) -->
-                  <path class="sand-top" d="M8 8 L8 18 L20 28 L32 18 L32 8 Z" fill="var(--cyber-green)"/>
-                  <!-- Bottom sand (fills) -->
-                  <path class="sand-bottom" d="M8 52 L8 42 L20 32 L32 42 L32 52 Z" fill="var(--cyber-green)" opacity="0"/>
+                <svg class="hourglass-svg" viewBox="0 0 50 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <defs>
+                    <!-- Clip path for top sand - will be animated -->
+                    <clipPath id="topSandClip">
+                      <rect class="sand-top-mask" x="0" y="0" width="50" height="35"/>
+                    </clipPath>
+                    <!-- Clip path for bottom sand - will be animated -->
+                    <clipPath id="bottomSandClip">
+                      <rect class="sand-bottom-mask" x="0" y="45" width="50" height="35"/>
+                    </clipPath>
+                  </defs>
+                  
+                  <!-- Glass frame -->
+                  <path class="hourglass-frame" 
+                        d="M8 8 L8 28 L25 40 L8 52 L8 72 L42 72 L42 52 L25 40 L42 28 L42 8 Z" 
+                        stroke="var(--accent-blue)" stroke-width="3" fill="none" 
+                        stroke-linecap="round" stroke-linejoin="round"/>
+                  
+                  <!-- Top sand (full triangle, clipped) -->
+                  <path class="sand-top" clip-path="url(#topSandClip)"
+                        d="M12 12 L12 26 L25 37 L38 26 L38 12 Z" 
+                        fill="var(--cyber-green)"/>
+                  
+                  <!-- Bottom sand (full triangle, clipped) -->
+                  <path class="sand-bottom" clip-path="url(#bottomSandClip)"
+                        d="M12 68 L12 54 L25 43 L38 54 L38 68 Z" 
+                        fill="var(--cyber-green)"/>
+                  
                   <!-- Falling sand stream -->
-                  <line class="sand-stream" x1="20" y1="30" x2="20" y2="38" 
-                        stroke="var(--cyber-green)" stroke-width="2" stroke-linecap="round"/>
+                  <line class="sand-stream" x1="25" y1="37" x2="25" y2="43" 
+                        stroke="var(--cyber-green)" stroke-width="3" stroke-linecap="round"/>
                 </svg>
               </div>
               <div class="countdown-info">
