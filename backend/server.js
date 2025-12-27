@@ -19,6 +19,7 @@ import fs from "fs";
 import crypto from "crypto";
 import { fileURLToPath } from "url";
 import rateLimit from "express-rate-limit";
+import helmet from "helmet";
 
 // =============================================================================
 // ESM Fix: Recreate __dirname
@@ -160,6 +161,22 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'X-File-Size'],
   credentials: false
 }));
+
+// Security Headers (CSP, X-Frame-Options, HSTS, etc.)
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      imgSrc: ["'self'", "data:", "blob:"],
+      connectSrc: ["'self'"],
+    },
+  },
+  crossOriginEmbedderPolicy: false, // Required for blob downloads
+}));
+
 app.use(express.json({ limit: "100kb" })); // Reduced limit for metadata JSON
 
 // =============================================================================
