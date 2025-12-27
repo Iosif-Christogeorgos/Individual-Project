@@ -553,6 +553,17 @@ app.post("/metadata/:fileId", metadataLimiter, (req, res) => {
       });
     }
 
+    // Validate expiry hours if provided
+    if (metadata.expiryHours !== undefined) {
+      const expiryHours = parseInt(metadata.expiryHours, 10);
+      if (isNaN(expiryHours) || !ALLOWED_EXPIRY_HOURS.includes(expiryHours)) {
+        return res.status(400).json({
+          success: false,
+          error: `Invalid expiry time. Allowed values: ${ALLOWED_EXPIRY_HOURS.join(', ')} hours.`,
+        });
+      }
+    }
+
     // Store metadata
     const metadataFilename = fileId.replace(".bin", ".json");
     const metadataPath = path.join(METADATA_DIR, metadataFilename);
