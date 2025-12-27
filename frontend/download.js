@@ -336,6 +336,12 @@ function showSignatureStep() {
 // Use a more robust initialization that ensures all modules are ready
 async function initializeDownloadPage() {
   await validateDownloadLink();
+  
+  // ==========================================================================
+  // Event Listeners (replaces inline onclick handlers for strict CSP)
+  // ==========================================================================
+  document.getElementById("alertCloseBtn")?.addEventListener("click", hideAlert);
+  document.getElementById("downloadBtn")?.addEventListener("click", startDownload);
 }
 
 document.addEventListener("DOMContentLoaded", initializeDownloadPage);
@@ -644,9 +650,3 @@ function showSignatureWarning() {
   infoEl.classList.add("show", "warning");
 }
 
-// =============================================================================
-// Global Function Exports (for onclick handlers in HTML)
-// =============================================================================
-
-window.startDownload = startDownload;
-window.hideAlert = hideAlert;

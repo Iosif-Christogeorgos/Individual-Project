@@ -52,7 +52,7 @@
                   Something went wrong.
                 </div>
               </div>
-              <button class="alert-close" onclick="hideAlert()">×</button>
+              <button class="alert-close" id="alertCloseBtn">×</button>
             </div>
 
             <!-- Drop Zone -->
@@ -76,7 +76,7 @@
               </div>
               <button
                 class="file-selected-remove"
-                onclick="clearFile()"
+                id="clearFileBtn"
                 title="Remove file"
               >
                 Cancel
@@ -91,7 +91,6 @@
                     type="checkbox"
                     id="includeLinkKey"
                     checked
-                    onchange="validateAccessConfig()"
                   />
                   <span class="option-text">
                     <span class="option-title">🔗 Include key in link</span>
@@ -107,7 +106,6 @@
                   <input
                     type="checkbox"
                     id="enableSigning"
-                    onchange="validateAccessConfig()"
                   />
                   <span class="option-text">
                     <span class="option-title">✍️ Sign file</span>
@@ -149,7 +147,6 @@
             <button
               class="btn btn-primary"
               id="uploadBtn"
-              onclick="processFile()"
             >
               <span>🔒</span> Encrypt & Upload
             </button>
@@ -224,7 +221,6 @@
               <button
                 class="btn btn-primary btn-copy"
                 id="copyBtn"
-                onclick="copyLink()"
               >
                 <span>📋</span> Copy
               </button>
@@ -299,7 +295,7 @@
             </div>
 
             <!-- Back Button -->
-            <button class="btn btn-ghost btn-back" onclick="resetToUpload()">
+            <button class="btn btn-ghost btn-back" id="backBtn">
               <span>←</span> Upload Another File
             </button>
 
@@ -341,7 +337,7 @@
             />
             <button
               class="btn btn-secondary btn-small"
-              onclick="createIdentity()"
+              id="createIdentityBtn"
             >
               <span>🔑</span> Generate Identity
             </button>
@@ -352,14 +348,14 @@
             <div class="identity-actions">
               <button
                 class="btn btn-small btn-ghost"
-                onclick="exportIdentity()"
+                id="exportIdentityBtn"
                 title="Export identity"
               >
                 📤 Export
               </button>
               <button
                 class="btn btn-small btn-ghost"
-                onclick="copyPublicKey()"
+                id="copyPublicKeyBtn"
                 title="Copy public key"
               >
                 📋 Copy Key
@@ -387,7 +383,7 @@
             <div class="add-contact-section">
               <button
                 class="btn btn-small btn-ghost"
-                onclick="importContactFromFile()"
+                id="importContactFileBtn"
               >
                 📂 Import Contact
               </button>
@@ -402,7 +398,7 @@
                   ></textarea>
                   <button
                     class="btn btn-small btn-secondary"
-                    onclick="importContact()"
+                    id="importContactBtn"
                   >
                     Add Contact
                   </button>
@@ -419,7 +415,7 @@
       <div class="modal-terminal">
         <div class="modal-terminal-header">
           <span class="modal-terminal-prompt">⚠️ SYSTEM_WARNING</span>
-          <button class="modal-close" onclick="hideOverwriteModal()">×</button>
+          <button class="modal-close" id="modalCloseBtn">×</button>
         </div>
         <div class="modal-terminal-body">
           <div class="modal-warning-icon">🔗</div>
@@ -430,10 +426,10 @@
           </p>
           <div class="modal-link-preview" id="modalLinkPreview"></div>
           <div class="modal-actions">
-            <button class="btn btn-secondary" onclick="hideOverwriteModal()">
+            <button class="btn btn-secondary" id="modalCancelBtn">
               <span>✖</span> Cancel
             </button>
-            <button class="btn btn-warning" onclick="confirmNewUpload()">
+            <button class="btn btn-warning" id="modalConfirmBtn">
               <span>▶</span> Continue Anyway
             </button>
           </div>

@@ -363,6 +363,41 @@ document.addEventListener("DOMContentLoaded", () => {
   if (expirySelect) {
     expirySelect.addEventListener("change", updateExpiryNotice);
   }
+
+  // ==========================================================================
+  // Event Listeners (replaces inline onclick handlers for strict CSP)
+  // ==========================================================================
+  
+  // Alert close button
+  document.getElementById("alertCloseBtn")?.addEventListener("click", hideAlert);
+  
+  // File management
+  document.getElementById("clearFileBtn")?.addEventListener("click", clearFile);
+  
+  // Access configuration checkboxes
+  document.getElementById("includeLinkKey")?.addEventListener("change", validateAccessConfig);
+  document.getElementById("enableSigning")?.addEventListener("change", validateAccessConfig);
+  
+  // Main upload button
+  document.getElementById("uploadBtn")?.addEventListener("click", processFile);
+  
+  // Success view buttons
+  document.getElementById("copyBtn")?.addEventListener("click", copyLink);
+  document.getElementById("backBtn")?.addEventListener("click", resetToUpload);
+  
+  // Identity management
+  document.getElementById("createIdentityBtn")?.addEventListener("click", createIdentity);
+  document.getElementById("exportIdentityBtn")?.addEventListener("click", exportIdentity);
+  document.getElementById("copyPublicKeyBtn")?.addEventListener("click", copyPublicKey);
+  
+  // Contact management
+  document.getElementById("importContactFileBtn")?.addEventListener("click", importContactFromFile);
+  document.getElementById("importContactBtn")?.addEventListener("click", importContact);
+  
+  // Modal buttons
+  document.getElementById("modalCloseBtn")?.addEventListener("click", hideOverwriteModal);
+  document.getElementById("modalCancelBtn")?.addEventListener("click", hideOverwriteModal);
+  document.getElementById("modalConfirmBtn")?.addEventListener("click", confirmNewUpload);
 });
 
 // =============================================================================
@@ -859,22 +894,10 @@ function updateSecurityWarning(hasLinkKey) {
 }
 
 // =============================================================================
-// Global Function Exports (for onclick handlers in HTML)
+// Global Function Exports (only for dynamically generated HTML)
 // =============================================================================
+// These remain global because recipients.js generates HTML with onclick handlers
+// for dynamically added contact items. The static HTML now uses addEventListener.
 
-window.processFile = processFile;
-window.copyLink = copyLink;
-window.clearFile = clearFile;
-window.resetToUpload = resetToUpload;
-window.hideAlert = hideAlert;
-window.createIdentity = createIdentity;
-window.exportIdentity = exportIdentity;
-window.copyPublicKey = copyPublicKey;
-window.importContact = importContact;
-window.importContactFromFile = importContactFromFile;
 window.toggleRecipient = toggleRecipient;
 window.removeContactUI = removeContactUI;
-window.validateAccessConfig = validateAccessConfig;
-window.showOverwriteModal = showOverwriteModal;
-window.hideOverwriteModal = hideOverwriteModal;
-window.confirmNewUpload = confirmNewUpload;
