@@ -23,7 +23,7 @@
   <body class="download-page">
     <div class="card">
       <!-- Logo Header -->
-      <div class="logo" style="justify-content: center">
+      <div class="logo justify-center">
         <img src="logo.svg" alt="CrypShare" class="logo-icon" />
         <div class="logo-text">Cryp<span>Share</span></div>
       </div>
@@ -38,7 +38,7 @@
       </div>
 
       <!-- Page Title -->
-      <h2 style="justify-content: center">Secure Download</h2>
+      <h2 class="justify-center">Secure Download</h2>
       <p>
         This file is encrypted. Click below to download and decrypt it locally
         in your browser.
@@ -76,7 +76,7 @@
       </button>
 
       <!-- Status Display -->
-      <div class="download-status" id="statusContainer" style="display: none">
+      <div class="download-status d-none" id="statusContainer">
         <div class="download-status-line pending" id="step1">
           <span class="status-icon">○</span>
           <span>Fetching encrypted file...</span>
@@ -94,9 +94,8 @@
           <span>Preparing download...</span>
         </div>
         <div
-          class="download-status-line pending"
+          class="download-status-line pending d-none"
           id="step5"
-          style="display: none"
         >
           <span class="status-icon">○</span>
           <span>Verifying signature...</span>

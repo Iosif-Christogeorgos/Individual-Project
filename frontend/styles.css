@@ -2330,4 +2330,21 @@ input[type="checkbox"] {
   color: var(--text-muted);
 }
 
+/* Utility Classes for CSP Compliance */
+.justify-center {
+  justify-content: center !important;
+}
+
+.text-muted-color {
+  color: var(--text-muted) !important;
+}
+
+.d-none, .hidden {
+  display: none !important;
+}
+
+.text-decoration-none {
+  text-decoration: none !important;
+}
+
 
