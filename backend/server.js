@@ -703,12 +703,34 @@ app.post("/pubkey", (req, res) => {
       });
     }
 
+    // Security: Validate ID to prevent Path Traversal
+    if (!/^[a-zA-Z0-9_-]+$/.test(id)) {
+      return res.status(400).json({ success: false, error: "Invalid ID format." });
+    }
+
+    // Security: Validate Fingerprint format
+    if (!/^[a-fA-F0-9]{64}$/.test(fingerprint)) {
+      return res.status(400).json({ success: false, error: "Invalid fingerprint format." });
+    }
+
+    // Security: Validate Display Name (Length limit)
+    let cleanDisplayName = displayName;
+    if (displayName) {
+      if (typeof displayName !== "string" || displayName.length > 50) {
+        return res.status(400).json({
+          success: false,
+          error: "Display name too long (max 50 chars).",
+        });
+      }
+      cleanDisplayName = displayName.trim();
+    }
+
     // Validate fingerprint matches the public key (client should compute this)
     // Server stores it but cannot verify without implementing crypto
 
     const pubkeyData = {
       id,
-      displayName: displayName || `User-${fingerprint.substring(0, 8)}`,
+      displayName: cleanDisplayName || `User-${fingerprint.substring(0, 8)}`,
       encryptionPublicKey,
       signingPublicKey,
       fingerprint,
