@@ -53,13 +53,21 @@ const ALLOWED_EXPIRY_HOURS = [1, 6, 24, 72, 168]; // 1h, 6h, 24h, 3d, 7d
 // File Cleanup / Garbage Collection
 // =============================================================================
 
-function cleanupExpiredFiles() {
+async function cleanupExpiredFiles() {
   const now = Date.now();
   let deletedCount = 0;
 
   try {
     // Clean up encrypted files
-    const files = fs.readdirSync(UPLOADS_DIR);
+    // Use fs.promises.readdir to avoid blocking
+    const files = await fs.promises.readdir(UPLOADS_DIR);
+    
+    // Process files concurrently or sequentially. 
+    // Sequential is safer for CPU usage during cleanup if many files exist,
+    // but Promise.all is faster. Given this is a background task, 
+    // sequentially/batched is often better to avoid starving the event loop.
+    // For now, we'll use a simple for...of loop with await which yields to event loop.
+    
     for (const file of files) {
       const match = file.match(/^file-(\d+)-[a-f0-9]+\.bin$/);
       if (match) {
@@ -73,15 +81,20 @@ function cleanupExpiredFiles() {
           file.replace(".bin", ".json")
         );
         
-        if (fs.existsSync(metadataPath)) {
+        // Check existence asynchronously
+        try {
+          await fs.promises.access(metadataPath);
           try {
-            const metadata = JSON.parse(fs.readFileSync(metadataPath, "utf8"));
+            const metadataContent = await fs.promises.readFile(metadataPath, "utf8");
+            const metadata = JSON.parse(metadataContent);
             if (metadata.expiresAt && typeof metadata.expiresAt === "number") {
               expiresAt = metadata.expiresAt;
             }
           } catch (parseError) {
             // Use default expiry if metadata is corrupted
           }
+        } catch (accessError) {
+          // Metadata doesn't exist, use default expiry
         }
 
         if (now > expiresAt) {
@@ -89,12 +102,14 @@ function cleanupExpiredFiles() {
           const age = now - uploadTimestamp;
 
           try {
-            fs.unlinkSync(filePath);
+            await fs.promises.unlink(filePath);
             deletedCount++;
 
             // Also delete associated metadata
-            if (fs.existsSync(metadataPath)) {
-              fs.unlinkSync(metadataPath);
+            try {
+              await fs.promises.unlink(metadataPath);
+            } catch (ignore) {
+              // Metadata might not exist
             }
 
             console.log(
