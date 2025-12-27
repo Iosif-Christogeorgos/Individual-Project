@@ -154,6 +154,21 @@ console.log(
 // =============================================================================
 const app = express();
 
+// =============================================================================
+// Trust Proxy (REQUIRED for reverse proxy deployments)
+// =============================================================================
+// When running behind a reverse proxy (Heroku, Vercel, Nginx, AWS ELB, etc.),
+// Express must trust the X-Forwarded-For header to get the real client IP.
+// Without this, all users appear to have the same IP (the proxy's IP),
+// causing rate limiters to block all users after one client hits the limit.
+//
+// Value of 1 means: trust the first proxy in the chain (recommended for most
+// single-proxy setups like Heroku, Vercel, or a single Nginx/ELB in front).
+// For more complex setups, adjust the value or use a specific subnet.
+// See: https://expressjs.com/en/guide/behind-proxies.html
+// =============================================================================
+app.set('trust proxy', 1);
+
 // CORS Configuration - Restrict to allowed origins
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
