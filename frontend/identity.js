@@ -10,7 +10,7 @@
 // - Identity is optional (link-based sharing still works without identity)
 // =============================================================================
 
-import CryptoModule from './crypto.js';
+import * as CryptoModule from './crypto.js';
 
 // ===========================================================================
 // Constants
@@ -436,32 +436,4 @@ export function getShortFingerprint(identity) {
   return identity.fingerprint.substring(0, 16).toUpperCase();
 }
 
-// ===========================================================================
-// Legacy IdentityManager Object (for backward compatibility)
-// ===========================================================================
-
-const IdentityManager = {
-  // Identity Management
-  generateIdentity,
-  hasIdentity,
-  getIdentity,
-  getOrCreateIdentity,
-  getLoadedIdentity,
-  loadIdentityKeys,
-
-  // Public Key Export/Import
-  exportPublicIdentity,
-  importPublicIdentity,
-
-  // Contacts
-  getContacts,
-  addContact,
-  removeContact,
-  getContact,
-
-  // Display Utilities
-  getFormattedFingerprint,
-  getShortFingerprint,
-};
-
-export default IdentityManager;
+// Default export removed in favor of named imports

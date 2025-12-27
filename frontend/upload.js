@@ -8,8 +8,8 @@
 // - file-handler.js: File selection and drag/drop
 // =============================================================================
 
-import CryptoModule from './crypto.js';
-import IdentityManager from './identity.js';
+import * as CryptoModule from './crypto.js';
+import * as IdentityManager from './identity.js';
 import { showAlert, hideAlert, showToast, escapeHtml, updateProgress, hideProgress } from './ui-utils.js';
 import { getSelectedExpiryHours, updateExpiryNotice, startCountdownTimer } from './expiry.js';
 import { 

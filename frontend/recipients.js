@@ -4,7 +4,7 @@
 // Handles contact/recipient selection for identity-based file sharing.
 // =============================================================================
 
-import IdentityManager from './identity.js';
+import * as IdentityManager from './identity.js';
 import { showAlert, showToast, escapeHtml } from './ui-utils.js';
 
 // State
@@ -181,14 +181,4 @@ export async function importContactFromFile() {
   input.click();
 }
 
-// Default export for backward compatibility
-export default {
-  getSelectedRecipients,
-  clearSelectedRecipients,
-  loadContacts,
-  toggleRecipient,
-  updateRecipientCount,
-  removeContactUI,
-  importContact,
-  importContactFromFile
-};
+// Default export removed in favor of named imports

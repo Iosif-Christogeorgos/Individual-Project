@@ -6,8 +6,8 @@
 // 2. Identity-based access - Decrypt AES key using user's private key
 // =============================================================================
 
-import CryptoModule from './crypto.js';
-import IdentityManager from './identity.js';
+import * as CryptoModule from './crypto.js';
+import * as IdentityManager from './identity.js';
 import { showAlert, hideAlert, escapeHtml, updateStep } from './ui-utils.js';
 
 let currentIdentity = null;
