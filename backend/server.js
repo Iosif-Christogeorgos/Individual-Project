@@ -139,7 +139,27 @@ console.log(
 // =============================================================================
 const app = express();
 
-app.use(cors());
+// CORS Configuration - Restrict to allowed origins
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
+  : ['http://localhost:3000', 'http://127.0.0.1:3000'];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (same-origin, Postman, etc.)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.warn(`⚠️ CORS: Blocked request from origin: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  methods: ['GET', 'POST', 'HEAD', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'X-File-Size'],
+  credentials: false
+}));
 app.use(express.json({ limit: "100kb" })); // Reduced limit for metadata JSON
 
 // =============================================================================
