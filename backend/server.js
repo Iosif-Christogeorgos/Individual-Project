@@ -43,10 +43,7 @@ const ALLOWED_EXPIRY_HOURS = [1, 6, 24, 72, 168]; // 1h, 6h, 24h, 3d, 7d
 
 // Ensure directories exist
 [UPLOADS_DIR, METADATA_DIR, PUBKEYS_DIR].forEach((dir) => {
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-    console.log("📁 Created directory:", dir);
-  }
+  fs.mkdirSync(dir, { recursive: true });
 });
 
 // =============================================================================
