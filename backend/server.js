@@ -381,6 +381,7 @@ app.post("/upload-stream", uploadLimiter, (req, res) => {
         // Stop receiving data
         req.unpipe(writeStream);
         writeStream.destroy();
+        req.destroy(); // Strictly close the connection to stop data transfer
         
         // Clean up partial file
         fs.unlink(filePath, () => {});
