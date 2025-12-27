@@ -170,9 +170,17 @@ const app = express();
 app.set('trust proxy', 1);
 
 // CORS Configuration - Restrict to allowed origins
+// Default origins include localhost for development and production domain
+// Can be overridden via ALLOWED_ORIGINS environment variable (comma-separated)
+const DEFAULT_ORIGINS = [
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
+  'https://crypshare.app',
+];
+
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
-  : ['http://localhost:3000', 'http://127.0.0.1:3000'];
+  : DEFAULT_ORIGINS;
 
 app.use(cors({
   origin: (origin, callback) => {
