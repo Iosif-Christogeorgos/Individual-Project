@@ -343,6 +343,8 @@ app.post("/upload", uploadLimiter, upload.single("encryptedFile"), (req, res) =>
  * - X-File-Size: Expected file size (optional, for validation)
  */
 app.post("/upload-stream", uploadLimiter, (req, res) => {
+  const MAX_STREAM_SIZE = 1024 * 1024 * 1024; // 1GB - same as multer limit
+  
   try {
     const filename = generateUniqueFilename();
     const filePath = path.join(UPLOADS_DIR, filename);
@@ -350,10 +352,31 @@ app.post("/upload-stream", uploadLimiter, (req, res) => {
     // Create a write stream to disk
     const writeStream = fs.createWriteStream(filePath);
     let bytesReceived = 0;
+    let sizeLimitExceeded = false;
 
-    // Handle incoming data
+    // Handle incoming data with size limit check
     req.on("data", (chunk) => {
       bytesReceived += chunk.length;
+      
+      // Check size limit
+      if (bytesReceived > MAX_STREAM_SIZE && !sizeLimitExceeded) {
+        sizeLimitExceeded = true;
+        console.warn(`⚠️ Stream upload exceeded size limit: ${bytesReceived} bytes`);
+        
+        // Stop receiving data
+        req.unpipe(writeStream);
+        writeStream.destroy();
+        
+        // Clean up partial file
+        fs.unlink(filePath, () => {});
+        
+        if (!res.headersSent) {
+          res.status(413).json({
+            success: false,
+            error: "File too large. Maximum size is 1GB.",
+          });
+        }
+      }
     });
 
     // Pipe the request body directly to the file
@@ -361,15 +384,19 @@ app.post("/upload-stream", uploadLimiter, (req, res) => {
 
     // Handle successful completion
     writeStream.on("finish", () => {
-      res.status(201).json({
-        success: true,
-        fileId: filename,
-        size: bytesReceived,
-      });
+      if (!sizeLimitExceeded) {
+        res.status(201).json({
+          success: true,
+          fileId: filename,
+          size: bytesReceived,
+        });
+      }
     });
 
     // Handle write errors
     writeStream.on("error", (error) => {
+      if (sizeLimitExceeded) return; // Already handled
+      
       console.error("❌ Stream write error:", error);
 
       // Clean up partial file
@@ -385,6 +412,8 @@ app.post("/upload-stream", uploadLimiter, (req, res) => {
 
     // Handle request errors (client disconnect, etc.)
     req.on("error", (error) => {
+      if (sizeLimitExceeded) return; // Already handled
+      
       console.error("❌ Stream request error:", error);
       writeStream.destroy();
 
@@ -401,6 +430,8 @@ app.post("/upload-stream", uploadLimiter, (req, res) => {
 
     // Handle client abort
     req.on("aborted", () => {
+      if (sizeLimitExceeded) return; // Already handled
+      
       console.log("⚠️ Upload aborted by client");
       writeStream.destroy();
 
