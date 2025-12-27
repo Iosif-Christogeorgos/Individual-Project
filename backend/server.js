@@ -464,7 +464,7 @@ function resolveFilePath(fileId) {
 }
 
 // HEAD /download/:fileId - Check if file exists
-app.head("/download/:fileId", (req, res) => {
+app.head("/download/:fileId", downloadLimiter, (req, res) => {
   try {
     const result = resolveFilePath(req.params.fileId);
 
