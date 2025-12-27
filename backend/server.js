@@ -50,6 +50,8 @@ const ALLOWED_EXPIRY_HOURS = [1, 6, 24, 72, 168]; // 1h, 6h, 24h, 3d, 7d
 // File Cleanup / Garbage Collection
 // =============================================================================
 
+const FILE_ID_PATTERN = /^file-(\d+)-[a-f0-9]+\.bin$/;
+
 async function cleanupExpiredFiles() {
   const now = Date.now();
   let deletedCount = 0;
@@ -66,7 +68,7 @@ async function cleanupExpiredFiles() {
     // For now, we'll use a simple for...of loop with await which yields to event loop.
     
     for (const file of files) {
-      const match = file.match(/^file-(\d+)-[a-f0-9]+\.bin$/);
+      const match = file.match(FILE_ID_PATTERN);
       if (match) {
         const uploadTimestamp = parseInt(match[1], 10);
         
