@@ -525,6 +525,7 @@ app.post("/metadata/:fileId", metadataLimiter, async (req, res) => {
     }
 
     // Upsert metadata to Supabase
+    console.log(`📝 Storing metadata for ${fileId} in Supabase...`);
     const { error } = await supabase.from("files").upsert({
       id: fileId,
       filename: metadata.filename || "unknown",
@@ -535,12 +536,14 @@ app.post("/metadata/:fileId", metadataLimiter, async (req, res) => {
     });
 
     if (error) {
-      console.error("❌ Metadata storage error:", error);
+      console.error("❌ Metadata storage error:", error.message, error.details, error.hint);
       return res.status(500).json({
         success: false,
         error: "Failed to store metadata.",
       });
     }
+
+    console.log(`✅ Metadata stored successfully for ${fileId}`);
 
     res.status(201).json({
       success: true,
