@@ -1,8 +1,8 @@
 // =============================================================================
 // CrypShare Backend - Zero-Knowledge File Storage Server (Hybrid E2EE)
 // =============================================================================
-// This server is intentionally "dumb" - it only stores and retrieves encrypted
-// binary blobs and metadata. It never attempts to decrypt or process file contents.
+// CLOUD-NATIVE VERSION: Uses Supabase (Postgres) + Cloudflare R2 (S3-compatible)
+// This enables stateless deployment (Docker, DigitalOcean, etc.)
 //
 // ZERO-KNOWLEDGE PRINCIPLES:
 // - Server never sees plaintext file contents
@@ -11,15 +11,24 @@
 // - Server MAY store: ciphertext, public keys, encrypted AES keys, signatures
 // =============================================================================
 
+import "dotenv/config";
 import express from "express";
 import cors from "cors";
-import multer from "multer";
 import path from "path";
-import fs from "fs";
 import crypto from "crypto";
 import { fileURLToPath } from "url";
 import rateLimit from "express-rate-limit";
 import helmet from "helmet";
+import multer from "multer";
+import { createClient } from "@supabase/supabase-js";
+import {
+  S3Client,
+  PutObjectCommand,
+  GetObjectCommand,
+  DeleteObjectCommand,
+  HeadObjectCommand,
+} from "@aws-sdk/client-s3";
+import { Upload } from "@aws-sdk/lib-storage";
 
 // =============================================================================
 // ESM Fix: Recreate __dirname
@@ -31,9 +40,6 @@ const __dirname = path.dirname(__filename);
 // Configuration
 // =============================================================================
 const PORT = process.env.PORT || 3000;
-const UPLOADS_DIR = path.join(__dirname, "uploads");
-const METADATA_DIR = path.join(__dirname, "metadata");
-const PUBKEYS_DIR = path.join(__dirname, "pubkeys");
 const FILE_EXPIRY_HOURS = 24;
 const DEFAULT_EXPIRY_MS = FILE_EXPIRY_HOURS * 60 * 60 * 1000;
 const CLEANUP_INTERVAL_MS = 15 * 60 * 1000;
@@ -41,113 +47,102 @@ const CLEANUP_INTERVAL_MS = 15 * 60 * 1000;
 // Allowed expiry options (in hours) - validated on upload
 const ALLOWED_EXPIRY_HOURS = [1, 6, 24, 72, 168]; // 1h, 6h, 24h, 3d, 7d
 
-// Ensure directories exist
-[UPLOADS_DIR, METADATA_DIR, PUBKEYS_DIR].forEach((dir) => {
-  fs.mkdirSync(dir, { recursive: true });
+// =============================================================================
+// Initialize Supabase Client
+// =============================================================================
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!supabaseUrl || !supabaseServiceKey) {
+  console.error("❌ Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
+  process.exit(1);
+}
+
+const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+  auth: { persistSession: false },
 });
 
 // =============================================================================
-// File Cleanup / Garbage Collection
+// Initialize Cloudflare R2 Client (S3-compatible)
+// =============================================================================
+const r2Endpoint = process.env.R2_ENDPOINT;
+const r2AccessKeyId = process.env.R2_ACCESS_KEY_ID;
+const r2SecretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
+const r2BucketName = process.env.R2_BUCKET_NAME;
+
+if (!r2Endpoint || !r2AccessKeyId || !r2SecretAccessKey || !r2BucketName) {
+  console.error("❌ Missing R2 configuration (R2_ENDPOINT, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME)");
+  process.exit(1);
+}
+
+const s3Client = new S3Client({
+  region: "auto",
+  endpoint: r2Endpoint,
+  credentials: {
+    accessKeyId: r2AccessKeyId,
+    secretAccessKey: r2SecretAccessKey,
+  },
+});
+
+// =============================================================================
+// File Cleanup / Garbage Collection (Database-driven)
 // =============================================================================
 
 const FILE_ID_PATTERN = /^file-(\d+)-[a-f0-9]+\.bin$/;
 
 async function cleanupExpiredFiles() {
-  const now = Date.now();
+  const now = new Date().toISOString();
   let deletedCount = 0;
 
   try {
-    // Clean up encrypted files
-    // Use fs.promises.readdir to avoid blocking
-    const files = await fs.promises.readdir(UPLOADS_DIR);
-    
-    // Process files concurrently or sequentially. 
-    // Sequential is safer for CPU usage during cleanup if many files exist,
-    // but Promise.all is faster. Given this is a background task, 
-    // sequentially/batched is often better to avoid starving the event loop.
-    // For now, we'll use a simple for...of loop with await which yields to event loop.
-    
-    for (const file of files) {
-      const match = file.match(FILE_ID_PATTERN);
-      if (match) {
-        const uploadTimestamp = parseInt(match[1], 10);
-        
-        // Check for custom expiry in metadata
-        let expiresAt = uploadTimestamp + DEFAULT_EXPIRY_MS; // Default fallback
-        
-        const metadataPath = path.join(
-          METADATA_DIR,
-          file.replace(".bin", ".json")
+    // Query expired files from Supabase
+    const { data: expiredFiles, error } = await supabase
+      .from("files")
+      .select("id")
+      .lt("expires_at", now);
+
+    if (error) {
+      console.error("❌ Cleanup query error:", error.message);
+      return;
+    }
+
+    if (!expiredFiles || expiredFiles.length === 0) {
+      return; // No expired files
+    }
+
+    // Delete each file from R2 and database
+    for (const file of expiredFiles) {
+      try {
+        // Delete from R2
+        await s3Client.send(
+          new DeleteObjectCommand({
+            Bucket: r2BucketName,
+            Key: file.id,
+          })
         );
-        
-        // Check existence asynchronously
-        try {
-          await fs.promises.access(metadataPath);
-          try {
-            const metadataContent = await fs.promises.readFile(metadataPath, "utf8");
-            const metadata = JSON.parse(metadataContent);
-            if (metadata.expiresAt && typeof metadata.expiresAt === "number") {
-              expiresAt = metadata.expiresAt;
-            }
-          } catch (parseError) {
-            // Use default expiry if metadata is corrupted
-          }
-        } catch (accessError) {
-          // Metadata doesn't exist, use default expiry
-        }
 
-        if (now > expiresAt) {
-          const filePath = path.join(UPLOADS_DIR, file);
-          const age = now - uploadTimestamp;
+        // Delete from database
+        await supabase.from("files").delete().eq("id", file.id);
 
-          try {
-            await fs.promises.unlink(filePath);
-            deletedCount++;
-
-            // Also delete associated metadata
-            try {
-              await fs.promises.unlink(metadataPath);
-            } catch (ignore) {
-              // Metadata might not exist
-            }
-
-            console.log(
-              `🗑️  Expired file deleted: ${file} (age: ${Math.round(
-                age / 3600000
-              )}h)`
-            );
-          } catch (deleteError) {
-            // Handle file in use (EBUSY) or other deletion errors gracefully
-            if (deleteError.code === "EBUSY" || deleteError.code === "ENOENT") {
-              console.log(
-                `⏳ Skipping file in use or already deleted: ${file}`
-              );
-            } else {
-              console.error(
-                `❌ Failed to delete ${file}:`,
-                deleteError.message
-              );
-            }
-          }
-        }
+        deletedCount++;
+        console.log(`🗑️  Expired file deleted: ${file.id}`);
+      } catch (deleteError) {
+        console.error(`❌ Failed to delete ${file.id}:`, deleteError.message);
       }
     }
 
     if (deletedCount > 0) {
-      console.log(
-        `🧹 Cleanup complete: ${deletedCount} expired file(s) removed`
-      );
+      console.log(`🧹 Cleanup complete: ${deletedCount} expired file(s) removed`);
     }
   } catch (error) {
     console.error("❌ Cleanup error:", error);
   }
 }
 
+// Run cleanup on startup and periodically
 cleanupExpiredFiles();
 setInterval(cleanupExpiredFiles, CLEANUP_INTERVAL_MS);
-console.log(
-  `⏰ File cleanup scheduled: every ${CLEANUP_INTERVAL_MS / 60000} minutes`
-);
+console.log(`⏰ File cleanup scheduled: every ${CLEANUP_INTERVAL_MS / 60000} minutes`);
 
 // =============================================================================
 // Initialize Express App
@@ -157,21 +152,14 @@ const app = express();
 // =============================================================================
 // Trust Proxy (REQUIRED for reverse proxy deployments)
 // =============================================================================
-// When running behind a reverse proxy (Heroku, Vercel, Nginx, AWS ELB, etc.),
-// Express must trust the X-Forwarded-For header to get the real client IP.
-// Without this, all users appear to have the same IP (the proxy's IP),
-// causing rate limiters to block all users after one client hits the limit.
-//
-// Value of 1 means: trust the first proxy in the chain (recommended for most
-// single-proxy setups like Heroku, Vercel, or a single Nginx/ELB in front).
-// For more complex setups, adjust the value or use a specific subnet.
-// See: https://expressjs.com/en/guide/behind-proxies.html
-// =============================================================================
 app.set('trust proxy', 1);
 
+// =============================================================================
 // CORS Configuration - Restrict to allowed origins
-// Default origins include localhost for development and production domain
-// Can be overridden via ALLOWED_ORIGINS environment variable (comma-separated)
+// =============================================================================
+// Default origins include localhost for development AND production domain.
+// This ensures the site works even if ALLOWED_ORIGINS env var is not set.
+// Can be overridden via ALLOWED_ORIGINS environment variable (comma-separated).
 const DEFAULT_ORIGINS = [
   'http://localhost:3000',
   'http://127.0.0.1:3000',
@@ -204,25 +192,25 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'"],  // Strict: no inline scripts allowed
+      scriptSrc: ["'self'"],
       styleSrc: ["'self'", "https://fonts.googleapis.com"],
       fontSrc: ["'self'", "https://fonts.gstatic.com", "https://cdn.jsdelivr.net"],
       imgSrc: ["'self'", "data:", "blob:"],
       connectSrc: ["'self'"],
     },
   },
-  crossOriginEmbedderPolicy: false, // Required for blob downloads
+  crossOriginEmbedderPolicy: false,
 }));
 
-app.use(express.json({ limit: "100kb" })); // Reduced limit for metadata JSON
+app.use(express.json({ limit: "100kb" }));
 
 // =============================================================================
 // Rate Limiting (DoS Protection)
 // =============================================================================
 
 const uploadLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 20, // 20 uploads per window per IP
+  windowMs: 15 * 60 * 1000,
+  max: 20,
   message: { success: false, error: "Too many uploads. Please try again later." },
   standardHeaders: true,
   legacyHeaders: false,
@@ -230,7 +218,7 @@ const uploadLimiter = rateLimit({
 
 const downloadLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100, // 100 downloads per window per IP
+  max: 100,
   message: { success: false, error: "Too many downloads. Please try again later." },
   standardHeaders: true,
   legacyHeaders: false,
@@ -247,98 +235,63 @@ const metadataLimiter = rateLimit({
 // =============================================================================
 // Canonical URL Redirect (www → non-www)
 // =============================================================================
-// IndexedDB is isolated per origin, so we must ensure all users access the app
-// from the same origin to share identity/storage. Redirect www to non-www.
-
 app.use((req, res, next) => {
   const host = req.headers.host || "";
-
-  // Only redirect in production (when host contains actual domain)
   if (host.startsWith("www.")) {
-    const newHost = host.substring(4); // Remove 'www.'
-    const protocol =
-      req.headers["x-forwarded-proto"] || req.protocol || "https";
+    const newHost = host.substring(4);
+    const protocol = req.headers["x-forwarded-proto"] || req.protocol || "https";
     const newUrl = `${protocol}://${newHost}${req.originalUrl}`;
     console.log(`🔄 Redirecting www to non-www: ${newUrl}`);
     return res.redirect(301, newUrl);
   }
-
   next();
 });
 
 // =============================================================================
-// Clean URL Routing (MUST be before static middleware)
+// Static File Serving
 // =============================================================================
 
-// Serve favicon (prevent 404 errors)
 app.get("/favicon.ico", (req, res) => {
   res.sendFile(path.join(__dirname, "../frontend/favicon.ico"));
 });
 
-// Serve upload page at root
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "../frontend/index.html"));
 });
 
-// Serve download page at /download
 app.get("/download", (req, res) => {
   res.sendFile(path.join(__dirname, "../frontend/download.html"));
 });
 
-// Serve the 'frontend' folder for static files (JS, CSS, etc.)
-// This comes AFTER route definitions so routes take priority
 app.use(express.static(path.join(__dirname, "../frontend")));
 
 // =============================================================================
-// Multer Configuration
+// Helper: Generate Unique File ID
 // =============================================================================
 
-function generateUniqueFilename() {
-  const maxAttempts = 10;
-
-  for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    const timestamp = Date.now();
-    const randomBytes = crypto.randomBytes(16).toString("hex");
-    const filename = `file-${timestamp}-${randomBytes}.bin`;
-    const fullPath = path.join(UPLOADS_DIR, filename);
-
-    if (!fs.existsSync(fullPath)) {
-      return filename;
-    }
-
-    console.warn(`⚠️ Filename collision detected (attempt ${attempt + 1})`);
-  }
-
-  throw new Error("Failed to generate unique filename after maximum attempts");
+function generateUniqueFileId() {
+  const timestamp = Date.now();
+  const randomBytes = crypto.randomBytes(16).toString("hex");
+  return `file-${timestamp}-${randomBytes}.bin`;
 }
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, UPLOADS_DIR);
-  },
-  filename: (req, file, cb) => {
-    try {
-      const uniqueFilename = generateUniqueFilename();
-      cb(null, uniqueFilename);
-    } catch (error) {
-      cb(error);
-    }
-  },
-});
+// =============================================================================
+// Multer Configuration (Memory storage for R2 upload)
+// =============================================================================
 
 const upload = multer({
-  storage: storage,
+  storage: multer.memoryStorage(),
   limits: {
     fileSize: 1024 * 1024 * 1024, // 1GB
   },
 });
 
 // =============================================================================
-// File Upload/Download Routes
+// Upload Endpoints
 // =============================================================================
 
-// POST /upload - Accept encrypted file
-app.post("/upload", uploadLimiter, upload.single("encryptedFile"), (req, res) => {
+// POST /upload - Accept encrypted file via multipart form
+app.post("/upload", uploadLimiter, upload.single("encryptedFile"), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({
@@ -347,8 +300,18 @@ app.post("/upload", uploadLimiter, upload.single("encryptedFile"), (req, res) =>
       });
     }
 
-    const fileId = req.file.filename;
-    // [Log removed]
+    const fileId = generateUniqueFileId();
+    const fileBuffer = req.file.buffer;
+
+    // Upload to R2
+    await s3Client.send(
+      new PutObjectCommand({
+        Bucket: r2BucketName,
+        Key: fileId,
+        Body: fileBuffer,
+        ContentType: "application/octet-stream",
+      })
+    );
 
     res.status(201).json({
       success: true,
@@ -364,204 +327,129 @@ app.post("/upload", uploadLimiter, upload.single("encryptedFile"), (req, res) =>
   }
 });
 
-// =============================================================================
-// Streaming Upload Endpoint (Memory-Efficient for Large Files)
-// =============================================================================
+// POST /upload-stream - Accept encrypted file via raw stream (for large files)
+app.post("/upload-stream", uploadLimiter, async (req, res) => {
+  const MAX_STREAM_SIZE = 1024 * 1024 * 1024; // 1GB
 
-/**
- * POST /upload-stream - Accept encrypted file via streaming
- *
- * This endpoint receives the encrypted file as a raw stream, piping it
- * directly to disk without buffering the entire file in memory.
- * This enables uploads of any size (50GB+) with constant memory usage.
- *
- * Required headers:
- * - Content-Type: application/octet-stream
- * - X-File-Size: Expected file size (optional, for validation)
- */
-app.post("/upload-stream", uploadLimiter, (req, res) => {
-  const MAX_STREAM_SIZE = 1024 * 1024 * 1024; // 1GB - same as multer limit
-  
   try {
-    const filename = generateUniqueFilename();
-    const filePath = path.join(UPLOADS_DIR, filename);
-
-    // Create a write stream to disk
-    const writeStream = fs.createWriteStream(filePath);
+    const fileId = generateUniqueFileId();
+    const chunks = [];
     let bytesReceived = 0;
-    let sizeLimitExceeded = false;
 
-    // Handle incoming data with size limit check
-    req.on("data", (chunk) => {
+    // Collect request body
+    for await (const chunk of req) {
       bytesReceived += chunk.length;
-      
-      // Check size limit
-      if (bytesReceived > MAX_STREAM_SIZE && !sizeLimitExceeded) {
-        sizeLimitExceeded = true;
-        console.warn(`⚠️ Stream upload exceeded size limit: ${bytesReceived} bytes`);
-        
-        // Stop receiving data
-        req.unpipe(writeStream);
-        writeStream.destroy();
-        req.destroy(); // Strictly close the connection to stop data transfer
-        
-        // Clean up partial file
-        fs.unlink(filePath, () => {});
-        
-        if (!res.headersSent) {
-          res.status(413).json({
-            success: false,
-            error: "File too large. Maximum size is 1GB.",
-          });
-        }
-      }
-    });
-
-    // Pipe the request body directly to the file
-    req.pipe(writeStream);
-
-    // Handle successful completion
-    writeStream.on("finish", () => {
-      if (!sizeLimitExceeded) {
-        res.status(201).json({
-          success: true,
-          fileId: filename,
-          size: bytesReceived,
-        });
-      }
-    });
-
-    // Handle write errors
-    writeStream.on("error", (error) => {
-      if (sizeLimitExceeded) return; // Already handled
-      
-      console.error("❌ Stream write error:", error);
-
-      // Clean up partial file
-      fs.unlink(filePath, () => {});
-
-      if (!res.headersSent) {
-        res.status(500).json({
+      if (bytesReceived > MAX_STREAM_SIZE) {
+        return res.status(413).json({
           success: false,
-          error: "Failed to write file to disk.",
+          error: "File too large. Maximum size is 1GB.",
         });
       }
+      chunks.push(chunk);
+    }
+
+    const fileBuffer = Buffer.concat(chunks);
+
+    // Upload to R2
+    const uploadCmd = new Upload({
+      client: s3Client,
+      params: {
+        Bucket: r2BucketName,
+        Key: fileId,
+        Body: fileBuffer,
+        ContentType: "application/octet-stream",
+      },
     });
 
-    // Handle request errors (client disconnect, etc.)
-    req.on("error", (error) => {
-      if (sizeLimitExceeded) return; // Already handled
-      
-      console.error("❌ Stream request error:", error);
-      writeStream.destroy();
+    await uploadCmd.done();
 
-      // Clean up partial file
-      fs.unlink(filePath, () => {});
-
-      if (!res.headersSent) {
-        res.status(500).json({
-          success: false,
-          error: "Upload stream interrupted.",
-        });
-      }
-    });
-
-    // Handle client abort
-    req.on("aborted", () => {
-      if (sizeLimitExceeded) return; // Already handled
-      
-      console.log("⚠️ Upload aborted by client");
-      writeStream.destroy();
-
-      // Clean up partial file
-      fs.unlink(filePath, () => {});
+    res.status(201).json({
+      success: true,
+      fileId: fileId,
+      size: bytesReceived,
     });
   } catch (error) {
     console.error("❌ Stream upload error:", error);
     res.status(500).json({
       success: false,
-      error: "Internal server error during stream upload.",
+      error: "Internal server error during upload.",
     });
   }
 });
 
-// Helper: Validate and resolve file path
-function resolveFilePath(fileId) {
-  if (!/^file-\d+-[a-f0-9]+\.bin$/.test(fileId)) {
-    return { error: "Invalid file ID format.", status: 400 };
-  }
 
-  const sanitizedFileId = path.basename(fileId);
-  const filePath = path.join(UPLOADS_DIR, sanitizedFileId);
-
-  if (!fs.existsSync(filePath)) {
-    return { error: "File not found.", status: 404, sanitizedFileId };
-  }
-
-  return { filePath, sanitizedFileId };
-}
+// =============================================================================
+// Download Endpoints (Streaming from R2)
+// =============================================================================
 
 // HEAD /download/:fileId - Check if file exists
-app.head("/download/:fileId", downloadLimiter, (req, res) => {
+app.head("/download/:fileId", downloadLimiter, async (req, res) => {
   try {
-    const result = resolveFilePath(req.params.fileId);
+    const fileId = req.params.fileId;
 
-    if (result.error) {
-      return res.status(result.status).end();
+    if (!FILE_ID_PATTERN.test(fileId)) {
+      return res.status(400).end();
     }
 
-    const stats = fs.statSync(result.filePath);
+    const headResult = await s3Client.send(
+      new HeadObjectCommand({
+        Bucket: r2BucketName,
+        Key: fileId,
+      })
+    );
+
     res.setHeader("Content-Type", "application/octet-stream");
-    res.setHeader("Content-Length", stats.size);
+    res.setHeader("Content-Length", headResult.ContentLength);
     res.status(200).end();
   } catch (error) {
+    if (error.name === "NotFound" || error.$metadata?.httpStatusCode === 404) {
+      return res.status(404).end();
+    }
     console.error("❌ HEAD request error:", error);
     res.status(500).end();
   }
 });
 
 // GET /download/:fileId - Download encrypted file
-app.get("/download/:fileId", downloadLimiter, (req, res) => {
+app.get("/download/:fileId", downloadLimiter, async (req, res) => {
   try {
-    const result = resolveFilePath(req.params.fileId);
+    const fileId = req.params.fileId;
 
-    if (result.error) {
-      if (result.status === 404) {
-        console.log(
-          `⚠️ File not found: ${result.sanitizedFileId || req.params.fileId}`
-        );
-      }
-      return res.status(result.status).json({
+    if (!FILE_ID_PATTERN.test(fileId)) {
+      return res.status(400).json({
         success: false,
-        error: result.error,
+        error: "Invalid file ID format.",
       });
     }
 
-    const { filePath, sanitizedFileId } = result;
-    const stats = fs.statSync(filePath);
+    const getResult = await s3Client.send(
+      new GetObjectCommand({
+        Bucket: r2BucketName,
+        Key: fileId,
+      })
+    );
 
-    console.log(`📤 Downloading: ${sanitizedFileId} (${stats.size} bytes)`);
+    console.log(`📤 Downloading: ${fileId}`);
 
     res.setHeader("Content-Type", "application/octet-stream");
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename="${sanitizedFileId}"`
-    );
-    res.setHeader("Content-Length", stats.size);
+    res.setHeader("Content-Disposition", `attachment; filename="${fileId}"`);
+    if (getResult.ContentLength) {
+      res.setHeader("Content-Length", getResult.ContentLength);
+    }
 
-    const fileStream = fs.createReadStream(filePath);
-    fileStream.pipe(res);
+    // AWS SDK v3 returns a web ReadableStream or Node.js Readable
+    // For reliability, convert to buffer and send (works for files up to 1GB)
+    const byteArray = await getResult.Body.transformToByteArray();
+    res.send(Buffer.from(byteArray));
 
-    fileStream.on("error", (error) => {
-      console.error("❌ Stream error:", error);
-      if (!res.headersSent) {
-        res.status(500).json({
-          success: false,
-          error: "Error streaming file.",
-        });
-      }
-    });
   } catch (error) {
+    if (error.name === "NoSuchKey" || error.$metadata?.httpStatusCode === 404) {
+      console.log(`⚠️ File not found: ${req.params.fileId}`);
+      return res.status(404).json({
+        success: false,
+        error: "File not found.",
+      });
+    }
     console.error("❌ Download error:", error);
     res.status(500).json({
       success: false,
@@ -571,37 +459,41 @@ app.get("/download/:fileId", downloadLimiter, (req, res) => {
 });
 
 // =============================================================================
-// Metadata Routes (for hybrid E2EE)
+// Metadata Routes (Supabase)
 // =============================================================================
 
 /**
  * POST /metadata/:fileId - Store file metadata (encrypted keys, signatures)
- *
- * The server stores this metadata blindly - it cannot decrypt the file keys
- * because they are encrypted with recipient public keys.
  */
-app.post("/metadata/:fileId", metadataLimiter, (req, res) => {
+app.post("/metadata/:fileId", metadataLimiter, async (req, res) => {
   try {
     const fileId = req.params.fileId;
 
-    // Validate fileId format
-    if (!/^file-\d+-[a-f0-9]+\.bin$/.test(fileId)) {
+    if (!FILE_ID_PATTERN.test(fileId)) {
       return res.status(400).json({
         success: false,
         error: "Invalid file ID format.",
       });
     }
 
-    // Check if the file exists
-    const filePath = path.join(UPLOADS_DIR, path.basename(fileId));
-    if (!fs.existsSync(filePath)) {
-      return res.status(404).json({
-        success: false,
-        error: "File not found.",
-      });
+    // Verify file exists in R2
+    try {
+      await s3Client.send(
+        new HeadObjectCommand({
+          Bucket: r2BucketName,
+          Key: fileId,
+        })
+      );
+    } catch (headError) {
+      if (headError.name === "NotFound" || headError.$metadata?.httpStatusCode === 404) {
+        return res.status(404).json({
+          success: false,
+          error: "File not found.",
+        });
+      }
+      throw headError;
     }
 
-    // Validate metadata structure
     const metadata = req.body;
     if (!metadata || typeof metadata !== "object") {
       return res.status(400).json({
@@ -610,34 +502,45 @@ app.post("/metadata/:fileId", metadataLimiter, (req, res) => {
       });
     }
 
-    // Validate metadata doesn't contain plaintext secrets
-    // (Server should never receive plaintext keys)
+    // Security: Reject plaintext keys
     if (metadata.plaintextKey || metadata.rawKey || metadata.aesKey) {
-      console.warn(
-        "⚠️ SECURITY: Attempted to store plaintext key in metadata!"
-      );
+      console.warn("⚠️ SECURITY: Attempted to store plaintext key in metadata!");
       return res.status(400).json({
         success: false,
         error: "Invalid metadata: plaintext keys are not allowed.",
       });
     }
 
-    // Validate expiry hours if provided
+    // Validate expiry hours
+    let expiresAt = new Date(Date.now() + DEFAULT_EXPIRY_MS).toISOString();
     if (metadata.expiryHours !== undefined) {
       const expiryHours = parseInt(metadata.expiryHours, 10);
       if (isNaN(expiryHours) || !ALLOWED_EXPIRY_HOURS.includes(expiryHours)) {
         return res.status(400).json({
           success: false,
-          error: `Invalid expiry time. Allowed values: ${ALLOWED_EXPIRY_HOURS.join(', ')} hours.`,
+          error: `Invalid expiry time. Allowed values: ${ALLOWED_EXPIRY_HOURS.join(", ")} hours.`,
         });
       }
+      expiresAt = new Date(Date.now() + expiryHours * 60 * 60 * 1000).toISOString();
     }
 
-    // Store metadata
-    const metadataFilename = fileId.replace(".bin", ".json");
-    const metadataPath = path.join(METADATA_DIR, metadataFilename);
+    // Upsert metadata to Supabase
+    const { error } = await supabase.from("files").upsert({
+      id: fileId,
+      filename: metadata.filename || "unknown",
+      size: metadata.size || 0,
+      content_hash: metadata.contentHash || null,
+      expires_at: expiresAt,
+      metadata: metadata,
+    });
 
-    fs.writeFileSync(metadataPath, JSON.stringify(metadata, null, 2));
+    if (error) {
+      console.error("❌ Metadata storage error:", error);
+      return res.status(500).json({
+        success: false,
+        error: "Failed to store metadata.",
+      });
+    }
 
     res.status(201).json({
       success: true,
@@ -655,41 +558,29 @@ app.post("/metadata/:fileId", metadataLimiter, (req, res) => {
 /**
  * GET /metadata/:fileId - Retrieve file metadata
  */
-app.get("/metadata/:fileId", (req, res) => {
+app.get("/metadata/:fileId", async (req, res) => {
   try {
     const fileId = req.params.fileId;
 
-    // Validate fileId format
-    if (!/^file-\d+-[a-f0-9]+\.bin$/.test(fileId)) {
+    if (!FILE_ID_PATTERN.test(fileId)) {
       return res.status(400).json({
         success: false,
         error: "Invalid file ID format.",
       });
     }
 
-    const metadataFilename = fileId.replace(".bin", ".json");
-    const metadataPath = path.join(
-      METADATA_DIR,
-      path.basename(metadataFilename)
-    );
+    const { data, error } = await supabase
+      .from("files")
+      .select("metadata")
+      .eq("id", fileId)
+      .single();
 
-    if (!fs.existsSync(metadataPath)) {
-      // Return empty metadata instead of 404 to avoid browser console errors
-      // This is normal for link-only uploads or legacy files
+    if (error || !data) {
+      // Return null for missing metadata (normal for link-only uploads)
       return res.json(null);
     }
 
-    let metadata;
-    try {
-      metadata = JSON.parse(fs.readFileSync(metadataPath, "utf8"));
-    } catch (parseError) {
-      console.error("❌ Metadata parse error:", parseError);
-      return res.status(500).json({
-        error: "Metadata file is corrupted.",
-      });
-    }
-
-    res.json(metadata);
+    res.json(data.metadata);
   } catch (error) {
     console.error("❌ Metadata retrieval error:", error);
     res.status(500).json({
@@ -700,24 +591,19 @@ app.get("/metadata/:fileId", (req, res) => {
 });
 
 // =============================================================================
-// Public Key Directory Routes (Optional - for key discovery)
+// Public Key Directory Routes (In-memory for now)
 // =============================================================================
+// NOTE: Public keys are kept in-memory for simplicity.
+// For production persistence, these should also move to Supabase.
+
+const pubkeyStore = new Map();
 
 /**
  * POST /pubkey - Register a public key
- *
- * Users can optionally register their public key for discovery.
- * This enables others to find and share files with them.
  */
 app.post("/pubkey", (req, res) => {
   try {
-    const {
-      id,
-      displayName,
-      encryptionPublicKey,
-      signingPublicKey,
-      fingerprint,
-    } = req.body;
+    const { id, displayName, encryptionPublicKey, signingPublicKey, fingerprint } = req.body;
 
     if (!id || !encryptionPublicKey || !fingerprint) {
       return res.status(400).json({
@@ -726,17 +612,14 @@ app.post("/pubkey", (req, res) => {
       });
     }
 
-    // Security: Validate ID to prevent Path Traversal
     if (!/^[a-zA-Z0-9_-]+$/.test(id)) {
       return res.status(400).json({ success: false, error: "Invalid ID format." });
     }
 
-    // Security: Validate Fingerprint format
     if (!/^[a-fA-F0-9]{64}$/.test(fingerprint)) {
       return res.status(400).json({ success: false, error: "Invalid fingerprint format." });
     }
 
-    // Security: Validate Display Name (Length limit)
     let cleanDisplayName = displayName;
     if (displayName) {
       if (typeof displayName !== "string" || displayName.length > 50) {
@@ -748,9 +631,6 @@ app.post("/pubkey", (req, res) => {
       cleanDisplayName = displayName.trim();
     }
 
-    // Validate fingerprint matches the public key (client should compute this)
-    // Server stores it but cannot verify without implementing crypto
-
     const pubkeyData = {
       id,
       displayName: cleanDisplayName || `User-${fingerprint.substring(0, 8)}`,
@@ -760,8 +640,7 @@ app.post("/pubkey", (req, res) => {
       registeredAt: new Date().toISOString(),
     };
 
-    const pubkeyPath = path.join(PUBKEYS_DIR, `${id}.json`);
-    fs.writeFileSync(pubkeyPath, JSON.stringify(pubkeyData, null, 2));
+    pubkeyStore.set(id, pubkeyData);
 
     res.status(201).json({
       success: true,
@@ -778,13 +657,11 @@ app.post("/pubkey", (req, res) => {
 
 /**
  * GET /pubkey/fingerprint/:fingerprint - Lookup by fingerprint
- * NOTE: This route MUST come BEFORE /pubkey/:id to avoid Express matching "fingerprint" as an :id
  */
 app.get("/pubkey/fingerprint/:fingerprint", (req, res) => {
   try {
     const fingerprint = req.params.fingerprint.toLowerCase();
 
-    // Validate fingerprint format
     if (!/^[a-f0-9]{64}$/.test(fingerprint)) {
       return res.status(400).json({
         success: false,
@@ -792,21 +669,9 @@ app.get("/pubkey/fingerprint/:fingerprint", (req, res) => {
       });
     }
 
-    // Search for matching public key
-    const files = fs.readdirSync(PUBKEYS_DIR);
-    for (const file of files) {
-      if (file.endsWith(".json")) {
-        const pubkeyPath = path.join(PUBKEYS_DIR, file);
-        try {
-          const pubkeyData = JSON.parse(fs.readFileSync(pubkeyPath, "utf8"));
-
-          if (pubkeyData.fingerprint === fingerprint) {
-            return res.json(pubkeyData);
-          }
-        } catch (parseError) {
-          console.error(`❌ Error parsing pubkey file ${file}:`, parseError);
-          // Continue to next file
-        }
+    for (const [, pubkeyData] of pubkeyStore) {
+      if (pubkeyData.fingerprint === fingerprint) {
+        return res.json(pubkeyData);
       }
     }
 
@@ -830,7 +695,6 @@ app.get("/pubkey/:id", (req, res) => {
   try {
     const id = req.params.id;
 
-    // Sanitize ID
     if (!/^[a-f0-9]{32}$/.test(id)) {
       return res.status(400).json({
         success: false,
@@ -838,25 +702,14 @@ app.get("/pubkey/:id", (req, res) => {
       });
     }
 
-    const pubkeyPath = path.join(PUBKEYS_DIR, `${id}.json`);
-
-    if (!fs.existsSync(pubkeyPath)) {
+    const pubkeyData = pubkeyStore.get(id);
+    if (!pubkeyData) {
       return res.status(404).json({
         success: false,
         error: "Public key not found.",
       });
     }
 
-    let pubkeyData;
-    try {
-      pubkeyData = JSON.parse(fs.readFileSync(pubkeyPath, "utf8"));
-    } catch (parseError) {
-      console.error("❌ Pubkey parse error:", parseError);
-      return res.status(500).json({
-        success: false,
-        error: "Public key file is corrupted.",
-      });
-    }
     res.json(pubkeyData);
   } catch (error) {
     console.error("❌ Public key retrieval error:", error);
@@ -872,22 +725,6 @@ app.get("/pubkey/:id", (req, res) => {
 // =============================================================================
 
 app.use((error, req, res, next) => {
-  if (error instanceof multer.MulterError) {
-    if (error.code === "LIMIT_FILE_SIZE") {
-      return res.status(413).json({
-        success: false,
-        error: "File too large. Maximum size is 1GB.",
-      });
-    }
-    return res.status(400).json({
-      success: false,
-      error: `Upload error: ${error.message}`,
-    });
-  }
-  next(error);
-});
-
-app.use((error, req, res, next) => {
   console.error("❌ Unhandled error:", error);
   res.status(500).json({
     success: false,
@@ -900,7 +737,8 @@ app.use((error, req, res, next) => {
 // =============================================================================
 const server = app.listen(PORT, () => {
   console.log(`🔐 CrypShare Server running on port ${PORT}`);
-  console.log(`📁 Storage: ${UPLOADS_DIR}`);
+  console.log(`☁️  Storage: Cloudflare R2 (${r2BucketName})`);
+  console.log(`🗄️  Database: Supabase`);
 });
 
 // =============================================================================
@@ -913,7 +751,6 @@ function gracefulShutdown(signal) {
     process.exit(0);
   });
 
-  // Force exit if graceful shutdown takes too long
   setTimeout(() => {
     console.error('⚠️ Forcing shutdown after timeout');
     process.exit(1);
@@ -922,4 +759,3 @@ function gracefulShutdown(signal) {
 
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
-
