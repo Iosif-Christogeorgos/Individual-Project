@@ -2445,12 +2445,20 @@ input[type="checkbox"] {
 }
 
 .search-input {
-  flex: 1;
+  flex: 1 1 auto;
+  min-width: 100px;
+  width: 100%;
   background: transparent;
   border: none;
   padding: 0.5rem 0.5rem 0.5rem 0;
   font-size: 0.9rem;
+  font-family: var(--font-mono);
+  color: var(--text-primary);
   outline: none;
+}
+
+.search-input::placeholder {
+  color: var(--text-muted);
 }
 
 .search-btn {

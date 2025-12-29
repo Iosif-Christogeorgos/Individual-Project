@@ -214,8 +214,41 @@ async function initializeIdentityPanel() {
   try {
     currentIdentity = await IdentityManager.getIdentity();
     updateIdentityUI();
+    
+    // Check if identity is already published
+    if (currentIdentity) {
+      await checkPublishStatus();
+    }
   } catch (error) {
     console.error("Failed to load identity:", error);
+  }
+}
+
+/**
+ * Check if current identity is already published in the directory
+ */
+async function checkPublishStatus() {
+  if (!currentIdentity) return;
+
+  try {
+    // Query by identity ID to see if already published
+    const response = await fetch(`/pubkey/${currentIdentity.id}`);
+    
+    if (response.ok) {
+      const data = await response.json();
+      
+      // Identity is already published - show published state
+      const publishForm = document.getElementById("publishForm");
+      const publishedInfo = document.getElementById("publishedInfo");
+      const publishedUsername = document.getElementById("publishedUsername");
+
+      if (publishForm) publishForm.classList.add("hidden");
+      if (publishedInfo) publishedInfo.classList.remove("hidden");
+      if (publishedUsername) publishedUsername.textContent = `@${data.username}`;
+    }
+    // If 404, identity not published yet - show form (default state)
+  } catch (error) {
+    console.error("Failed to check publish status:", error);
   }
 }
 
