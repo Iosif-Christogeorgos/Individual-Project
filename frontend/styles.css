@@ -1173,45 +1173,112 @@ input[type="checkbox"] {
   color: var(--text-primary);
 }
 
-/* Identity Status Block (when logged in) */
-.identity-status {
-  background: rgba(0, 255, 65, 0.05);
-  border: 1px solid rgba(0, 255, 65, 0.2);
-  border-radius: var(--radius-sm);
-  padding: 1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.status-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-family: var(--font-mono);
-  font-size: 0.85rem;
-}
-
-.status-label {
-  color: var(--text-muted);
-  width: 40px;
-}
-
-.status-value {
-  color: var(--text-primary);
-  flex: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.status-value.highlight {
+.panel-title.has-identity {
   color: var(--cyber-green);
   font-weight: 600;
 }
 
-.status-value.fingerprint {
+/* Identity Fingerprint - minimal display */
+.identity-fingerprint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
   font-size: 0.7rem;
+  color: var(--text-muted);
+  padding: 0 0 0.5rem 0;
+  margin-top: -0.75rem;
+  overflow: visible;
+  position: relative;
+}
+
+.identity-fingerprint.hidden {
+  display: none;
+}
+
+.fingerprint-label {
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+
+#fingerprintValue {
+  color: var(--text-secondary);
+  letter-spacing: 0.5px;
+}
+
+/* Info Trigger & Custom Panel */
+.info-trigger {
+  position: relative;
+  color: var(--accent-blue);
+  cursor: help;
+  font-size: 0.9rem;
+  margin-left: 4px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.info-trigger:hover {
+  color: #38bdf8;
+}
+
+.info-panel {
+  position: fixed;
+  top: 60px;
+  left: calc(var(--sidebar-width) + 10px);
+  width: 260px;
+  padding: 14px 16px;
+  background: rgba(15, 23, 42, 0.98);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(14, 165, 233, 0.3);
+  border-radius: 12px;
+  box-shadow: 
+    0 4px 24px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(255, 255, 255, 0.05) inset,
+    0 0 40px -10px rgba(14, 165, 233, 0.2);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateX(-10px);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 9999;
+  pointer-events: none;
+}
+
+.info-panel::before {
+  content: '';
+  position: absolute;
+  left: -6px;
+  top: 20px;
+  transform: rotate(45deg);
+  width: 12px;
+  height: 12px;
+  background: rgba(15, 23, 42, 0.98);
+  border-left: 1px solid rgba(14, 165, 233, 0.3);
+  border-bottom: 1px solid rgba(14, 165, 233, 0.3);
+}
+
+.info-panel::after {
+  display: none;
+}
+
+.info-trigger:hover .info-panel {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(0);
+}
+
+
+
+.info-panel-header {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--accent-blue);
+  margin-bottom: 8px;
+}
+
+.info-panel-content {
+  font-size: 0.78rem;
+  line-height: 1.5;
   color: var(--text-secondary);
 }
 

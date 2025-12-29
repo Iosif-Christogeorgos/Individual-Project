@@ -310,21 +310,25 @@
         <!-- Identity & Recipients Panel -->
         <div class="side-panel" id="identityPanel">
           <!-- Header -->
-          <div class="side-panel-header">
+          <div class="side-panel-header" id="identityHeader">
             <span class="terminal-prompt">$</span>
-            <span class="panel-title">IDENTITY</span>
+            <span class="panel-title" id="panelTitle">IDENTITY</span>
           </div>
 
-          <!-- Identity Status (Fingerprint/Name) -->
-          <div class="identity-status hidden" id="identityStatus">
-            <div class="status-row">
-              <span class="status-label">User:</span>
-              <span class="status-value highlight" id="headerIdentityName">@username</span>
-            </div>
-            <div class="status-row">
-              <span class="status-label">Key:</span>
-              <span class="status-value fingerprint" id="identityFingerprint">ABCD...1234</span>
-            </div>
+          <!-- Identity Fingerprint (shown when logged in) -->
+          <div class="identity-fingerprint hidden" id="identityFingerprint">
+            <span class="fingerprint-label">Fingerprint:</span>
+            <span id="fingerprintValue">ABCD1234</span>
+            <span class="info-trigger">ⓘ
+              <div class="info-panel">
+                <div class="info-panel-header">🔐 What is a Fingerprint?</div>
+                <div class="info-panel-content">
+                  Your unique cryptographic fingerprint acts as a digital signature. 
+                  Share it with others so they can verify your identity and ensure 
+                  secure communication.
+                </div>
+              </div>
+            </span>
           </div>
 
           <!-- Create Identity Section -->

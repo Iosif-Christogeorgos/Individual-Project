@@ -223,26 +223,36 @@ async function initializeIdentityPanel() {
 
 function updateIdentityUI() {
   const noIdentitySection = document.getElementById("noIdentitySection");
-  const identityStatus = document.getElementById("identityStatus");
-  const headerIdentityName = document.getElementById("headerIdentityName");
+  const panelTitle = document.getElementById("panelTitle");
   const identityFingerprint = document.getElementById("identityFingerprint");
+  const fingerprintValue = document.getElementById("fingerprintValue");
 
   if (currentIdentity) {
     noIdentitySection?.classList.add("hidden");
-    identityStatus?.classList.remove("hidden");
-
-    if (headerIdentityName) {
-      // Display Name used to be separate, now we primarily show the username logic
-      // If prompt was to use username as display name, we assume it's stored in displayName
-      headerIdentityName.textContent = currentIdentity.displayName || "@unknown";
+    
+    // Update title to show username (without @ prefix)
+    if (panelTitle) {
+      const username = currentIdentity.displayName?.replace('@', '') || "unknown";
+      panelTitle.textContent = username;
+      panelTitle.classList.add("has-identity");
     }
-    if (identityFingerprint) {
-      identityFingerprint.textContent =
-        IdentityManager.getShortFingerprint(currentIdentity);
+    
+    // Show fingerprint below
+    if (identityFingerprint && fingerprintValue) {
+      fingerprintValue.textContent = IdentityManager.getShortFingerprint(currentIdentity);
+      identityFingerprint.classList.remove("hidden");
     }
   } else {
     noIdentitySection?.classList.remove("hidden");
-    identityStatus?.classList.add("hidden");
+    
+    // Reset title
+    if (panelTitle) {
+      panelTitle.textContent = "IDENTITY";
+      panelTitle.classList.remove("has-identity");
+    }
+    
+    // Hide fingerprint
+    identityFingerprint?.classList.add("hidden");
   }
 }
 
