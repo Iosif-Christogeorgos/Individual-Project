@@ -167,17 +167,17 @@ function getMatchingEncryptedKey() {
 function showInvalidLinkPage(title, message) {
   const card = document.querySelector(".card");
   card.innerHTML = `
-    <div class="logo" style="justify-content: center">
+    <div class="logo justify-center">
       <img src="logo.svg" alt="CrypShare" class="logo-icon" />
       <div class="logo-text">Cryp<span>Share</span></div>
     </div>
 
     <span class="download-icon">❌</span>
 
-    <h2 style="justify-content: center">${title}</h2>
+    <h2 class="justify-center">${title}</h2>
     <p>${message}</p>
 
-    <a href="/" class="btn btn-primary" style="text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;">
+    <a href="/" class="btn btn-primary text-decoration-none d-inline-flex items-center justify-center gap-2">
       <span>📤</span> Upload a New File
     </a>
 
@@ -195,14 +195,14 @@ function showIdentityRequiredPage() {
     : "";
 
   card.innerHTML = `
-    <div class="logo" style="justify-content: center">
+    <div class="logo justify-center">
       <img src="logo.svg" alt="CrypShare" class="logo-icon" />
       <div class="logo-text">Cryp<span>Share</span></div>
     </div>
 
     <span class="download-icon">🔑</span>
 
-    <h2 style="justify-content: center">Identity Required</h2>
+    <h2 class="justify-center">Identity Required</h2>
     <p>
       This file requires identity-based decryption. ${recipientInfo}
     </p>
@@ -223,13 +223,13 @@ function showIdentityRequiredPage() {
     `
         : `
       <p>You need to set up your cryptographic identity to decrypt this file.</p>
-      <a href="/" class="btn btn-secondary" style="text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; margin-bottom: 1rem;">
+      <a href="/" class="btn btn-secondary text-decoration-none d-inline-flex items-center justify-center gap-2 mb-4">
         <span>🆔</span> Set Up Identity
       </a>
     `
     }
 
-    <a href="/" class="btn btn-primary" style="text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;">
+    <a href="/" class="btn btn-primary text-decoration-none d-inline-flex items-center justify-center gap-2">
       <span>📤</span> Upload a New File
     </a>
   `;

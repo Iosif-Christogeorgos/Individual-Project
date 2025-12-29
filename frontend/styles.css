@@ -3074,3 +3074,10 @@ input[type="checkbox"]:checked {
   }
 }
 
+
+/* More CSP Utilities */
+.items-center { align-items: center !important; }
+.gap-2 { gap: 0.5rem !important; }
+.gap-4 { gap: 1rem !important; }
+.mb-4 { margin-bottom: 1rem !important; }
+.d-inline-flex { display: inline-flex !important; }
