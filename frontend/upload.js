@@ -313,6 +313,9 @@ async function searchUserByUsername() {
   const searchInput = document.getElementById("searchUsernameInput");
   const searchResult = document.getElementById("searchResult");
   const searchBtn = document.getElementById("searchUserBtn");
+  const btnText = searchBtn?.querySelector(".search-submit-text");
+  const btnLoader = searchBtn?.querySelector(".search-submit-loader");
+  
   const username = searchInput?.value.toLowerCase().trim();
 
   if (!username || !/^[a-z0-9_]{3,20}$/.test(username)) {
@@ -320,8 +323,10 @@ async function searchUserByUsername() {
     return;
   }
 
+  // Show loading state
   searchBtn.disabled = true;
-  searchBtn.innerHTML = "...";
+  btnText?.classList.add("hidden");
+  btnLoader?.classList.remove("hidden");
   if (searchResult) searchResult.innerHTML = '<div class="search-loading">Searching...</div>';
 
   try {
@@ -357,7 +362,7 @@ async function searchUserByUsername() {
     document.getElementById("addSearchResultBtn")?.addEventListener("click", async () => {
       const contact = {
         id: userData.id,
-        displayName: userData.displayName || `@${userData.username}`,
+        displayName: `@${userData.username}`,
         encryptionPublicKey: userData.encryptionPublicKey,
         signingPublicKey: userData.signingPublicKey,
         fingerprint: userData.fingerprint,
@@ -365,8 +370,8 @@ async function searchUserByUsername() {
 
       try {
         await IdentityManager.addContact(contact);
-        loadContacts();
-        searchResult.innerHTML = '<div class="search-success">✓ Contact added</div>';
+        loadContacts(updateLinkKeyState);
+        searchResult.innerHTML = ''; // Clear - toast handles feedback
         searchInput.value = "";
         showToast(`Added @${userData.username} as contact ✓`);
       } catch (error) {
@@ -379,8 +384,10 @@ async function searchUserByUsername() {
     console.error("Search error:", error);
     if (searchResult) searchResult.innerHTML = '<div class="search-error">Search failed</div>';
   } finally {
+    // Reset button state
     searchBtn.disabled = false;
-    searchBtn.innerHTML = "🔍";
+    btnText?.classList.remove("hidden");
+    btnLoader?.classList.add("hidden");
   }
 }
 
@@ -421,7 +428,7 @@ function confirmNewUpload() {
 document.addEventListener("DOMContentLoaded", () => {
   // Initialize identity panel
   initializeIdentityPanel();
-  loadContacts();
+  loadContacts(updateLinkKeyState);
 
   // Initialize file handler
   initializeFileHandler(() => {

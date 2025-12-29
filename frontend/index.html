@@ -373,21 +373,26 @@
               Select contacts who can decrypt this file using their identity.
             </p>
 
-            <!-- Search by Username -->
-            <div class="search-user-section">
-              <div class="search-input-wrapper">
-                <span class="search-prefix">@</span>
-                <input
-                  type="text"
-                  id="searchUsernameInput"
-                  class="panel-input search-input"
-                  placeholder="search by username..."
-                />
-                <button class="btn btn-small btn-ghost search-btn" id="searchUserBtn">🔍</button>
+            <!-- Find Users Section -->
+            <div class="user-search">
+              <div class="search-box">
+                <div class="search-input-row">
+                  <span class="search-icon">🔍</span>
+                  <input
+                    type="text"
+                    id="searchUsernameInput"
+                    class="search-field"
+                    placeholder="Find user by username..."
+                    maxlength="20"
+                    spellcheck="false"
+                  />
+                </div>
+                <button class="search-submit" id="searchUserBtn">
+                  <span class="search-submit-text">Search</span>
+                  <span class="search-submit-loader hidden">Searching...</span>
+                </button>
               </div>
-              <div class="search-result" id="searchResult">
-                <!-- Search results appear here -->
-              </div>
+              <div class="search-result" id="searchResult"></div>
             </div>
 
             <div class="contacts-list" id="contactsList">

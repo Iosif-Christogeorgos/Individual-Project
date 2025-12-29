@@ -28,8 +28,9 @@ export function clearSelectedRecipients() {
 
 /**
  * Load and display contacts in the contacts list.
+ * @param {Function} onChangeCallback - Callback when selection changes
  */
-export async function loadContacts() {
+export async function loadContacts(onChangeCallback) {
   const contactsList = document.getElementById("contactsList");
   if (!contactsList) return;
 
@@ -46,21 +47,36 @@ export async function loadContacts() {
       .map(
         (contact) => `
       <div class="contact-item" data-id="${contact.id}">
-        <input type="checkbox" class="contact-checkbox" 
-               onchange="toggleRecipient('${contact.id}', this.checked)">
+        <input type="checkbox" class="contact-checkbox" data-contact-id="${contact.id}"
+               ${selectedRecipients.includes(contact.id) ? 'checked' : ''}>
         <div class="contact-info">
           <span class="contact-name">${escapeHtml(contact.displayName)}</span>
           <span class="contact-fingerprint">${contact.fingerprint
             .substring(0, 16)
             .toUpperCase()}</span>
         </div>
-        <button class="contact-remove" onclick="removeContactUI('${
-          contact.id
-        }')" title="Remove contact">×</button>
+        <button class="contact-remove" data-remove-id="${contact.id}" title="Remove contact">×</button>
       </div>
     `
       )
       .join("");
+
+    // Attach event listeners for checkboxes
+    contactsList.querySelectorAll('.contact-checkbox').forEach(checkbox => {
+      checkbox.addEventListener('change', (e) => {
+        const contactId = e.target.dataset.contactId;
+        toggleRecipient(contactId, e.target.checked, onChangeCallback);
+      });
+    });
+
+    // Attach event listeners for remove buttons
+    contactsList.querySelectorAll('.contact-remove').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const contactId = e.target.dataset.removeId;
+        await removeContactUI(contactId, onChangeCallback);
+      });
+    });
+
   } catch (error) {
     console.error("Failed to load contacts:", error);
   }
@@ -109,7 +125,7 @@ export async function removeContactUI(contactId, onChangeCallback) {
   try {
     await IdentityManager.removeContact(contactId);
     selectedRecipients = selectedRecipients.filter((id) => id !== contactId);
-    await loadContacts();
+    await loadContacts(onChangeCallback);
     updateRecipientCount();
     
     if (onChangeCallback) {
