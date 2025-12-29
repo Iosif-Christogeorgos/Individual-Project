@@ -1362,17 +1362,17 @@ input[type="checkbox"] {
   gap: 0;
   padding: 0 4px 0 12px;
   height: 44px;
-  background: rgba(14, 165, 233, 0.05);
-  border: 1px solid rgba(14, 165, 233, 0.2);
+  background: rgba(0, 255, 65, 0.03);
+  border: 1px solid rgba(0, 255, 65, 0.2);
   border-radius: 22px;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
 }
 
 .search-box:focus-within {
-  border-color: var(--accent-blue);
-  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.08);
-  background: rgba(14, 165, 233, 0.08);
+  border-color: var(--cyber-green);
+  box-shadow: 0 0 0 3px rgba(0, 255, 65, 0.08);
+  background: rgba(0, 255, 65, 0.06);
 }
 
 .search-box .search-icon {
@@ -1409,10 +1409,10 @@ input[type="checkbox"] {
   width: 0;
   height: 36px;
   padding: 0;
-  background: var(--accent-blue);
+  background: var(--cyber-green);
   border: none;
   border-radius: 18px;
-  color: #fff;
+  color: #000;
   font-family: var(--font-mono);
   font-size: 1rem;
   font-weight: 600;
@@ -1429,7 +1429,7 @@ input[type="checkbox"] {
 }
 
 .search-submit:hover {
-  background: #38bdf8;
+  background: #4ade80;
   transform: scale(1.05);
 }
 
@@ -1473,10 +1473,15 @@ input[type="checkbox"] {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 12px 14px;
-  background: linear-gradient(135deg, rgba(14, 165, 233, 0.1), rgba(14, 165, 233, 0.05));
-  border: 1px solid rgba(14, 165, 233, 0.3);
-  border-radius: 8px;
+  padding: 8px 0;
+  background: transparent;
+  border: none;
+  animation: slideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .search-result-info {
@@ -1484,13 +1489,13 @@ input[type="checkbox"] {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
 }
 
 .search-result-name {
-  color: var(--accent-blue);
+  color: var(--cyber-green);
   font-weight: 600;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1503,6 +1508,36 @@ input[type="checkbox"] {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* Add Contact Button */
+#addSearchResultBtn {
+  padding: 8px 16px;
+  background: var(--cyber-green);
+  border: none;
+  border-radius: 20px;
+  color: #000;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  animation: pulseGlow 2s ease-in-out infinite;
+}
+
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(0, 255, 65, 0.4); }
+  50% { box-shadow: 0 0 0 6px rgba(0, 255, 65, 0); }
+}
+
+#addSearchResultBtn:hover {
+  background: #4ade80;
+  transform: scale(1.05);
+  animation: none;
+}
+
+#addSearchResultBtn:active {
+  transform: scale(0.95);
 }
 
 /* Status Messages */
@@ -1518,9 +1553,9 @@ input[type="checkbox"] {
 }
 
 .search-loading {
-  background: rgba(14, 165, 233, 0.1);
-  color: var(--accent-blue);
-  border: 1px solid rgba(14, 165, 233, 0.2);
+  background: rgba(0, 255, 65, 0.1);
+  color: var(--cyber-green);
+  border: 1px solid rgba(0, 255, 65, 0.2);
 }
 
 .search-error {

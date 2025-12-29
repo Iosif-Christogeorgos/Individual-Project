@@ -363,7 +363,7 @@ async function searchUserByUsername() {
           </div>
         </div>
         <button class="btn btn-small btn-secondary" id="addSearchResultBtn">
-          + Add
+          Add Contact
         </button>
       </div>
     `;
