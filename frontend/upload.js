@@ -311,6 +311,149 @@ async function copyPublicKey() {
 // Link Overwrite Warning Modal
 // =============================================================================
 
+// =============================================================================
+// Publish Identity to Directory
+// =============================================================================
+
+async function publishIdentity() {
+  if (!currentIdentity) {
+    showToast("Create an identity first ⚠");
+    return;
+  }
+
+  const usernameInput = document.getElementById("usernameInput");
+  const publishBtn = document.getElementById("publishIdentityBtn");
+  const username = usernameInput?.value.toLowerCase().trim();
+
+  if (!username || !/^[a-z0-9_]{3,20}$/.test(username)) {
+    showToast("Invalid username format ⚠");
+    return;
+  }
+
+  publishBtn.disabled = true;
+  publishBtn.innerHTML = "Publishing...";
+
+  try {
+    const publicIdentity = IdentityManager.exportPublicIdentity(currentIdentity);
+    
+    const response = await fetch("/pubkey", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: currentIdentity.id,
+        username: username,
+        displayName: currentIdentity.displayName,
+        encryptionPublicKey: publicIdentity.encryptionPublicKey,
+        signingPublicKey: publicIdentity.signingPublicKey,
+        fingerprint: currentIdentity.fingerprint,
+      }),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      showToast(result.error || "Failed to publish ✗");
+      return;
+    }
+
+    // Update UI to show published status
+    const publishForm = document.getElementById("publishForm");
+    const publishedInfo = document.getElementById("publishedInfo");
+    const publishedUsername = document.getElementById("publishedUsername");
+
+    if (publishForm) publishForm.classList.add("hidden");
+    if (publishedInfo) publishedInfo.classList.remove("hidden");
+    if (publishedUsername) publishedUsername.textContent = `@${result.username}`;
+
+    showToast(`Published as @${result.username} ✓`);
+  } catch (error) {
+    console.error("Publish error:", error);
+    showToast("Failed to publish ✗");
+  } finally {
+    publishBtn.disabled = false;
+    publishBtn.innerHTML = "🌐 Publish to Directory";
+  }
+}
+
+// =============================================================================
+// Search User by Username
+// =============================================================================
+
+async function searchUserByUsername() {
+  const searchInput = document.getElementById("searchUsernameInput");
+  const searchResult = document.getElementById("searchResult");
+  const searchBtn = document.getElementById("searchUserBtn");
+  const username = searchInput?.value.toLowerCase().trim();
+
+  if (!username || !/^[a-z0-9_]{3,20}$/.test(username)) {
+    if (searchResult) searchResult.innerHTML = '<div class="search-error">Enter a valid username (3-20 chars)</div>';
+    return;
+  }
+
+  searchBtn.disabled = true;
+  searchBtn.innerHTML = "...";
+  if (searchResult) searchResult.innerHTML = '<div class="search-loading">Searching...</div>';
+
+  try {
+    const response = await fetch(`/pubkey/username/${encodeURIComponent(username)}`);
+    
+    if (!response.ok) {
+      if (response.status === 404) {
+        searchResult.innerHTML = '<div class="search-not-found">User not found</div>';
+      } else {
+        searchResult.innerHTML = '<div class="search-error">Search failed</div>';
+      }
+      return;
+    }
+
+    const userData = await response.json();
+    
+    // Display search result with add button
+    searchResult.innerHTML = `
+      <div class="search-result-card">
+        <div class="search-result-info">
+          <div class="search-result-name">@${userData.username}</div>
+          <div class="search-result-fingerprint" title="${userData.fingerprint}">
+            🔑 ${userData.fingerprint.substring(0, 8)}...${userData.fingerprint.substring(56)}
+          </div>
+        </div>
+        <button class="btn btn-small btn-secondary" id="addSearchResultBtn">
+          + Add
+        </button>
+      </div>
+    `;
+
+    // Add click handler for the add button
+    document.getElementById("addSearchResultBtn")?.addEventListener("click", async () => {
+      const contact = {
+        id: userData.id,
+        displayName: userData.displayName || `@${userData.username}`,
+        encryptionPublicKey: userData.encryptionPublicKey,
+        signingPublicKey: userData.signingPublicKey,
+        fingerprint: userData.fingerprint,
+      };
+
+      try {
+        await IdentityManager.addContact(contact);
+        loadContacts();
+        searchResult.innerHTML = '<div class="search-success">✓ Contact added</div>';
+        searchInput.value = "";
+        showToast(`Added @${userData.username} as contact ✓`);
+      } catch (error) {
+        console.error("Add contact error:", error);
+        searchResult.innerHTML = '<div class="search-error">Failed to add contact</div>';
+      }
+    });
+
+  } catch (error) {
+    console.error("Search error:", error);
+    if (searchResult) searchResult.innerHTML = '<div class="search-error">Search failed</div>';
+  } finally {
+    searchBtn.disabled = false;
+    searchBtn.innerHTML = "🔍";
+  }
+}
+
 function showOverwriteModal(file) {
   const modal = document.getElementById("linkOverwriteModal");
   const linkPreview = document.getElementById("modalLinkPreview");
@@ -389,6 +532,13 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("createIdentityBtn")?.addEventListener("click", createIdentity);
   document.getElementById("exportIdentityBtn")?.addEventListener("click", exportIdentity);
   document.getElementById("copyPublicKeyBtn")?.addEventListener("click", copyPublicKey);
+  document.getElementById("publishIdentityBtn")?.addEventListener("click", publishIdentity);
+  
+  // User directory search
+  document.getElementById("searchUserBtn")?.addEventListener("click", searchUserByUsername);
+  document.getElementById("searchUsernameInput")?.addEventListener("keypress", (e) => {
+    if (e.key === "Enter") searchUserByUsername();
+  });
   
   // Contact management
   document.getElementById("importContactFileBtn")?.addEventListener("click", importContactFromFile);

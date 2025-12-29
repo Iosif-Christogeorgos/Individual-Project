@@ -361,6 +361,37 @@
                 📋 Copy Key
               </button>
             </div>
+
+            <!-- Publish to Directory Section -->
+            <div class="publish-section" id="publishSection">
+              <div class="publish-status" id="publishStatus">
+                <!-- Shows "Published as @username" or publish form -->
+              </div>
+              <div class="publish-form" id="publishForm">
+                <div class="username-input-wrapper">
+                  <span class="username-prefix">@</span>
+                  <input
+                    type="text"
+                    id="usernameInput"
+                    class="panel-input username-input"
+                    placeholder="choose a username"
+                    maxlength="20"
+                    pattern="[a-z0-9_]{3,20}"
+                  />
+                </div>
+                <div class="username-hint" id="usernameHint">3-20 chars, lowercase, numbers, underscores</div>
+                <button
+                  class="btn btn-small btn-secondary"
+                  id="publishIdentityBtn"
+                >
+                  🌐 Publish to Directory
+                </button>
+              </div>
+              <div class="published-info hidden" id="publishedInfo">
+                <span class="published-badge">✓ Published as </span>
+                <span class="published-username" id="publishedUsername">@username</span>
+              </div>
+            </div>
           </div>
 
           <!-- Recipients Section -->
@@ -372,6 +403,23 @@
             <p class="section-desc">
               Select contacts who can decrypt this file using their identity.
             </p>
+
+            <!-- Search by Username -->
+            <div class="search-user-section">
+              <div class="search-input-wrapper">
+                <span class="search-prefix">@</span>
+                <input
+                  type="text"
+                  id="searchUsernameInput"
+                  class="panel-input search-input"
+                  placeholder="search by username..."
+                />
+                <button class="btn btn-small btn-ghost search-btn" id="searchUserBtn">🔍</button>
+              </div>
+              <div class="search-result" id="searchResult">
+                <!-- Search results appear here -->
+              </div>
+            </div>
 
             <div class="contacts-list" id="contactsList">
               <div class="no-contacts">No contacts added yet</div>

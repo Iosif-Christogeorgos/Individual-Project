@@ -164,6 +164,7 @@ const DEFAULT_ORIGINS = [
   'http://localhost:3000',
   'http://127.0.0.1:3000',
   'https://crypshare.app',
+  'https://www.crypshare.app',
 ];
 
 const allowedOrigins = process.env.ALLOWED_ORIGINS
@@ -429,8 +430,6 @@ app.get("/download/:fileId", downloadLimiter, async (req, res) => {
       })
     );
 
-    console.log(`📤 Downloading: ${fileId}`);
-
     res.setHeader("Content-Type", "application/octet-stream");
     res.setHeader("Content-Disposition", `attachment; filename="${fileId}"`);
     if (getResult.ContentLength) {
@@ -559,7 +558,8 @@ app.post("/metadata/:fileId", metadataLimiter, async (req, res) => {
 });
 
 /**
- * GET /metadata/:fileId - Retrieve file metadata
+ * GET /metadata/:fileId - Retrieve file metadata via secure RPC
+ * Uses get_file_metadata RPC to prevent row enumeration attacks
  */
 app.get("/metadata/:fileId", async (req, res) => {
   try {
@@ -572,18 +572,23 @@ app.get("/metadata/:fileId", async (req, res) => {
       });
     }
 
-    const { data, error } = await supabase
-      .from("files")
-      .select("metadata")
-      .eq("id", fileId)
-      .single();
+    // Use RPC function instead of direct table access (prevents enumeration)
+    const { data, error } = await supabase.rpc("get_file_metadata", {
+      lookup_id: fileId,
+    });
 
-    if (error || !data) {
-      // Return null for missing metadata (normal for link-only uploads)
+    if (error) {
+      console.error("❌ Metadata RPC error:", error.message);
       return res.json(null);
     }
 
-    res.json(data.metadata);
+    // RPC returns array, get first result
+    if (!data || data.length === 0) {
+      // Return null for missing/expired metadata (normal for link-only uploads)
+      return res.json(null);
+    }
+
+    res.json(data[0].metadata);
   } catch (error) {
     console.error("❌ Metadata retrieval error:", error);
     res.status(500).json({
@@ -594,35 +599,55 @@ app.get("/metadata/:fileId", async (req, res) => {
 });
 
 // =============================================================================
-// Public Key Directory Routes (In-memory for now)
+// Public Key Directory Routes (Supabase-backed)
 // =============================================================================
-// NOTE: Public keys are kept in-memory for simplicity.
-// For production persistence, these should also move to Supabase.
+// Users can publish their public key with a unique username.
+// Others can lookup by username or fingerprint.
+// Trust model: Username is for convenience, fingerprint is for verification.
 
-const pubkeyStore = new Map();
+const pubkeyLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  message: { success: false, error: "Too many requests. Please try again later." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 /**
- * POST /pubkey - Register a public key
+ * POST /pubkey - Register/update a public key with username
  */
-app.post("/pubkey", (req, res) => {
+app.post("/pubkey", pubkeyLimiter, async (req, res) => {
   try {
-    const { id, displayName, encryptionPublicKey, signingPublicKey, fingerprint } = req.body;
+    const { id, username, displayName, encryptionPublicKey, signingPublicKey, fingerprint } = req.body;
 
-    if (!id || !encryptionPublicKey || !fingerprint) {
+    // Validate required fields
+    if (!id || !encryptionPublicKey || !fingerprint || !username) {
       return res.status(400).json({
         success: false,
-        error: "Missing required fields: id, encryptionPublicKey, fingerprint",
+        error: "Missing required fields: id, username, encryptionPublicKey, fingerprint",
       });
     }
 
-    if (!/^[a-zA-Z0-9_-]+$/.test(id)) {
+    // Validate ID format (32 hex chars)
+    if (!/^[a-f0-9]{32}$/.test(id)) {
       return res.status(400).json({ success: false, error: "Invalid ID format." });
     }
 
+    // Validate username format (3-20 chars, alphanumeric + underscore, lowercase)
+    const cleanUsername = username.toLowerCase().trim();
+    if (!/^[a-z0-9_]{3,20}$/.test(cleanUsername)) {
+      return res.status(400).json({
+        success: false,
+        error: "Username must be 3-20 characters, lowercase letters, numbers, and underscores only.",
+      });
+    }
+
+    // Validate fingerprint format (64 hex chars)
     if (!/^[a-fA-F0-9]{64}$/.test(fingerprint)) {
       return res.status(400).json({ success: false, error: "Invalid fingerprint format." });
     }
 
+    // Validate display name
     let cleanDisplayName = displayName;
     if (displayName) {
       if (typeof displayName !== "string" || displayName.length > 50) {
@@ -634,20 +659,46 @@ app.post("/pubkey", (req, res) => {
       cleanDisplayName = displayName.trim();
     }
 
-    const pubkeyData = {
-      id,
-      displayName: cleanDisplayName || `User-${fingerprint.substring(0, 8)}`,
-      encryptionPublicKey,
-      signingPublicKey,
-      fingerprint,
-      registeredAt: new Date().toISOString(),
-    };
+    // Check if username is already taken by another user
+    const { data: existingUsername } = await supabase
+      .from("public_keys")
+      .select("id")
+      .eq("username", cleanUsername)
+      .neq("id", id)
+      .single();
 
-    pubkeyStore.set(id, pubkeyData);
+    if (existingUsername) {
+      return res.status(409).json({
+        success: false,
+        error: "Username already taken. Please choose another.",
+      });
+    }
+
+    // Upsert public key to Supabase
+    const { error } = await supabase.from("public_keys").upsert({
+      id: id,
+      username: cleanUsername,
+      display_name: cleanDisplayName || `User-${fingerprint.substring(0, 8)}`,
+      fingerprint: fingerprint.toLowerCase(),
+      encryption_public_key: encryptionPublicKey,
+      signing_public_key: signingPublicKey || null,
+      updated_at: new Date().toISOString(),
+    });
+
+    if (error) {
+      console.error("❌ Public key registration error:", error.message);
+      return res.status(500).json({
+        success: false,
+        error: "Failed to register public key.",
+      });
+    }
+
+    console.log(`✅ Public key registered: @${cleanUsername} (${fingerprint.substring(0, 8)}...)`);
 
     res.status(201).json({
       success: true,
       message: "Public key registered successfully.",
+      username: cleanUsername,
     });
   } catch (error) {
     console.error("❌ Public key registration error:", error);
@@ -659,9 +710,53 @@ app.post("/pubkey", (req, res) => {
 });
 
 /**
+ * GET /pubkey/username/:username - Lookup by username
+ */
+app.get("/pubkey/username/:username", async (req, res) => {
+  try {
+    const username = req.params.username.toLowerCase().trim();
+
+    if (!/^[a-z0-9_]{3,20}$/.test(username)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid username format.",
+      });
+    }
+
+    const { data, error } = await supabase
+      .from("public_keys")
+      .select("id, username, display_name, fingerprint, encryption_public_key, signing_public_key")
+      .eq("username", username)
+      .single();
+
+    if (error || !data) {
+      return res.status(404).json({
+        success: false,
+        error: "User not found.",
+      });
+    }
+
+    res.json({
+      id: data.id,
+      username: data.username,
+      displayName: data.display_name,
+      fingerprint: data.fingerprint,
+      encryptionPublicKey: data.encryption_public_key,
+      signingPublicKey: data.signing_public_key,
+    });
+  } catch (error) {
+    console.error("❌ Public key lookup error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Internal server error.",
+    });
+  }
+});
+
+/**
  * GET /pubkey/fingerprint/:fingerprint - Lookup by fingerprint
  */
-app.get("/pubkey/fingerprint/:fingerprint", (req, res) => {
+app.get("/pubkey/fingerprint/:fingerprint", async (req, res) => {
   try {
     const fingerprint = req.params.fingerprint.toLowerCase();
 
@@ -672,15 +767,26 @@ app.get("/pubkey/fingerprint/:fingerprint", (req, res) => {
       });
     }
 
-    for (const [, pubkeyData] of pubkeyStore) {
-      if (pubkeyData.fingerprint === fingerprint) {
-        return res.json(pubkeyData);
-      }
+    const { data, error } = await supabase
+      .from("public_keys")
+      .select("id, username, display_name, fingerprint, encryption_public_key, signing_public_key")
+      .eq("fingerprint", fingerprint)
+      .single();
+
+    if (error || !data) {
+      return res.status(404).json({
+        success: false,
+        error: "Public key not found.",
+      });
     }
 
-    res.status(404).json({
-      success: false,
-      error: "Public key not found.",
+    res.json({
+      id: data.id,
+      username: data.username,
+      displayName: data.display_name,
+      fingerprint: data.fingerprint,
+      encryptionPublicKey: data.encryption_public_key,
+      signingPublicKey: data.signing_public_key,
     });
   } catch (error) {
     console.error("❌ Public key lookup error:", error);
@@ -694,7 +800,7 @@ app.get("/pubkey/fingerprint/:fingerprint", (req, res) => {
 /**
  * GET /pubkey/:id - Retrieve a public key by ID
  */
-app.get("/pubkey/:id", (req, res) => {
+app.get("/pubkey/:id", async (req, res) => {
   try {
     const id = req.params.id;
 
@@ -705,21 +811,57 @@ app.get("/pubkey/:id", (req, res) => {
       });
     }
 
-    const pubkeyData = pubkeyStore.get(id);
-    if (!pubkeyData) {
+    const { data, error } = await supabase
+      .from("public_keys")
+      .select("id, username, display_name, fingerprint, encryption_public_key, signing_public_key")
+      .eq("id", id)
+      .single();
+
+    if (error || !data) {
       return res.status(404).json({
         success: false,
         error: "Public key not found.",
       });
     }
 
-    res.json(pubkeyData);
+    res.json({
+      id: data.id,
+      username: data.username,
+      displayName: data.display_name,
+      fingerprint: data.fingerprint,
+      encryptionPublicKey: data.encryption_public_key,
+      signingPublicKey: data.signing_public_key,
+    });
   } catch (error) {
     console.error("❌ Public key retrieval error:", error);
     res.status(500).json({
       success: false,
       error: "Internal server error.",
     });
+  }
+});
+
+/**
+ * GET /pubkey/check/:username - Check if username is available
+ */
+app.get("/pubkey/check/:username", async (req, res) => {
+  try {
+    const username = req.params.username.toLowerCase().trim();
+
+    if (!/^[a-z0-9_]{3,20}$/.test(username)) {
+      return res.json({ available: false, reason: "Invalid format" });
+    }
+
+    const { data } = await supabase
+      .from("public_keys")
+      .select("id")
+      .eq("username", username)
+      .single();
+
+    res.json({ available: !data });
+  } catch (error) {
+    console.error("❌ Username check error:", error);
+    res.json({ available: false, reason: "Error checking availability" });
   }
 });
 
