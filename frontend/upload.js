@@ -470,7 +470,19 @@ document.addEventListener("DOMContentLoaded", () => {
   
   // User directory search
   document.getElementById("searchUserBtn")?.addEventListener("click", searchUserByUsername);
-  document.getElementById("searchUsernameInput")?.addEventListener("keypress", (e) => {
+  
+  const searchInput = document.getElementById("searchUsernameInput");
+  const searchBtn = document.getElementById("searchUserBtn");
+  
+  // Show/hide search button based on input length
+  searchInput?.addEventListener("input", (e) => {
+    const value = e.target.value.trim();
+    const isValid = value.length > 2;
+    searchBtn?.classList.toggle("visible", isValid);
+  });
+  
+  // Search on Enter key
+  searchInput?.addEventListener("keypress", (e) => {
     if (e.key === "Enter") searchUserByUsername();
   });
   

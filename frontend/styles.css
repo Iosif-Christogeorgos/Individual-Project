@@ -1291,38 +1291,39 @@ input[type="checkbox"] {
 
 .search-box {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.search-input-row {
-  display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 0 12px;
+  gap: 0;
+  padding: 0 4px 0 12px;
   height: 44px;
   background: rgba(14, 165, 233, 0.05);
   border: 1px solid rgba(14, 165, 233, 0.2);
-  border-radius: 8px;
-  transition: all 0.2s ease;
+  border-radius: 22px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
 }
 
-.search-input-row:focus-within {
+.search-box:focus-within {
   border-color: var(--accent-blue);
-  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.08);
   background: rgba(14, 165, 233, 0.08);
 }
 
 .search-box .search-icon {
-  font-size: 0.9rem;
-  opacity: 0.6;
+  font-size: 0.85rem;
+  opacity: 0.5;
   flex-shrink: 0;
+  transition: opacity 0.2s;
+}
+
+.search-box:focus-within .search-icon {
+  opacity: 0.8;
 }
 
 .search-field {
   flex: 1;
   min-width: 0;
   height: 100%;
+  padding: 0 10px;
   background: transparent;
   border: none;
   color: var(--text-primary);
@@ -1333,35 +1334,44 @@ input[type="checkbox"] {
 
 .search-field::placeholder {
   color: var(--text-muted);
-  opacity: 0.7;
+  opacity: 0.6;
 }
 
+/* Search button - slides in from right */
 .search-submit {
-  width: 100%;
-  padding: 10px 16px;
-  background: linear-gradient(135deg, var(--accent-blue), #0284c7);
+  width: 0;
+  height: 36px;
+  padding: 0;
+  background: var(--accent-blue);
   border: none;
-  border-radius: 6px;
+  border-radius: 18px;
   color: #fff;
   font-family: var(--font-mono);
-  font-size: 0.8rem;
+  font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
+  opacity: 0;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  flex-shrink: 0;
+}
+
+.search-submit.visible {
+  width: 36px;
+  opacity: 1;
 }
 
 .search-submit:hover {
-  background: linear-gradient(135deg, #38bdf8, var(--accent-blue));
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
+  background: #38bdf8;
+  transform: scale(1.05);
 }
 
 .search-submit:active {
-  transform: translateY(0);
+  transform: scale(0.95);
 }
 
 .search-submit:disabled {
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: not-allowed;
   transform: none;
 }
