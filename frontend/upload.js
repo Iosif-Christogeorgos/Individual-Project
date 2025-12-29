@@ -230,14 +230,14 @@ function updateIdentityUI() {
   if (currentIdentity) {
     noIdentitySection?.classList.add("hidden");
     
-    // Update title to show username (without @ prefix)
+    // Update title to show username
     if (panelTitle) {
       const username = currentIdentity.displayName?.replace('@', '') || "unknown";
       panelTitle.textContent = username;
       panelTitle.classList.add("has-identity");
     }
     
-    // Show fingerprint below
+    // Show fingerprint
     if (identityFingerprint && fingerprintValue) {
       fingerprintValue.textContent = IdentityManager.getShortFingerprint(currentIdentity);
       identityFingerprint.classList.remove("hidden");
@@ -437,9 +437,13 @@ function confirmNewUpload() {
 // Initialization
 // =============================================================================
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
   // Initialize identity panel
-  initializeIdentityPanel();
+  await initializeIdentityPanel();
+  
+  // Reveal page now that auth state is determined
+  document.documentElement.classList.add('auth-resolved');
+  
   loadContacts(updateLinkKeyState);
 
   // Initialize file handler
