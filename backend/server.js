@@ -618,7 +618,7 @@ const pubkeyLimiter = rateLimit({
  */
 app.post("/pubkey", pubkeyLimiter, async (req, res) => {
   try {
-    const { id, username, displayName, encryptionPublicKey, signingPublicKey, fingerprint } = req.body;
+    const { id, username, encryptionPublicKey, signingPublicKey, fingerprint } = req.body;
 
     // Validate required fields
     if (!id || !encryptionPublicKey || !fingerprint || !username) {
@@ -647,17 +647,7 @@ app.post("/pubkey", pubkeyLimiter, async (req, res) => {
       return res.status(400).json({ success: false, error: "Invalid fingerprint format." });
     }
 
-    // Validate display name
-    let cleanDisplayName = displayName;
-    if (displayName) {
-      if (typeof displayName !== "string" || displayName.length > 50) {
-        return res.status(400).json({
-          success: false,
-          error: "Display name too long (max 50 chars).",
-        });
-      }
-      cleanDisplayName = displayName.trim();
-    }
+
 
     // Check if username is already taken by another user
     const { data: existingUsername } = await supabase
@@ -678,7 +668,6 @@ app.post("/pubkey", pubkeyLimiter, async (req, res) => {
     const { error } = await supabase.from("public_keys").upsert({
       id: id,
       username: cleanUsername,
-      display_name: cleanDisplayName || `User-${fingerprint.substring(0, 8)}`,
       fingerprint: fingerprint.toLowerCase(),
       encryption_public_key: encryptionPublicKey,
       signing_public_key: signingPublicKey || null,
@@ -725,7 +714,7 @@ app.get("/pubkey/username/:username", async (req, res) => {
 
     const { data, error } = await supabase
       .from("public_keys")
-      .select("id, username, display_name, fingerprint, encryption_public_key, signing_public_key")
+      .select("id, username, fingerprint, encryption_public_key, signing_public_key")
       .eq("username", username)
       .single();
 
@@ -739,7 +728,7 @@ app.get("/pubkey/username/:username", async (req, res) => {
     res.json({
       id: data.id,
       username: data.username,
-      displayName: data.display_name,
+      displayName: `@${data.username}`,
       fingerprint: data.fingerprint,
       encryptionPublicKey: data.encryption_public_key,
       signingPublicKey: data.signing_public_key,
@@ -769,7 +758,7 @@ app.get("/pubkey/fingerprint/:fingerprint", async (req, res) => {
 
     const { data, error } = await supabase
       .from("public_keys")
-      .select("id, username, display_name, fingerprint, encryption_public_key, signing_public_key")
+      .select("id, username, fingerprint, encryption_public_key, signing_public_key")
       .eq("fingerprint", fingerprint)
       .single();
 
@@ -783,7 +772,7 @@ app.get("/pubkey/fingerprint/:fingerprint", async (req, res) => {
     res.json({
       id: data.id,
       username: data.username,
-      displayName: data.display_name,
+      displayName: `@${data.username}`,
       fingerprint: data.fingerprint,
       encryptionPublicKey: data.encryption_public_key,
       signingPublicKey: data.signing_public_key,
@@ -813,7 +802,7 @@ app.get("/pubkey/:id", async (req, res) => {
 
     const { data, error } = await supabase
       .from("public_keys")
-      .select("id, username, display_name, fingerprint, encryption_public_key, signing_public_key")
+      .select("id, username, fingerprint, encryption_public_key, signing_public_key")
       .eq("id", id)
       .single();
 
@@ -827,7 +816,7 @@ app.get("/pubkey/:id", async (req, res) => {
     res.json({
       id: data.id,
       username: data.username,
-      displayName: data.display_name,
+      displayName: `@${data.username}`,
       fingerprint: data.fingerprint,
       encryptionPublicKey: data.encryption_public_key,
       signingPublicKey: data.signing_public_key,

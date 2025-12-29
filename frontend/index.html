@@ -309,90 +309,59 @@
 
         <!-- Identity & Recipients Panel -->
         <div class="side-panel" id="identityPanel">
-          <!-- Header shows identity name when available -->
-          <div class="side-panel-header" id="identityHeader">
+          <!-- Header -->
+          <div class="side-panel-header">
             <span class="terminal-prompt">$</span>
-            <span class="panel-title" id="headerIdentityName">IDENTITY</span>
-          </div>
-          <div class="identity-fingerprint-header hidden" id="headerFingerprint">
-            <span class="fingerprint-label">Fingerprint:</span>
-            <span class="fingerprint-value" id="identityFingerprint">ABCD1234</span>
+            <span class="panel-title">IDENTITY</span>
           </div>
 
-          <!-- No Identity Section -->
+          <!-- Identity Status (Fingerprint/Name) -->
+          <div class="identity-status hidden" id="identityStatus">
+            <div class="status-row">
+              <span class="status-label">User:</span>
+              <span class="status-value highlight" id="headerIdentityName">@username</span>
+            </div>
+            <div class="status-row">
+              <span class="status-label">Key:</span>
+              <span class="status-value fingerprint" id="identityFingerprint">ABCD...1234</span>
+            </div>
+          </div>
+
+          <!-- Create Identity Section -->
           <div class="panel-section" id="noIdentitySection">
             <div class="panel-section-header">
               <span class="section-icon">🆔</span>
               <span>Create Identity</span>
             </div>
             <p class="section-desc">
-              Generate a cryptographic identity for identity-based file sharing.
+              Create a public profile to share files securely.
             </p>
-            <input
-              type="text"
-              id="identityNameInput"
-              class="panel-input"
-              placeholder="Display name (optional)"
-              maxlength="50"
-            />
+            
+            <div class="input-group">
+              <div class="username-input-wrapper">
+                <span class="input-prefix">@</span>
+                <input
+                  type="text"
+                  id="usernameInput"
+                  class="panel-input"
+                  placeholder="username"
+                  maxlength="20"
+                  spellcheck="false"
+                />
+              </div>
+              <div class="input-hint">3-20 lowercase characters, numbers, _</div>
+            </div>
+
             <button
-              class="btn btn-secondary btn-small"
+              class="btn btn-primary btn-small"
               id="createIdentityBtn"
             >
-              <span>🔑</span> Generate Identity
+              <span>🚀</span> Create & Publish
             </button>
           </div>
 
-          <!-- Has Identity Section (actions only, no card) -->
-          <div class="panel-section hidden" id="hasIdentitySection">
-            <div class="identity-actions">
-              <button
-                class="btn btn-small btn-ghost"
-                id="exportIdentityBtn"
-                title="Export identity"
-              >
-                📤 Export
-              </button>
-              <button
-                class="btn btn-small btn-ghost"
-                id="copyPublicKeyBtn"
-                title="Copy public key"
-              >
-                📋 Copy Key
-              </button>
-            </div>
-
-            <!-- Publish to Directory Section -->
-            <div class="publish-section" id="publishSection">
-              <div class="publish-status" id="publishStatus">
-                <!-- Shows "Published as @username" or publish form -->
-              </div>
-              <div class="publish-form" id="publishForm">
-                <div class="username-input-wrapper">
-                  <span class="username-prefix">@</span>
-                  <input
-                    type="text"
-                    id="usernameInput"
-                    class="panel-input username-input"
-                    placeholder="choose a username"
-                    maxlength="20"
-                    pattern="[a-z0-9_]{3,20}"
-                  />
-                </div>
-                <div class="username-hint" id="usernameHint">3-20 chars, lowercase, numbers, underscores</div>
-                <button
-                  class="btn btn-small btn-secondary"
-                  id="publishIdentityBtn"
-                >
-                  🌐 Publish to Directory
-                </button>
-              </div>
-              <div class="published-info hidden" id="publishedInfo">
-                <span class="published-badge">✓ Published as </span>
-                <span class="published-username" id="publishedUsername">@username</span>
-              </div>
-            </div>
-          </div>
+          <!-- Has Identity Section (Hidden by default, used for logic toggling) -->
+          <div id="hasIdentitySection" class="hidden"></div>
 
           <!-- Recipients Section -->
           <div class="panel-section">
@@ -426,33 +395,6 @@
             </div>
 
             <div class="recipient-count" id="recipientCount"></div>
-
-            <!-- Add Contact -->
-            <div class="add-contact-section">
-              <button
-                class="btn btn-small btn-ghost"
-                id="importContactFileBtn"
-              >
-                📂 Import Contact
-              </button>
-              <details class="contact-paste">
-                <summary class="btn btn-small btn-ghost">📋 Paste Key</summary>
-                <div class="paste-content">
-                  <textarea
-                    id="importContactInput"
-                    class="panel-input"
-                    placeholder="Paste public identity JSON..."
-                    rows="3"
-                  ></textarea>
-                  <button
-                    class="btn btn-small btn-secondary"
-                    id="importContactBtn"
-                  >
-                    Add Contact
-                  </button>
-                </div>
-              </details>
-            </div>
           </div>
       </div>
     </div>

@@ -18,9 +18,7 @@ import {
   loadContacts, 
   toggleRecipient as toggleRecipientBase,
   updateRecipientCount,
-  removeContactUI as removeContactUIBase,
-  importContact,
-  importContactFromFile
+  removeContactUI as removeContactUIBase
 } from './recipients.js';
 import { initializeFileHandler, clearFile, getSelectedFile, getMaxFileSize } from './file-handler.js';
 
@@ -207,6 +205,10 @@ function resetToUpload() {
 // Identity Panel Functions
 // =============================================================================
 
+// =============================================================================
+// Identity Panel Functions
+// =============================================================================
+
 async function initializeIdentityPanel() {
   const identityPanel = document.getElementById("identityPanel");
   if (!identityPanel) return;
@@ -214,58 +216,25 @@ async function initializeIdentityPanel() {
   try {
     currentIdentity = await IdentityManager.getIdentity();
     updateIdentityUI();
-    
-    // Check if identity is already published
-    if (currentIdentity) {
-      await checkPublishStatus();
-    }
   } catch (error) {
     console.error("Failed to load identity:", error);
   }
 }
 
-/**
- * Check if current identity is already published in the directory
- */
-async function checkPublishStatus() {
-  if (!currentIdentity) return;
-
-  try {
-    // Query by identity ID to see if already published
-    const response = await fetch(`/pubkey/${currentIdentity.id}`);
-    
-    if (response.ok) {
-      const data = await response.json();
-      
-      // Identity is already published - show published state
-      const publishForm = document.getElementById("publishForm");
-      const publishedInfo = document.getElementById("publishedInfo");
-      const publishedUsername = document.getElementById("publishedUsername");
-
-      if (publishForm) publishForm.classList.add("hidden");
-      if (publishedInfo) publishedInfo.classList.remove("hidden");
-      if (publishedUsername) publishedUsername.textContent = `@${data.username}`;
-    }
-    // If 404, identity not published yet - show form (default state)
-  } catch (error) {
-    console.error("Failed to check publish status:", error);
-  }
-}
-
 function updateIdentityUI() {
   const noIdentitySection = document.getElementById("noIdentitySection");
-  const hasIdentitySection = document.getElementById("hasIdentitySection");
+  const identityStatus = document.getElementById("identityStatus");
   const headerIdentityName = document.getElementById("headerIdentityName");
-  const headerFingerprint = document.getElementById("headerFingerprint");
   const identityFingerprint = document.getElementById("identityFingerprint");
 
   if (currentIdentity) {
     noIdentitySection?.classList.add("hidden");
-    hasIdentitySection?.classList.remove("hidden");
-    headerFingerprint?.classList.remove("hidden");
+    identityStatus?.classList.remove("hidden");
 
     if (headerIdentityName) {
-      headerIdentityName.textContent = currentIdentity.displayName || "IDENTITY";
+      // Display Name used to be separate, now we primarily show the username logic
+      // If prompt was to use username as display name, we assume it's stored in displayName
+      headerIdentityName.textContent = currentIdentity.displayName || "@unknown";
     }
     if (identityFingerprint) {
       identityFingerprint.textContent =
@@ -273,143 +242,71 @@ function updateIdentityUI() {
     }
   } else {
     noIdentitySection?.classList.remove("hidden");
-    hasIdentitySection?.classList.add("hidden");
-    headerFingerprint?.classList.add("hidden");
-    
-    if (headerIdentityName) {
-      headerIdentityName.textContent = "IDENTITY";
-    }
+    identityStatus?.classList.add("hidden");
   }
 }
 
 async function createIdentity() {
-  const nameInput = document.getElementById("identityNameInput");
-  const displayName = nameInput?.value.trim() || "";
-
-  try {
-    currentIdentity = await IdentityManager.generateIdentity(displayName);
-    updateIdentityUI();
-    validateAccessConfig();
-    showToast("Identity created successfully ✓");
-  } catch (error) {
-    showToast("Failed to create identity ✗");
-  }
-}
-
-async function exportIdentity() {
-  if (!currentIdentity) {
-    showAlert("No Identity", "Create an identity first.", "warning");
-    return;
-  }
-
-  const publicIdentity = IdentityManager.exportPublicIdentity(currentIdentity);
-  const blob = new Blob([JSON.stringify(publicIdentity, null, 2)], {
-    type: "application/json",
-  });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `crypshare-identity-${publicIdentity.id.substring(0, 8)}.json`;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
-async function copyPublicKey() {
-  if (!currentIdentity) {
-    showToast("Create an identity first ⚠");
-    return;
-  }
-
-  const publicIdentity = IdentityManager.exportPublicIdentity(currentIdentity);
-  const publicKeyData = JSON.stringify(publicIdentity);
-  const btn = document.querySelector('[onclick="copyPublicKey()"]');
-
-  try {
-    await navigator.clipboard.writeText(publicKeyData);
-    if (btn) {
-      const originalText = btn.innerHTML;
-      btn.innerHTML = "✓ Copied";
-      btn.classList.add("copied");
-      setTimeout(() => {
-        btn.innerHTML = originalText;
-        btn.classList.remove("copied");
-      }, 2000);
-    }
-  } catch (error) {
-    showToast("Failed to copy ✗");
-  }
-}
-
-// =============================================================================
-// Link Overwrite Warning Modal
-// =============================================================================
-
-// =============================================================================
-// Publish Identity to Directory
-// =============================================================================
-
-async function publishIdentity() {
-  if (!currentIdentity) {
-    showToast("Create an identity first ⚠");
-    return;
-  }
-
   const usernameInput = document.getElementById("usernameInput");
-  const publishBtn = document.getElementById("publishIdentityBtn");
+  const createBtn = document.getElementById("createIdentityBtn");
+  
   const username = usernameInput?.value.toLowerCase().trim();
 
   if (!username || !/^[a-z0-9_]{3,20}$/.test(username)) {
-    showToast("Invalid username format ⚠");
+    showToast("Invalid username (3-20 chars, a-z, 0-9, _) ⚠");
     return;
   }
 
-  publishBtn.disabled = true;
-  publishBtn.innerHTML = "Publishing...";
+  createBtn.disabled = true;
+  createBtn.innerHTML = "<span>⏳</span> Creating...";
 
   try {
-    const publicIdentity = IdentityManager.exportPublicIdentity(currentIdentity);
+    // 1. Generate Identity (using @username as display name)
+    const displayName = `@${username}`;
+    currentIdentity = await IdentityManager.generateIdentity(displayName);
     
+    // 2. Publish Immediately
+    createBtn.innerHTML = "<span>🌐</span> Publishing...";
+    
+    const publicIdentity = IdentityManager.exportPublicIdentity(currentIdentity);
     const response = await fetch("/pubkey", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         id: currentIdentity.id,
         username: username,
-        displayName: currentIdentity.displayName,
         encryptionPublicKey: publicIdentity.encryptionPublicKey,
         signingPublicKey: publicIdentity.signingPublicKey,
         fingerprint: currentIdentity.fingerprint,
       }),
     });
 
-    const result = await response.json();
-
     if (!response.ok) {
-      showToast(result.error || "Failed to publish ✗");
-      return;
+      const result = await response.json();
+      throw new Error(result.error || "Failed to publish");
     }
 
-    // Update UI to show published status
-    const publishForm = document.getElementById("publishForm");
-    const publishedInfo = document.getElementById("publishedInfo");
-    const publishedUsername = document.getElementById("publishedUsername");
+    // Success
+    updateIdentityUI();
+    validateAccessConfig();
+    showToast(`Identity created & published as @${username} 🚀`);
 
-    if (publishForm) publishForm.classList.add("hidden");
-    if (publishedInfo) publishedInfo.classList.remove("hidden");
-    if (publishedUsername) publishedUsername.textContent = `@${result.username}`;
-
-    showToast(`Published as @${result.username} ✓`);
   } catch (error) {
-    console.error("Publish error:", error);
-    showToast("Failed to publish ✗");
+    console.error("Creation error:", error);
+    showToast(error.message || "Failed to create identity ✗");
+    // If publishing failed, we might want to delete the local identity to reset state?
+    // For now, let's keep it simple. User is likely locally created but not published if that step fails.
+    // Ideally we would rollback, but IndexDB rollback is complex here.
   } finally {
-    publishBtn.disabled = false;
-    publishBtn.innerHTML = "🌐 Publish to Directory";
+    if (createBtn) {
+      createBtn.disabled = false;
+      createBtn.innerHTML = "<span>🚀</span> Create & Publish";
+    }
   }
 }
 
 // =============================================================================
-// Search User by Username
+// Link Overwrite Warning Modal
 // =============================================================================
 
 async function searchUserByUsername() {
@@ -563,9 +460,6 @@ document.addEventListener("DOMContentLoaded", () => {
   
   // Identity management
   document.getElementById("createIdentityBtn")?.addEventListener("click", createIdentity);
-  document.getElementById("exportIdentityBtn")?.addEventListener("click", exportIdentity);
-  document.getElementById("copyPublicKeyBtn")?.addEventListener("click", copyPublicKey);
-  document.getElementById("publishIdentityBtn")?.addEventListener("click", publishIdentity);
   
   // User directory search
   document.getElementById("searchUserBtn")?.addEventListener("click", searchUserByUsername);
@@ -574,8 +468,6 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   
   // Contact management
-  document.getElementById("importContactFileBtn")?.addEventListener("click", importContactFromFile);
-  document.getElementById("importContactBtn")?.addEventListener("click", importContact);
   
   // Modal buttons
   document.getElementById("modalCloseBtn")?.addEventListener("click", hideOverwriteModal);
