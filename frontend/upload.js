@@ -333,14 +333,18 @@ async function searchUserByUsername() {
     return;
   }
 
+  // Storm off animation - button flies away
+  searchBtn?.classList.add("storm-off");
+  searchBtn?.classList.remove("visible");
+  
   // Show loading state
-  searchBtn.disabled = true;
-  btnText?.classList.add("hidden");
-  btnLoader?.classList.remove("hidden");
   if (searchResult) searchResult.innerHTML = '<div class="search-loading">Searching...</div>';
 
   try {
     const response = await fetch(`/pubkey/username/${encodeURIComponent(username)}`);
+    
+    // Reset storm-off animation
+    searchBtn?.classList.remove("storm-off");
     
     if (!response.ok) {
       if (response.status === 404) {
@@ -352,6 +356,9 @@ async function searchUserByUsername() {
     }
 
     const userData = await response.json();
+    
+    // Clear input on success
+    searchInput.value = "";
     
     // Display search result with add button
     searchResult.innerHTML = `
@@ -382,7 +389,6 @@ async function searchUserByUsername() {
         await IdentityManager.addContact(contact);
         loadContacts(updateLinkKeyState);
         searchResult.innerHTML = ''; // Clear - toast handles feedback
-        searchInput.value = "";
         showToast(`Added @${userData.username} as contact ✓`);
       } catch (error) {
         console.error("Add contact error:", error);
@@ -392,12 +398,8 @@ async function searchUserByUsername() {
 
   } catch (error) {
     console.error("Search error:", error);
+    searchBtn?.classList.remove("storm-off");
     if (searchResult) searchResult.innerHTML = '<div class="search-error">Search failed</div>';
-  } finally {
-    // Reset button state
-    searchBtn.disabled = false;
-    btnText?.classList.remove("hidden");
-    btnLoader?.classList.add("hidden");
   }
 }
 
