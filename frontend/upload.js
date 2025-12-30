@@ -511,6 +511,44 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("modalCloseBtn")?.addEventListener("click", hideOverwriteModal);
   document.getElementById("modalCancelBtn")?.addEventListener("click", hideOverwriteModal);
   document.getElementById("modalConfirmBtn")?.addEventListener("click", confirmNewUpload);
+
+  // ==========================================================================
+  // Mobile Sidebar Toggle
+  // ==========================================================================
+  const sidebarToggle = document.getElementById("sidebarToggle");
+  const sidePanel = document.getElementById("identityPanel");
+  const mobileOverlay = document.getElementById("mobileOverlay");
+  
+  function openMobileSidebar() {
+    sidePanel?.classList.add("open");
+    mobileOverlay?.classList.add("show");
+    document.body.style.overflow = "hidden"; // Prevent scroll when sidebar open
+  }
+  
+  function closeMobileSidebar() {
+    sidePanel?.classList.remove("open");
+    mobileOverlay?.classList.remove("show");
+    document.body.style.overflow = ""; // Restore scroll
+  }
+  
+  // Toggle button click
+  sidebarToggle?.addEventListener("click", () => {
+    if (sidePanel?.classList.contains("open")) {
+      closeMobileSidebar();
+    } else {
+      openMobileSidebar();
+    }
+  });
+  
+  // Overlay click closes sidebar
+  mobileOverlay?.addEventListener("click", closeMobileSidebar);
+  
+  // Escape key closes sidebar
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && sidePanel?.classList.contains("open")) {
+      closeMobileSidebar();
+    }
+  });
 });
 
 // =============================================================================

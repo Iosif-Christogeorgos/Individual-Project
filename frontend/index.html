@@ -27,6 +27,12 @@
     <div class="app-layout">
       <!-- Main Content Row -->
       <div class="main-row">
+        <!-- Mobile Sidebar Toggle -->
+        <button class="mobile-sidebar-toggle" id="sidebarToggle" aria-label="Toggle recipients panel">
+          <span class="toggle-icon">👥</span>
+          <span class="toggle-text">Recipients</span>
+        </button>
+
         <!-- Upload Panel -->
         <div class="container" data-state="upload">
           <!-- Upload View (default state) -->
@@ -421,6 +427,9 @@
             <div class="recipient-count" id="recipientCount"></div>
           </div>
       </div>
+
+      <!-- Mobile Overlay -->
+      <div class="mobile-overlay" id="mobileOverlay"></div>
     </div>
     </div>
 
