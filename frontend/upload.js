@@ -11,7 +11,7 @@
 import * as CryptoModule from './crypto.js';
 import * as IdentityManager from './identity.js';
 import { showAlert, hideAlert, showToast, escapeHtml, updateProgress, hideProgress } from './ui-utils.js';
-import { getSelectedExpiryHours, updateExpiryNotice, startCountdownTimer } from './expiry.js';
+import { getSelectedExpiryHours, updateExpiryNotice, startCountdownTimer, initializeExpiryDropdown } from './expiry.js';
 import { 
   getSelectedRecipients, 
   clearSelectedRecipients, 
@@ -446,6 +446,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   
   loadContacts(updateLinkKeyState);
 
+  // Initialize custom expiry dropdown
+  initializeExpiryDropdown();
+
   // Initialize file handler
   initializeFileHandler(() => {
     // Callback when file is selected - validation happens automatically
@@ -454,7 +457,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Initial validation check
   setTimeout(validateAccessConfig, 100);
   
-  // Expiry selector change listener
+  // Expiry selector change listener (for the hidden native select, synced by custom dropdown)
   const expirySelect = document.getElementById("expirySelect");
   if (expirySelect) {
     expirySelect.addEventListener("change", updateExpiryNotice);
