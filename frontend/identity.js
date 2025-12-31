@@ -32,10 +32,23 @@ const CONTACTS_KEY = "contacts";
  */
 function openDatabase() {
   return new Promise((resolve, reject) => {
+    if (!indexedDB) {
+      reject(new Error("IndexedDB is not available. Private browsing mode may be enabled."));
+      return;
+    }
+
     const request = indexedDB.open(DB_NAME, DB_VERSION);
 
-    request.onerror = () =>
-      reject(new Error("Failed to open identity database"));
+    request.onerror = (event) => {
+      const error = event.target.error;
+      if (error?.name === 'QuotaExceededError') {
+        reject(new Error("Storage quota exceeded. Please free up browser storage."));
+      } else if (error?.name === 'InvalidStateError') {
+        reject(new Error("Database is corrupted. Please clear site data and try again."));
+      } else {
+        reject(new Error("Failed to open identity database: " + (error?.message || "Unknown error")));
+      }
+    };
 
     request.onsuccess = () => resolve(request.result);
 

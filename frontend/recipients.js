@@ -45,19 +45,22 @@ export async function loadContacts(onChangeCallback) {
 
     contactsList.innerHTML = contacts
       .map(
-        (contact) => `
-      <div class="contact-item" data-id="${contact.id}">
-        <input type="checkbox" class="contact-checkbox" data-contact-id="${contact.id}"
+        (contact) => {
+          const safeId = escapeHtml(contact.id);
+          return `
+      <div class="contact-item" data-id="${safeId}">
+        <input type="checkbox" class="contact-checkbox" data-contact-id="${safeId}"
                ${selectedRecipients.includes(contact.id) ? 'checked' : ''}>
         <div class="contact-info">
           <span class="contact-name">${escapeHtml(contact.displayName)}</span>
-          <span class="contact-fingerprint">${contact.fingerprint
+          <span class="contact-fingerprint">${escapeHtml(contact.fingerprint
             .substring(0, 16)
-            .toUpperCase()}</span>
+            .toUpperCase())}</span>
         </div>
-        <button class="contact-remove" data-remove-id="${contact.id}" title="Remove contact">×</button>
+        <button class="contact-remove" data-remove-id="${safeId}" title="Remove contact">×</button>
       </div>
-    `
+    `;
+        }
       )
       .join("");
 

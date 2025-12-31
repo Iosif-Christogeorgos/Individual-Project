@@ -160,16 +160,14 @@ function copyLink() {
       }, 2000);
     })
     .catch(() => {
+      // Clipboard API failed (e.g., insecure context) - select text for manual copy
       input.select();
-      document.execCommand("copy");
-      btn.classList.add("copied");
-      btn.innerHTML = "<span>✓</span> Copied!";
-      linkCopied = true;
-
+      input.setSelectionRange(0, 99999); // For mobile
+      btn.innerHTML = "<span>⚠️</span> Select & Copy";
+      
       setTimeout(() => {
-        btn.classList.remove("copied");
         btn.innerHTML = "<span>📋</span> Copy";
-      }, 2000);
+      }, 3000);
     });
 }
 
@@ -364,9 +362,9 @@ async function searchUserByUsername() {
     searchResult.innerHTML = `
       <div class="search-result-card">
         <div class="search-result-info">
-          <div class="search-result-name">@${userData.username}</div>
-          <div class="search-result-fingerprint" title="${userData.fingerprint}">
-            🔑 ${userData.fingerprint.substring(0, 8)}...${userData.fingerprint.substring(56)}
+          <div class="search-result-name">@${escapeHtml(userData.username)}</div>
+          <div class="search-result-fingerprint" title="${escapeHtml(userData.fingerprint)}">
+            🔑 ${escapeHtml(userData.fingerprint.substring(0, 8))}...${escapeHtml(userData.fingerprint.substring(56))}
           </div>
         </div>
         <button class="btn btn-small btn-secondary" id="addSearchResultBtn">

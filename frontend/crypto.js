@@ -29,20 +29,27 @@ const FORMAT_VERSION_CHUNKED = 2; // Chunked: [version][filename header][chunks]
 
 export function arrayBufferToBase64(buffer) {
   const bytes = new Uint8Array(buffer);
-  let binary = "";
-  for (let i = 0; i < bytes.length; i++) {
-    binary += String.fromCharCode(bytes[i]);
+  // Use chunked approach to avoid O(n²) string concatenation
+  const CHUNK_SIZE = 0x8000; // 32KB chunks
+  const parts = [];
+  for (let i = 0; i < bytes.length; i += CHUNK_SIZE) {
+    const chunk = bytes.subarray(i, i + CHUNK_SIZE);
+    parts.push(String.fromCharCode.apply(null, chunk));
   }
-  return btoa(binary);
+  return btoa(parts.join(''));
 }
 
 export function base64ToArrayBuffer(base64) {
-  const binary = atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) {
-    bytes[i] = binary.charCodeAt(i);
+  try {
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return bytes.buffer;
+  } catch (e) {
+    throw new Error("Invalid base64 encoding. The decryption key may be corrupted.");
   }
-  return bytes.buffer;
 }
 
 export function arrayBufferToHex(buffer) {

@@ -277,7 +277,7 @@ function generateUniqueFileId() {
 }
 
 // =============================================================================
-// Multer Configuration (Memory storage for R2 upload)
+// Multer Configuration (Memory storage for fallback /upload endpoint)
 // =============================================================================
 
 const upload = multer({
@@ -292,6 +292,8 @@ const upload = multer({
 // =============================================================================
 
 // POST /upload - Accept encrypted file via multipart form
+// NOTE: On HTTPS (production), the frontend uses /upload-stream instead for large files.
+// This endpoint is only used as fallback on HTTP or for smaller files.
 app.post("/upload", uploadLimiter, upload.single("encryptedFile"), async (req, res) => {
   try {
     if (!req.file) {
@@ -329,45 +331,42 @@ app.post("/upload", uploadLimiter, upload.single("encryptedFile"), async (req, r
 });
 
 // POST /upload-stream - Accept encrypted file via raw stream (for large files)
+// MEMORY-EFFICIENT: Streams directly to R2 without buffering entire file in RAM
 app.post("/upload-stream", uploadLimiter, async (req, res) => {
   const MAX_STREAM_SIZE = 1024 * 1024 * 1024; // 1GB
 
   try {
     const fileId = generateUniqueFileId();
-    const chunks = [];
-    let bytesReceived = 0;
-
-    // Collect request body
-    for await (const chunk of req) {
-      bytesReceived += chunk.length;
-      if (bytesReceived > MAX_STREAM_SIZE) {
-        return res.status(413).json({
-          success: false,
-          error: "File too large. Maximum size is 1GB.",
-        });
-      }
-      chunks.push(chunk);
+    
+    // Check Content-Length header for early rejection (if provided)
+    const contentLength = parseInt(req.headers['content-length'] || '0', 10);
+    if (contentLength > MAX_STREAM_SIZE) {
+      return res.status(413).json({
+        success: false,
+        error: "File too large. Maximum size is 1GB.",
+      });
     }
 
-    const fileBuffer = Buffer.concat(chunks);
-
-    // Upload to R2
+    // Stream directly to R2 without buffering in memory
+    // The Upload class handles multipart uploads automatically
     const uploadCmd = new Upload({
       client: s3Client,
       params: {
         Bucket: r2BucketName,
         Key: fileId,
-        Body: fileBuffer,
+        Body: req,  // Pass request stream directly - no buffering!
         ContentType: "application/octet-stream",
       },
+      queueSize: 4,              // Concurrent upload parts
+      partSize: 5 * 1024 * 1024, // 5MB part size
     });
 
-    await uploadCmd.done();
+    const result = await uploadCmd.done();
 
     res.status(201).json({
       success: true,
       fileId: fileId,
-      size: bytesReceived,
+      size: contentLength || 0,
     });
   } catch (error) {
     console.error("❌ Stream upload error:", error);
@@ -412,6 +411,7 @@ app.head("/download/:fileId", downloadLimiter, async (req, res) => {
 });
 
 // GET /download/:fileId - Download encrypted file
+// MEMORY-EFFICIENT: Streams directly from R2 to client without buffering
 app.get("/download/:fileId", downloadLimiter, async (req, res) => {
   try {
     const fileId = req.params.fileId;
@@ -436,10 +436,31 @@ app.get("/download/:fileId", downloadLimiter, async (req, res) => {
       res.setHeader("Content-Length", getResult.ContentLength);
     }
 
-    // AWS SDK v3 returns a web ReadableStream or Node.js Readable
-    // For reliability, convert to buffer and send (works for files up to 1GB)
-    const byteArray = await getResult.Body.transformToByteArray();
-    res.send(Buffer.from(byteArray));
+    // Stream directly from R2 to response - no buffering in memory!
+    // AWS SDK v3 returns a readable stream
+    const bodyStream = getResult.Body;
+    
+    if (typeof bodyStream.pipe === 'function') {
+      // Node.js Readable stream - pipe directly
+      bodyStream.pipe(res);
+    } else if (bodyStream.getReader) {
+      // Web ReadableStream - use async iteration
+      const reader = bodyStream.getReader();
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          res.write(value);
+        }
+        res.end();
+      } finally {
+        reader.releaseLock();
+      }
+    } else {
+      // Fallback: convert to buffer (shouldn't happen with current SDK)
+      const byteArray = await bodyStream.transformToByteArray();
+      res.send(Buffer.from(byteArray));
+    }
 
   } catch (error) {
     if (error.name === "NoSuchKey" || error.$metadata?.httpStatusCode === 404) {
@@ -561,7 +582,7 @@ app.post("/metadata/:fileId", metadataLimiter, async (req, res) => {
  * GET /metadata/:fileId - Retrieve file metadata via secure RPC
  * Uses get_file_metadata RPC to prevent row enumeration attacks
  */
-app.get("/metadata/:fileId", async (req, res) => {
+app.get("/metadata/:fileId", metadataLimiter, async (req, res) => {
   try {
     const fileId = req.params.fileId;
 

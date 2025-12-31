@@ -90,7 +90,11 @@ async function validateDownloadLink() {
     }
   } catch (error) {
     console.error("Validation error:", error);
-    showDownloadReady("link"); // Try anyway
+    showInvalidLinkPage(
+      "Connection Error",
+      "Unable to verify file availability. Please check your connection and try again."
+    );
+    return;
   }
 }
 
