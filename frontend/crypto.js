@@ -425,12 +425,18 @@ export async function downloadAndDecryptStreaming(
       onDownloadProgress(Math.round((receivedLength / contentLength) * 100));
     }
   } else {
+    // No Content-Length header (common with some CDN/proxy configurations)
+    // Report progress as bytes received, capped at 99% until complete
     const chunks = [];
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
       chunks.push(value);
       receivedLength += value.length;
+      // Report indeterminate progress - oscillate between 10-90% based on chunks received
+      // This gives visual feedback that download is progressing
+      const estimatedProgress = Math.min(90, 10 + (chunks.length % 80));
+      onDownloadProgress(estimatedProgress);
     }
     encryptedData = new Uint8Array(receivedLength);
     let position = 0;
@@ -439,6 +445,9 @@ export async function downloadAndDecryptStreaming(
       position += chunk.length;
     }
   }
+  
+  // Ensure 100% is reported after download completes
+  onDownloadProgress(100);
 
   const format = detectEncryptionFormat(encryptedData.buffer);
   if (format === FORMAT_VERSION_CHUNKED) {
