@@ -17,29 +17,29 @@
 // ===========================================================================
 
 const AES_KEY_LENGTH = 256;
-export const AES_IV_LENGTH = 12; // 96 bits for AES-GCM
-export const CHUNK_SIZE = 64 * 1024; // 64KB chunks for streaming
+const AES_IV_LENGTH = 12; // 96 bits for AES-GCM
+const CHUNK_SIZE = 64 * 1024; // 64KB chunks for streaming
 const ECDH_CURVE = "P-256"; // WebCrypto compatible, ~128-bit security
 const ECDSA_CURVE = "P-256";
 const FORMAT_VERSION_CHUNKED = 2; // Chunked: [version][filename header][chunks]
 
 // ===========================================================================
-// Helpers
+// Helpers (Internal)
 // ===========================================================================
 
-export function arrayBufferToBase64(buffer) {
+function arrayBufferToBase64(buffer) {
   const bytes = new Uint8Array(buffer);
   // Use chunked approach to avoid O(n²) string concatenation
-  const CHUNK_SIZE = 0x8000; // 32KB chunks
+  const CHUNK = 0x8000; // 32KB chunks
   const parts = [];
-  for (let i = 0; i < bytes.length; i += CHUNK_SIZE) {
-    const chunk = bytes.subarray(i, i + CHUNK_SIZE);
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    const chunk = bytes.subarray(i, i + CHUNK);
     parts.push(String.fromCharCode.apply(null, chunk));
   }
   return btoa(parts.join(''));
 }
 
-export function base64ToArrayBuffer(base64) {
+function base64ToArrayBuffer(base64) {
   try {
     const binary = atob(base64);
     const bytes = new Uint8Array(binary.length);
@@ -52,7 +52,7 @@ export function base64ToArrayBuffer(base64) {
   }
 }
 
-export function arrayBufferToHex(buffer) {
+function arrayBufferToHex(buffer) {
   const bytes = new Uint8Array(buffer);
   return Array.from(bytes)
     .map((b) => b.toString(16).padStart(2, "0"))
@@ -64,7 +64,7 @@ export function generateRandomId(bytes = 16) {
   return arrayBufferToHex(randomBytes);
 }
 
-export async function sha256(data) {
+async function sha256(data) {
   const hashBuffer = await window.crypto.subtle.digest("SHA-256", data);
   return arrayBufferToHex(hashBuffer);
 }
@@ -667,42 +667,6 @@ export async function hashFile(file, onProgress = () => {}) {
     const chunkHash = await window.crypto.subtle.digest("SHA-256", buffer);
     chunkHashes.push(new Uint8Array(chunkHash));
     onProgress(Math.round(((i + 1) / totalChunks) * 100));
-  }
-
-  const concatenatedHashes = new Uint8Array(chunkHashes.length * 32);
-  for (let i = 0; i < chunkHashes.length; i++) {
-    concatenatedHashes.set(chunkHashes[i], i * 32);
-  }
-
-  const finalHash = await window.crypto.subtle.digest(
-    "SHA-256",
-    concatenatedHashes
-  );
-  return arrayBufferToHex(finalHash);
-}
-
-// For verifying decrypted data (which can be memory-resident)
-export async function hashDataStreaming(data) {
-  if (data.length <= 100 * 1024 * 1024) {
-    return await sha256(data.buffer);
-  }
-
-  const totalChunks = Math.ceil(data.length / CHUNK_SIZE);
-  const chunkHashes = [];
-
-  for (let i = 0; i < totalChunks; i++) {
-    const start = i * CHUNK_SIZE;
-    const end = Math.min(start + CHUNK_SIZE, data.length);
-    const chunkData = data.slice(start, end);
-
-    const chunkHash = await window.crypto.subtle.digest(
-      "SHA-256",
-      chunkData.buffer.slice(
-        chunkData.byteOffset,
-        chunkData.byteOffset + chunkData.byteLength
-      )
-    );
-    chunkHashes.push(new Uint8Array(chunkHash));
   }
 
   const concatenatedHashes = new Uint8Array(chunkHashes.length * 32);
