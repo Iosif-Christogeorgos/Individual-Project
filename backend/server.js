@@ -29,6 +29,10 @@ import {
   HeadObjectCommand,
 } from "@aws-sdk/client-s3";
 import { Upload } from "@aws-sdk/lib-storage";
+import { pipeline, PassThrough } from "stream";
+import { promisify } from "util";
+
+const pipelineAsync = promisify(pipeline);
 
 // =============================================================================
 // ESM Fix: Recreate __dirname
@@ -441,18 +445,38 @@ app.get("/download/:fileId", downloadLimiter, async (req, res) => {
     const bodyStream = getResult.Body;
     
     if (typeof bodyStream.pipe === 'function') {
-      // Node.js Readable stream - pipe directly
-      bodyStream.pipe(res);
+      // Node.js Readable stream - use pipeline for proper error handling and backpressure
+      // This is critical for HTTP/2 compatibility
+      try {
+        await pipelineAsync(bodyStream, res);
+      } catch (pipeError) {
+        // Client disconnected or stream error - don't log as error if client aborted
+        if (pipeError.code !== 'ERR_STREAM_PREMATURE_CLOSE') {
+          console.error("❌ Stream pipeline error:", pipeError.message);
+        }
+        // Response already ended by pipeline, don't send anything else
+        return;
+      }
     } else if (bodyStream.getReader) {
-      // Web ReadableStream - use async iteration
+      // Web ReadableStream - use async iteration with proper drain handling
       const reader = bodyStream.getReader();
       try {
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
-          res.write(value);
+          
+          // Handle backpressure - wait for drain if buffer is full
+          const canContinue = res.write(value);
+          if (!canContinue) {
+            await new Promise(resolve => res.once('drain', resolve));
+          }
         }
         res.end();
+      } catch (readerError) {
+        console.error("❌ Stream reader error:", readerError.message);
+        if (!res.headersSent) {
+          res.status(500).json({ success: false, error: "Stream error" });
+        }
       } finally {
         reader.releaseLock();
       }
