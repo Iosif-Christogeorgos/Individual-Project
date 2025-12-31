@@ -19,19 +19,8 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
-    <!-- Critical CSS: Inline page cloak to prevent auth element flash -->
-    <style>
-      /* Hide entire page until auth state is determined */
-      html:not(.auth-resolved) body { 
-        visibility: hidden !important; 
-        opacity: 0 !important;
-      }
-      /* Additionally hide identity sections to prevent any flash */
-      html:not(.auth-resolved) #noIdentitySection,
-      html:not(.auth-resolved) #identityFingerprint { 
-        display: none !important; 
-      }
-    </style>
+    <!-- Critical CSS: Must load first to prevent auth element flash (CSP compliant) -->
+    <link rel="stylesheet" href="critical.css" />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
@@ -365,8 +354,8 @@
             </span>
           </div>
 
-          <!-- Create Identity Section (hidden by default, shown via JS if no identity) -->
-          <div class="panel-section hidden" id="noIdentitySection">
+          <!-- Create Identity Section -->
+          <div class="panel-section" id="noIdentitySection">
             <div class="panel-section-header">
               <span class="section-icon">🆔</span>
               <span>Create Identity</span>
