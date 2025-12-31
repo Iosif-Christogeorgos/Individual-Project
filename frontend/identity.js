@@ -180,18 +180,7 @@ export async function getIdentity() {
   return await retrieveIdentity();
 }
 
-/**
- * Get or create an identity.
- * @param {string} displayName - Optional display name for new identity
- * @returns {Promise<Object>} The identity
- */
-export async function getOrCreateIdentity(displayName = "") {
-  let identity = await retrieveIdentity();
-  if (!identity) {
-    identity = await generateIdentity(displayName);
-  }
-  return identity;
-}
+
 
 /**
  * Import identity from CryptoKey objects.
@@ -282,26 +271,7 @@ export function exportPublicIdentity(identity) {
   };
 }
 
-/**
- * Import a public identity from another user.
- * @param {Object} publicIdentity - Public identity bundle
- * @returns {Promise<Object>} Imported public identity with CryptoKey objects
- */
-export async function importPublicIdentity(publicIdentity) {
-  return {
-    id: publicIdentity.id,
-    displayName: publicIdentity.displayName,
-    fingerprint: publicIdentity.fingerprint,
-    encryptionPublicKey: await CryptoModule.importECDHPublicKey(
-      publicIdentity.encryptionPublicKey
-    ),
-    encryptionPublicKeyJWK: publicIdentity.encryptionPublicKey,
-    signingPublicKey: await CryptoModule.importSigningPublicKey(
-      publicIdentity.signingPublicKey
-    ),
-    signingPublicKeyJWK: publicIdentity.signingPublicKey,
-  };
-}
+
 
 // ===========================================================================
 // Contact Management (Known Recipients)
@@ -431,14 +401,7 @@ export async function getContact(contactId) {
 // Identity Display Utilities
 // ===========================================================================
 
-/**
- * Get a formatted fingerprint for display.
- * @param {Object} identity - Identity object
- * @returns {string} Formatted fingerprint
- */
-export function getFormattedFingerprint(identity) {
-  return CryptoModule.formatFingerprint(identity.fingerprint);
-}
+
 
 /**
  * Get a short fingerprint (first 16 chars).
