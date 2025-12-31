@@ -621,22 +621,22 @@ async function executeUpload() {
       );
     }
 
+    // Streaming uploads require HTTP/2 (HTTPS only)
+    // On HTTP, skip directly to buffered to avoid console errors
+    const isSecureContext = window.location.protocol === 'https:';
     const useStreaming =
-      file.size > STREAMING_THRESHOLD && CryptoModule.supportsStreamingUpload();
+      isSecureContext &&
+      file.size > STREAMING_THRESHOLD && 
+      CryptoModule.supportsStreamingUpload();
 
     if (useStreaming) {
       try {
         await executeStreamingUpload(file, enableSigning, includeLinkKey);
       } catch (streamError) {
-        const isHttp2Issue =
-          streamError.message.includes("Failed to fetch") ||
-          streamError.message.includes("ALPN");
-        if (!isHttp2Issue) {
-          console.warn(
-            "⚠️ Streaming upload failed, falling back to buffered:",
-            streamError.message
-          );
-        }
+        console.warn(
+          "⚠️ Streaming upload failed, falling back to buffered:",
+          streamError.message
+        );
         await executeBufferedUpload(file, enableSigning, includeLinkKey);
       }
     } else {
