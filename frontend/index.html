@@ -21,7 +21,16 @@
     />
     <!-- Critical CSS: Inline page cloak to prevent auth element flash -->
     <style>
-      html:not(.auth-resolved) body { visibility: hidden; }
+      /* Hide entire page until auth state is determined */
+      html:not(.auth-resolved) body { 
+        visibility: hidden !important; 
+        opacity: 0 !important;
+      }
+      /* Additionally hide identity sections to prevent any flash */
+      html:not(.auth-resolved) #noIdentitySection,
+      html:not(.auth-resolved) #identityFingerprint { 
+        display: none !important; 
+      }
     </style>
     <link rel="stylesheet" href="styles.css" />
   </head>
