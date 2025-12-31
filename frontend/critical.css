@@ -1,6 +1,0 @@
-/* Critical CSS - Page Cloak
-   Hide entire page until auth state is determined.
-   Prevents any flash of wrong content. */
-html:not(.auth-resolved) body {
-  visibility: hidden;
-}
