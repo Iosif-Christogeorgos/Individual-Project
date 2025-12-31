@@ -60,11 +60,11 @@ function validateAccessConfig() {
     warningType = "error";
   } else if (enableSigning && !currentIdentity) {
     isValid = false;
-    canUpload = true;
+    canUpload = false; // Block upload - user must create identity or disable signing
     warningTitle.textContent = "Cannot Sign File";
     warningMessage.textContent =
       "You enabled signing but have no identity. Create an identity first, or disable signing to continue.";
-    warningType = "warning";
+    warningType = "error";
   }
 
   if (!isValid) {
