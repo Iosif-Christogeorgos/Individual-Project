@@ -552,34 +552,7 @@ async function startDownload() {
       originalFilename.replace(/[/\\]/g, "_").replace(/\x00/g, "").trim() ||
       "download";
 
-    // Verify content hash if metadata available (hash of original file before encryption)
-    if (fileMetadata?.contentHash) {
-      try {
-        // Use streaming hash for large files (matches upload algorithm)
-        let decryptedHash;
-        if (fileContent.length > 100 * 1024 * 1024) {
-          // Large file: use streaming hash (Merkle-tree style)
-          decryptedHash = await CryptoModule.hashDataStreaming(fileContent);
-        } else {
-          // Small file: use standard hash
-          decryptedHash = await CryptoModule.sha256(fileContent.buffer);
-        }
-
-        if (decryptedHash !== fileMetadata.contentHash) {
-          console.warn("Content hash mismatch:", {
-            expected: fileMetadata.contentHash,
-            actual: decryptedHash,
-          });
-          showAlert(
-            "Warning",
-            "File integrity check failed. The file may have been tampered with.",
-            "warning"
-          );
-        }
-      } catch (hashError) {
-        console.error("Hash verification error:", hashError);
-      }
-    }
+    // Note: Hash verification removed - AES-GCM already provides integrity checking.\n    // If ciphertext was tampered with, decryption would have failed above.
 
     // Create download
     const blob = new Blob([fileContent]);

@@ -660,16 +660,21 @@ async function executeStreamingUpload(file, enableSigning, includeLinkKey) {
   const aesKey = await CryptoModule.generateAESKey();
   const exportedKey = await CryptoModule.exportAESKey(aesKey);
 
-  updateProgress(10, "Computing file hash (streaming)...");
-  const originalFileHash = await CryptoModule.hashFile(
-    file,
-    (hashProgress) => {
-      const overallProgress = 10 + Math.round(hashProgress * 0.15);
-      updateProgress(overallProgress, `Hashing... ${hashProgress}%`);
-    }
-  );
+  // Only compute hash if signing is enabled (saves a full file read!)
+  let originalFileHash = null;
+  if (enableSigning) {
+    updateProgress(10, "Computing file hash for signature...");
+    originalFileHash = await CryptoModule.hashFile(
+      file,
+      (hashProgress) => {
+        const overallProgress = 10 + Math.round(hashProgress * 0.15);
+        updateProgress(overallProgress, `Hashing... ${hashProgress}%`);
+      }
+    );
+  }
 
-  updateProgress(25, "Preparing metadata...");
+  const encryptStartProgress = enableSigning ? 25 : 10;
+  updateProgress(encryptStartProgress, "Preparing metadata...");
   const metadata = await prepareMetadata(
     file,
     originalFileHash,
@@ -678,12 +683,13 @@ async function executeStreamingUpload(file, enableSigning, includeLinkKey) {
     includeLinkKey
   );
 
-  updateProgress(30, "Starting streaming upload...");
+  updateProgress(encryptStartProgress + 5, "Starting streaming upload...");
   const { stream: encryptedStream } = await CryptoModule.createEncryptedStream(
     file,
     aesKey,
     (encryptProgress) => {
-      const overallProgress = 30 + Math.round(encryptProgress * 0.6);
+      const progressRange = enableSigning ? 60 : 80;
+      const overallProgress = (encryptStartProgress + 5) + Math.round(encryptProgress * (progressRange / 100));
       updateProgress(
         overallProgress,
         `Encrypting & uploading... ${encryptProgress}%`
@@ -731,15 +737,21 @@ async function executeBufferedUpload(file, enableSigning, includeLinkKey) {
     file,
     aesKey,
     (chunkProgress) => {
-      const overallProgress = 10 + Math.round(chunkProgress * 0.4);
+      const progressRange = enableSigning ? 40 : 55;
+      const overallProgress = 10 + Math.round(chunkProgress * (progressRange / 100));
       updateProgress(overallProgress, `Encrypting... ${chunkProgress}%`);
     }
   );
 
-  updateProgress(55, "Computing file hash...");
-  const originalFileHash = await CryptoModule.hashFile(file);
+  // Only compute hash if signing is enabled (saves a full file read!)
+  let originalFileHash = null;
+  if (enableSigning) {
+    updateProgress(55, "Computing file hash for signature...");
+    originalFileHash = await CryptoModule.hashFile(file);
+  }
 
-  updateProgress(60, "Preparing metadata...");
+  const metadataProgress = enableSigning ? 60 : 65;
+  updateProgress(metadataProgress, "Preparing metadata...");
   const metadata = await prepareMetadata(
     file,
     originalFileHash,
