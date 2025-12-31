@@ -27,6 +27,7 @@ let hasActiveLink = false;
 let overwriteWarningShown = false;
 let linkCopied = false;
 let currentIdentity = null;
+let isUploading = false; // Prevents checkbox changes from re-enabling button during upload
 
 // =============================================================================
 // Access Configuration Validation
@@ -74,8 +75,11 @@ function validateAccessConfig() {
     warningEl.classList.remove("show", "warning");
   }
 
-  uploadBtn.disabled = !canUpload;
-  uploadBtn.classList.toggle("disabled", !canUpload);
+  // Don't change button state if upload is in progress
+  if (!isUploading) {
+    uploadBtn.disabled = !canUpload;
+    uploadBtn.classList.toggle("disabled", !canUpload);
+  }
 
   return { valid: isValid, canUpload: canUpload };
 }
@@ -613,6 +617,7 @@ async function executeUpload() {
 
   uploadBtn.disabled = true;
   uploadBtn.innerHTML = "<span>⏳</span> Processing...";
+  isUploading = true; // Lock button during upload
 
   try {
     if (!window.crypto || !window.crypto.subtle) {
@@ -650,6 +655,7 @@ async function executeUpload() {
       "error"
     );
   } finally {
+    isUploading = false; // Unlock button state
     uploadBtn.disabled = false;
     uploadBtn.innerHTML = "<span>🔒</span> Encrypt & Upload";
   }
