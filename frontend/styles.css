@@ -2727,57 +2727,100 @@ input[type="checkbox"] {
 }
 
 /* -----------------------------------------------------------------------------
-   5. Enhanced Dropzone - Data Stream Effect on Drag
+   5. Enhanced Dropzone - Matrix Binary Rain Effect
    ----------------------------------------------------------------------------- */
 .drop-zone {
   position: relative;
   overflow: hidden;
 }
 
-/* Binary rain effect on hover/drag */
-.drop-zone::before {
-  content: '01001000 01100101 01101100 01101100 01101111 00100001';
+/* Container for the binary rain columns */
+.drop-zone .binary-rain {
   position: absolute;
-  top: -100%;
-  left: 0;
-  right: 0;
-  height: 200%;
-  font-family: var(--font-mono);
-  font-size: 0.6rem;
-  color: var(--cyber-green);
-  opacity: 0;
-  word-wrap: break-word;
-  line-height: 1.8;
-  letter-spacing: 4px;
+  inset: 0;
+  display: flex;
+  justify-content: space-around;
   pointer-events: none;
+  opacity: 0;
   transition: opacity 0.3s ease;
-  animation: dataRain 8s linear infinite paused;
   z-index: 0;
+  overflow: hidden;
 }
 
-.drop-zone:hover::before,
-.drop-zone.drag-over::before {
-  opacity: 0.15;
+.drop-zone:hover .binary-rain,
+.drop-zone.drag-over .binary-rain {
+  opacity: 1;
+}
+
+/* Individual rain column */
+.binary-rain .rain-column {
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--cyber-green);
+  text-shadow: 
+    0 0 5px var(--cyber-green),
+    0 0 10px var(--cyber-green-glow),
+    0 0 20px rgba(0, 255, 65, 0.3);
+  line-height: 1.4;
+  animation: matrixFall var(--fall-duration, 2s) linear infinite;
+  animation-play-state: paused;
+  transform: translateY(-100%);
+}
+
+.drop-zone:hover .rain-column,
+.drop-zone.drag-over .rain-column {
   animation-play-state: running;
 }
 
-@keyframes dataRain {
-  0% { transform: translateY(0); }
-  100% { transform: translateY(50%); }
+/* Individual digits with varying opacity for depth effect */
+.rain-column span {
+  opacity: var(--digit-opacity, 0.6);
+  transition: opacity 0.1s;
 }
 
-/* Enhanced hover state - minimal clean */
+/* Lead character (brightest) */
+.rain-column span:last-child {
+  opacity: 1;
+  color: #fff;
+  text-shadow: 
+    0 0 10px var(--cyber-green),
+    0 0 20px var(--cyber-green),
+    0 0 30px var(--cyber-green);
+}
+
+/* Fading trail effect */
+.rain-column span:nth-last-child(2) { opacity: 0.9; color: #aaffaa; }
+.rain-column span:nth-last-child(3) { opacity: 0.7; }
+.rain-column span:nth-last-child(4) { opacity: 0.5; }
+.rain-column span:nth-last-child(5) { opacity: 0.35; }
+.rain-column span:nth-last-child(6) { opacity: 0.2; }
+
+@keyframes matrixFall {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(calc(100% + 100px));
+  }
+}
+
+/* Enhanced hover state */
 .drop-zone:hover,
 .drop-zone.drag-over {
   border-style: solid;
   border-width: 1px;
-  border-color: rgba(255, 255, 255, 0.25);
+  border-color: rgba(0, 255, 65, 0.4);
+  background: rgba(0, 255, 65, 0.02);
 }
 
-/* Dropzone icon - subtle lift */
+/* Dropzone icon - subtle lift with glow */
 .drop-zone:hover .drop-zone-icon,
 .drop-zone.drag-over .drop-zone-icon {
   transform: translateY(-3px);
+  filter: drop-shadow(0 0 8px var(--cyber-green-glow));
 }
 
 /* -----------------------------------------------------------------------------

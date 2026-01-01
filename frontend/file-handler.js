@@ -78,6 +78,9 @@ export function initializeFileHandler(onFileSelected) {
 
   if (!dropZone || !fileInput) return;
 
+  // Initialize the Matrix binary rain effect
+  initializeBinaryRain(dropZone);
+
   // Drag events
   ["dragenter", "dragover"].forEach((event) => {
     dropZone.addEventListener(event, (e) => {
@@ -179,6 +182,61 @@ export function getSelectedFile() {
  */
 export function getMaxFileSize() {
   return MAX_FILE_SIZE;
+}
+
+// =============================================================================
+// Matrix Binary Rain Effect
+// =============================================================================
+
+/**
+ * Initialize the Matrix-style binary rain effect for the drop zone.
+ * Creates multiple columns of falling 0s and 1s with varied speeds.
+ * @param {HTMLElement} dropZone - The drop zone element
+ */
+function initializeBinaryRain(dropZone) {
+  // Create the rain container
+  const rainContainer = document.createElement('div');
+  rainContainer.className = 'binary-rain';
+  
+  // Number of columns based on container width (roughly 1 column per 25px)
+  const numColumns = 18;
+  
+  for (let i = 0; i < numColumns; i++) {
+    const column = document.createElement('div');
+    column.className = 'rain-column';
+    
+    // Random animation speed for variety (but no delay - all start together)
+    const duration = 1.5 + Math.random() * 2; // 1.5s to 3.5s
+    
+    column.style.setProperty('--fall-duration', `${duration}s`);
+    
+    // Generate random binary digits (6-12 characters per column)
+    const numDigits = 6 + Math.floor(Math.random() * 7);
+    for (let j = 0; j < numDigits; j++) {
+      const digit = document.createElement('span');
+      digit.textContent = Math.random() > 0.5 ? '1' : '0';
+      column.appendChild(digit);
+    }
+    
+    rainContainer.appendChild(column);
+  }
+  
+  // Insert rain container at the beginning of dropZone
+  dropZone.insertBefore(rainContainer, dropZone.firstChild);
+  
+  // Regenerate digits periodically for more dynamic effect
+  setInterval(() => {
+    const columns = rainContainer.querySelectorAll('.rain-column');
+    columns.forEach(column => {
+      const spans = column.querySelectorAll('span');
+      spans.forEach(span => {
+        // Only regenerate some digits randomly
+        if (Math.random() > 0.7) {
+          span.textContent = Math.random() > 0.5 ? '1' : '0';
+        }
+      });
+    });
+  }, 500);
 }
 
 // Default export for backward compatibility
