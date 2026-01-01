@@ -20,7 +20,8 @@ import {
   updateRecipientCount,
   removeContactUI as removeContactUIBase
 } from './recipients.js';
-import { initializeFileHandler, clearFile, getSelectedFile, getMaxFileSize } from './file-handler.js';
+import { initializeFileHandler, clearFile, getSelectedFile, getMaxFileSize, validateFileForExpiry, getMaxFileSizeForExpiry, EXPIRY_SIZE_LIMITS } from './file-handler.js';
+import { formatFileSize } from './ui-utils.js';
 
 // State tracking
 let hasActiveLink = false;
@@ -135,6 +136,46 @@ function removeContactUI(contactId) {
 // =============================================================================
 // UI Helper Functions
 // =============================================================================
+
+/**
+ * Re-validate currently selected file when expiry duration changes.
+ * Shows warning if file exceeds the new limit.
+ * Also updates the max size hint in the drop zone.
+ */
+function validateFileForCurrentExpiry() {
+  const expiryHours = getSelectedExpiryHours();
+  
+  // Always update the max size hint in the drop zone
+  updateMaxSizeHint(expiryHours);
+  
+  const file = getSelectedFile();
+  if (!file) return; // No file selected yet
+  
+  const validation = validateFileForExpiry(file, expiryHours);
+  
+  if (!validation.valid) {
+    showAlert(
+      "File Exceeds Size Limit",
+      validation.message,
+      "warning"
+    );
+  } else {
+    // File is valid for new expiry, hide any previous warning
+    hideAlert();
+  }
+}
+
+/**
+ * Update the max file size hint in the drop zone.
+ * @param {number} expiryHours - Current expiry duration in hours
+ */
+function updateMaxSizeHint(expiryHours) {
+  const maxSizeHint = document.getElementById("maxSizeHint");
+  if (maxSizeHint) {
+    const maxSize = getMaxFileSizeForExpiry(expiryHours);
+    maxSizeHint.textContent = `Maximum file size: ${formatFileSize(maxSize)}`;
+  }
+}
 
 function showShareLink(link) {
   const container = document.querySelector('.container[data-state]');
@@ -451,9 +492,19 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Initialize custom expiry dropdown
   initializeExpiryDropdown();
 
-  // Initialize file handler
-  initializeFileHandler(() => {
-    // Callback when file is selected - validation happens automatically
+  // Initialize file handler with validation callback
+  initializeFileHandler((file) => {
+    // Immediately validate file against current expiry limit
+    const expiryHours = getSelectedExpiryHours();
+    const validation = validateFileForExpiry(file, expiryHours);
+    
+    if (!validation.valid) {
+      showAlert(
+        "File Exceeds Size Limit",
+        validation.message,
+        "error"
+      );
+    }
   });
 
   // Initial validation check
@@ -463,6 +514,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   const expirySelect = document.getElementById("expirySelect");
   if (expirySelect) {
     expirySelect.addEventListener("change", updateExpiryNotice);
+    // Re-validate selected file when expiry changes
+    expirySelect.addEventListener("change", validateFileForCurrentExpiry);
   }
 
   // ==========================================================================
@@ -582,6 +635,18 @@ async function processFile() {
     return;
   }
 
+  // Validate file size against current expiry limit
+  const expiryHours = getSelectedExpiryHours();
+  const sizeValidation = validateFileForExpiry(file, expiryHours);
+  if (!sizeValidation.valid) {
+    showAlert(
+      "File Too Large for Selected Expiry",
+      sizeValidation.message,
+      "error"
+    );
+    return;
+  }
+
   if (hasActiveLink && !overwriteWarningShown && !linkCopied) {
     showOverwriteModal(file);
     return;
@@ -605,11 +670,13 @@ async function executeUpload() {
   }
 
   const file = getSelectedFile();
+  const expiryHours = getSelectedExpiryHours();
+  const sizeValidation = validateFileForExpiry(file, expiryHours);
 
-  if (file.size > getMaxFileSize()) {
+  if (!sizeValidation.valid) {
     showAlert(
-      "File Too Large",
-      `Maximum file size is 1GB.`,
+      "File Too Large for Selected Expiry",
+      sizeValidation.message,
       "error"
     );
     return;

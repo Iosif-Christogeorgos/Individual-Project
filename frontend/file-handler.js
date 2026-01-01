@@ -6,7 +6,67 @@
 
 import { showAlert, hideAlert, formatFileSize } from './ui-utils.js';
 
-const MAX_FILE_SIZE = 1024 * 1024 * 1024; // 1GB
+// Absolute maximum file size (used for initial file selection validation)
+const MAX_FILE_SIZE = 1.5 * 1024 * 1024 * 1024; // 1.5GB
+
+// =============================================================================
+// Dynamic File Size Limits Based on Expiration Duration
+// =============================================================================
+// Longer expiration periods = smaller max file size to manage storage
+export const EXPIRY_SIZE_LIMITS = {
+  1: 1.5 * 1024 * 1024 * 1024,   // 1 hour: 1.5 GB
+  6: 1.0 * 1024 * 1024 * 1024,   // 6 hours: 1.0 GB
+  24: 500 * 1024 * 1024,          // 24 hours: 500 MB
+  72: 200 * 1024 * 1024,          // 3 days: 200 MB
+  168: 100 * 1024 * 1024,         // 7 days: 100 MB
+};
+
+/**
+ * Get the maximum allowed file size for a given expiry duration.
+ * @param {number} expiryHours - Expiry duration in hours
+ * @returns {number} Max file size in bytes
+ */
+export function getMaxFileSizeForExpiry(expiryHours) {
+  return EXPIRY_SIZE_LIMITS[expiryHours] || EXPIRY_SIZE_LIMITS[24]; // Default to 24h limit
+}
+
+/**
+ * Format expiry hours into a human-readable string.
+ * @param {number} hours - Expiry duration in hours
+ * @returns {string} Human-readable duration (e.g., "24 hours" or "3 days")
+ */
+function formatExpiryDuration(hours) {
+  if (hours < 24) {
+    return `${hours} hour${hours > 1 ? 's' : ''}`;
+  }
+  const days = hours / 24;
+  return `${days} day${days > 1 ? 's' : ''}`;
+}
+
+/**
+ * Validate a file against the size limit for a specific expiry duration.
+ * @param {File} file - The file to validate
+ * @param {number} expiryHours - Expiry duration in hours
+ * @returns {{ valid: boolean, maxSize: number, message: string|null }}
+ */
+export function validateFileForExpiry(file, expiryHours) {
+  const maxSize = getMaxFileSizeForExpiry(expiryHours);
+  
+  if (file.size > maxSize) {
+    const duration = formatExpiryDuration(expiryHours);
+    return {
+      valid: false,
+      maxSize: maxSize,
+      message: `For ${duration} expiry, maximum file size is ${formatFileSize(maxSize)}. Your file is ${formatFileSize(file.size)}.`
+    };
+  }
+  
+  return {
+    valid: true,
+    maxSize: maxSize,
+    message: null
+  };
+}
 
 /**
  * Initialize file input and drag & drop handlers.
@@ -50,6 +110,8 @@ export function initializeFileHandler(onFileSelected) {
 
 /**
  * Handle file selection (from input or drag & drop).
+ * Uses absolute max (1.5GB) for initial validation - expiry-specific validation
+ * happens when expiry changes or at upload time.
  * @param {File} file - The selected file
  * @param {Function} onValid - Callback when file is valid
  */
@@ -62,10 +124,11 @@ export function handleFileSelect(file, onValid) {
   const dropZone = document.getElementById("dropZone");
   const fileInput = document.getElementById("fileInput");
 
+  // Check against absolute maximum (expiry-specific check happens at upload time)
   if (file.size > MAX_FILE_SIZE) {
     showAlert(
       "File Too Large",
-      `Maximum file size is 1GB. Your file is ${formatFileSize(file.size)}.`,
+      `Maximum file size is ${formatFileSize(MAX_FILE_SIZE)}. Your file is ${formatFileSize(file.size)}.`,
       "error"
     );
     clearFile();
@@ -111,7 +174,7 @@ export function getSelectedFile() {
 }
 
 /**
- * Get the maximum allowed file size.
+ * Get the maximum allowed file size (absolute max).
  * @returns {number} Max file size in bytes
  */
 export function getMaxFileSize() {
@@ -124,5 +187,8 @@ export default {
   handleFileSelect,
   clearFile,
   getSelectedFile,
-  getMaxFileSize
+  getMaxFileSize,
+  getMaxFileSizeForExpiry,
+  validateFileForExpiry,
+  EXPIRY_SIZE_LIMITS
 };
