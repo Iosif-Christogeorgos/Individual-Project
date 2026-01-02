@@ -291,21 +291,70 @@ function showDownloadReady(accessMode) {
         .toUpperCase() || "";
 
     signatureInfo.innerHTML = `
-      <div class="signature-info-card signed">
-        <div class="sig-icon-badge signed">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M20 6L9 17l-5-5"/>
-          </svg>
+      <div class="signature-card-v2 signed">
+        <div class="sig-header">
+          <div class="sig-verified-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M9 12l2 2 4-4"/>
+              <path d="M12 3l1.5 1.5a2 2 0 002.5.25l1.5-.75a2 2 0 012.45.65l.75 1.5a2 2 0 002.1.85L24 6.5v11a2 2 0 01-2 2H2a2 2 0 01-2-2v-11l1.25.5a2 2 0 002.1-.85l.75-1.5a2 2 0 012.45-.65l1.5.75a2 2 0 002.5-.25L12 3z"/>
+            </svg>
+          </div>
+          <div class="sig-status-text">
+            <span class="sig-status-label">Verified Signature</span>
+            <span class="sig-status-badge">AUTHENTIC</span>
+          </div>
         </div>
-        <div class="sig-details">
-          <span class="sig-label">Digitally Signed</span>
-          <span class="sig-signer">By: ${escapeHtml(signerName)} ${
-      signerFingerprint ? `(${signerFingerprint})` : ""
-    }</span>
+        <div class="sig-body">
+          <div class="sig-signer-row">
+            <span class="sig-signer-label">Signed by</span>
+            <span class="sig-signer-name">${escapeHtml(signerName)}</span>
+          </div>
+          <button type="button" class="sig-fingerprint-toggle" aria-expanded="false">
+            <svg class="sig-key-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
+            </svg>
+            <span>View Fingerprint</span>
+            <svg class="sig-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M6 9l6 6 6-6"/>
+            </svg>
+          </button>
+          <div class="sig-fingerprint-panel" hidden>
+            <div class="sig-fingerprint-content">
+              <code class="sig-fingerprint-code">${signerFingerprint || "Not available"}</code>
+              <button type="button" class="sig-copy-btn" title="Copy fingerprint">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="9" y="9" width="13" height="13" rx="2"/>
+                  <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+                </svg>
+              </button>
+            </div>
+            <span class="sig-fingerprint-hint">Compare this with the sender's known fingerprint to verify authenticity</span>
+          </div>
         </div>
       </div>
     `;
     signatureInfo.classList.add("show");
+    
+    // Set up interactive fingerprint toggle
+    const toggle = signatureInfo.querySelector(".sig-fingerprint-toggle");
+    const panel = signatureInfo.querySelector(".sig-fingerprint-panel");
+    const copyBtn = signatureInfo.querySelector(".sig-copy-btn");
+    
+    toggle?.addEventListener("click", () => {
+      const expanded = toggle.getAttribute("aria-expanded") === "true";
+      toggle.setAttribute("aria-expanded", !expanded);
+      panel.hidden = expanded;
+    });
+    
+    copyBtn?.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(signerFingerprint || "");
+        copyBtn.classList.add("copied");
+        setTimeout(() => copyBtn.classList.remove("copied"), 1500);
+      } catch (e) {
+        console.error("Copy failed:", e);
+      }
+    });
   } else if (signatureInfo) {
     signatureInfo.innerHTML = `
       <div class="signature-info-card unsigned">

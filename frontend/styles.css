@@ -2508,6 +2508,233 @@ input[type="checkbox"] {
 }
 
 /* -----------------------------------------------------------------------------
+   Signature Card V2 - Interactive Design
+   ----------------------------------------------------------------------------- */
+
+.signature-card-v2 {
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: 1px solid var(--glass-border);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.signature-card-v2.signed {
+  border-color: rgba(0, 255, 65, 0.35);
+  background: linear-gradient(135deg, rgba(0, 255, 65, 0.06) 0%, rgba(0, 255, 65, 0.02) 100%);
+}
+
+/* Header with verified badge */
+.sig-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0.875rem 1rem;
+  background: rgba(0, 255, 65, 0.08);
+  border-bottom: 1px solid rgba(0, 255, 65, 0.15);
+}
+
+.sig-verified-icon {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, rgba(0, 255, 65, 0.2) 0%, rgba(0, 255, 65, 0.1) 100%);
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.sig-verified-icon svg {
+  width: 20px;
+  height: 20px;
+  color: var(--cyber-green);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.sig-status-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sig-status-label {
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--cyber-green);
+}
+
+.sig-status-badge {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: rgba(0, 255, 65, 0.9);
+  background: rgba(0, 255, 65, 0.12);
+  padding: 2px 8px;
+  border-radius: 4px;
+  width: fit-content;
+}
+
+/* Body section */
+.sig-body {
+  padding: 0.875rem 1rem;
+}
+
+.sig-signer-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 0.75rem;
+}
+
+.sig-signer-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.sig-signer-name {
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* Fingerprint toggle button */
+.sig-fingerprint-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sig-fingerprint-toggle:hover {
+  background: rgba(0, 255, 65, 0.06);
+  border-color: rgba(0, 255, 65, 0.3);
+  color: var(--text-primary);
+}
+
+.sig-fingerprint-toggle[aria-expanded="true"] {
+  background: rgba(0, 255, 65, 0.08);
+  border-color: rgba(0, 255, 65, 0.3);
+}
+
+.sig-key-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.sig-chevron {
+  width: 14px;
+  height: 14px;
+  margin-left: auto;
+  transition: transform 0.2s ease;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.sig-fingerprint-toggle[aria-expanded="true"] .sig-chevron {
+  transform: rotate(180deg);
+}
+
+/* Fingerprint panel (expandable) */
+.sig-fingerprint-panel {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.sig-fingerprint-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 0.5rem;
+}
+
+.sig-fingerprint-code {
+  flex: 1;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  letter-spacing: 0.05em;
+  color: var(--accent-blue);
+  background: rgba(0, 212, 255, 0.08);
+  padding: 0.5rem 0.75rem;
+  border-radius: 4px;
+  word-break: break-all;
+  user-select: all;
+}
+
+.sig-copy-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--glass-border);
+  border-radius: 6px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.sig-copy-btn svg {
+  width: 16px;
+  height: 16px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.sig-copy-btn:hover {
+  background: rgba(0, 212, 255, 0.1);
+  border-color: rgba(0, 212, 255, 0.4);
+  color: var(--accent-blue);
+}
+
+.sig-copy-btn.copied {
+  background: rgba(0, 255, 65, 0.15);
+  border-color: rgba(0, 255, 65, 0.4);
+  color: var(--cyber-green);
+}
+
+.sig-fingerprint-hint {
+  display: block;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* -----------------------------------------------------------------------------
    Download Page - Signature Verification Result
    ----------------------------------------------------------------------------- */
 
