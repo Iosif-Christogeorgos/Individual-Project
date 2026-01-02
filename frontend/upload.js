@@ -934,6 +934,7 @@ async function prepareMetadata(
     metadata.signature = {
       ...signatureBundle,
       signerId: currentIdentity.id,
+      signerDisplayName: currentIdentity.displayName,
       signerFingerprint: currentIdentity.fingerprint,
       signerPublicKey: currentIdentity.signing.publicKey,
     };

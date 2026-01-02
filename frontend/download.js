@@ -284,7 +284,7 @@ function showDownloadReady(accessMode) {
   // Show signature info if available
   if (signatureInfo && fileMetadata?.signature) {
     const signerName =
-      fileMetadata.signature.signerId?.substring(0, 8) || "Unknown";
+      fileMetadata.signature.signerDisplayName || "Unknown";
     const signerFingerprint =
       fileMetadata.signature.signerFingerprint
         ?.substring(0, 16)
