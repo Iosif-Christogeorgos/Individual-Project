@@ -342,19 +342,32 @@
           </div>
 
           <!-- Identity Fingerprint (shown when logged in) -->
-          <div class="identity-fingerprint hidden" id="identityFingerprint">
-            <span class="fingerprint-label">Fingerprint:</span>
-            <span id="fingerprintValue">ABCD1234</span>
-            <span class="info-trigger">ⓘ
-              <div class="info-panel">
-                <div class="info-panel-header">🔐 What is a Fingerprint?</div>
-                <div class="info-panel-content">
-                  Your unique cryptographic fingerprint acts as a digital signature. 
-                  Share it with others so they can verify your identity and ensure 
-                  secure communication.
+          <div class="identity-fingerprint-v2 hidden" id="identityFingerprint">
+            <div class="fingerprint-card">
+              <div class="fingerprint-header">
+                <div class="fingerprint-icon-badge">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
+                  </svg>
+                </div>
+                <div class="fingerprint-title">
+                  <span class="fingerprint-label">Your Fingerprint</span>
+                  <span class="fingerprint-hint">Share to verify your identity</span>
                 </div>
               </div>
-            </span>
+              <div class="fingerprint-value-row">
+                <code class="fingerprint-code" id="fingerprintValue">ABCD1234...</code>
+                <button type="button" class="fingerprint-copy-btn" id="fingerprintCopyBtn" title="Copy fingerprint">
+                  <svg class="copy-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="9" y="9" width="13" height="13" rx="2"/>
+                    <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+                  </svg>
+                  <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path d="M20 6L9 17l-5-5"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
           </div>
 
           <!-- Create Identity Section -->

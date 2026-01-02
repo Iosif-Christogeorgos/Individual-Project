@@ -549,6 +549,22 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Identity management
   document.getElementById("createIdentityBtn")?.addEventListener("click", createIdentity);
   
+  // Fingerprint copy button
+  document.getElementById("fingerprintCopyBtn")?.addEventListener("click", async () => {
+    const copyBtn = document.getElementById("fingerprintCopyBtn");
+    if (currentIdentity && copyBtn) {
+      try {
+        // Copy the short fingerprint (same as displayed)
+        const shortFingerprint = IdentityManager.getShortFingerprint(currentIdentity);
+        await navigator.clipboard.writeText(shortFingerprint);
+        copyBtn.classList.add("copied");
+        setTimeout(() => copyBtn.classList.remove("copied"), 1500);
+      } catch (e) {
+        console.error("Copy failed:", e);
+      }
+    }
+  });
+  
   // User directory search
   document.getElementById("searchUserBtn")?.addEventListener("click", searchUserByUsername);
   

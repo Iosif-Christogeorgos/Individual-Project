@@ -1374,7 +1374,7 @@ input[type="checkbox"] {
   height: 44px;
   background: rgba(0, 255, 65, 0.03);
   border: 1px solid rgba(0, 255, 65, 0.2);
-  border-radius: 22px;
+  border-radius: 10px;
   transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
 }
@@ -1421,7 +1421,7 @@ input[type="checkbox"] {
   padding: 0;
   background: var(--cyber-green);
   border: none;
-  border-radius: 18px;
+  border-radius: 10px;
   color: #000;
   font-family: var(--font-mono);
   font-size: 1rem;
@@ -4081,4 +4081,145 @@ input[type="checkbox"]:checked {
   .mobile-sidebar-toggle .toggle-icon {
     font-size: 1.3rem;
   }
+}
+
+/* -----------------------------------------------------------------------------
+   Identity Panel - Fingerprint Card V2
+   ----------------------------------------------------------------------------- */
+
+.identity-fingerprint-v2 {
+  margin: 0 0 1rem 0;
+}
+
+.identity-fingerprint-v2.hidden {
+  display: none;
+}
+
+.fingerprint-card {
+  background: rgba(0, 255, 65, 0.06);
+  border: 1px solid rgba(0, 255, 65, 0.25);
+  border-radius: var(--radius-sm);
+  padding: 0.75rem;
+}
+
+.fingerprint-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 0.625rem;
+}
+
+.fingerprint-icon-badge {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.fingerprint-icon-badge svg {
+  width: 16px;
+  height: 16px;
+  color: var(--cyber-green);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.fingerprint-title {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.fingerprint-card .fingerprint-label {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--cyber-green);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.fingerprint-hint {
+  font-size: 0.68rem;
+  color: var(--text-secondary);
+}
+
+.fingerprint-value-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.fingerprint-code {
+  flex: 1;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  color: var(--cyber-green);
+  background: rgba(0, 255, 65, 0.1);
+  padding: 0.5rem 0.625rem;
+  border-radius: 6px;
+  border: 1px solid rgba(0, 255, 65, 0.2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  user-select: all;
+}
+
+.fingerprint-copy-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.fingerprint-copy-btn svg {
+  width: 14px;
+  height: 14px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.fingerprint-copy-btn .copy-icon {
+  position: absolute;
+}
+
+.fingerprint-copy-btn .check-icon {
+  position: absolute;
+  opacity: 0;
+  transform: scale(0.5);
+}
+
+.fingerprint-copy-btn:hover {
+  background: rgba(0, 255, 65, 0.08);
+  border-color: rgba(0, 255, 65, 0.3);
+  color: var(--cyber-green);
+}
+
+.fingerprint-copy-btn.copied {
+  background: rgba(0, 255, 65, 0.12);
+  border-color: rgba(0, 255, 65, 0.4);
+  color: var(--cyber-green);
+}
+
+.fingerprint-copy-btn.copied .copy-icon {
+  opacity: 0;
+  transform: scale(0.5);
+}
+
+.fingerprint-copy-btn.copied .check-icon {
+  opacity: 1;
+  transform: scale(1);
 }
