@@ -1337,10 +1337,21 @@ input[type="checkbox"] {
   height: 100%;
   background: transparent;
   border: none;
-  color: var(--text-primary);
+  color: var(--cyber-green);
   font-family: var(--font-mono);
   font-size: 0.9rem;
   outline: none;
+  caret-color: var(--cyber-green);
+}
+
+/* Prevent autofill white background */
+.panel-input:-webkit-autofill,
+.panel-input:-webkit-autofill:hover,
+.panel-input:-webkit-autofill:focus,
+.panel-input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px var(--bg-void) inset !important;
+  -webkit-text-fill-color: var(--cyber-green) !important;
+  transition: background-color 5000s ease-in-out 0s;
 }
 
 .input-hint {
@@ -1707,6 +1718,148 @@ input[type="checkbox"] {
   font-size: 0.8rem;
   font-style: italic;
   opacity: 0.6;
+}
+
+/* -----------------------------------------------------------------------------
+   Professional Identity Panel Enhancements (Clean Version)
+   ----------------------------------------------------------------------------- */
+
+/* 1. Section styling - SUBTLE, no heavy cards */
+.panel-section {
+  padding: 0;
+  margin-bottom: 0.5rem;
+}
+
+/* 2. Identity Status Indicator */
+.identity-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.status-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  transition: all 0.4s ease;
+}
+
+.status-indicator.active {
+  background: var(--cyber-green);
+  box-shadow: 0 0 6px rgba(0, 255, 65, 0.5);
+}
+
+/* 3. Fingerprint - clean inline display */
+.identity-fingerprint {
+  background: transparent;
+  border: none;
+  padding: 0.25rem 0;
+  margin-top: -0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+#fingerprintValue {
+  font-size: 0.72rem;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+}
+
+.fingerprint-label {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  opacity: 0.6;
+}
+
+/* 4. Input styling - subtle refinement */
+.username-input-wrapper:focus-within {
+  border-color: var(--cyber-green);
+  box-shadow: 0 0 0 2px rgba(0, 255, 65, 0.1);
+}
+
+/* 5. Contact Cards - clean alignment */
+.contact-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-sm);
+  transition: all 0.25s ease;
+}
+
+.contact-item:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.contact-checkbox {
+  width: 16px;
+  height: 16px;
+  min-width: 16px;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.contact-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.contact-name {
+  font-weight: 500;
+  font-size: 0.85rem;
+  color: var(--cyber-green);
+}
+
+.contact-fingerprint {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  opacity: 0.5;
+}
+
+.contact-remove {
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.contact-item:hover .contact-remove {
+  opacity: 1;
+}
+
+/* 6. Search box - clean style */
+.search-box {
+  background: rgba(255, 255, 255, 0.02);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.search-box:focus-within {
+  border-color: var(--cyber-green);
+  background: rgba(0, 255, 65, 0.02);
+}
+
+/* Header accent line - subtle */
+.side-panel-header::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(0, 255, 65, 0.2) 30%,
+    rgba(0, 212, 255, 0.2) 70%,
+    transparent
+  );
+  opacity: 0.5;
 }
 
 

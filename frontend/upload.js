@@ -269,9 +269,13 @@ function updateIdentityUI() {
   const panelTitle = document.getElementById("panelTitle");
   const identityFingerprint = document.getElementById("identityFingerprint");
   const fingerprintValue = document.getElementById("fingerprintValue");
+  const statusIndicator = document.getElementById("statusIndicator");
 
   if (currentIdentity) {
     noIdentitySection?.classList.add("hidden");
+    
+    // Update status indicator
+    statusIndicator?.classList.add("active");
     
     // Update title to show username
     if (panelTitle) {
@@ -287,6 +291,9 @@ function updateIdentityUI() {
     }
   } else {
     noIdentitySection?.classList.remove("hidden");
+    
+    // Update status indicator
+    statusIndicator?.classList.remove("active");
     
     // Reset title
     if (panelTitle) {
