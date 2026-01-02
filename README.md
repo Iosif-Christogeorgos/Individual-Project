@@ -23,7 +23,7 @@ CrypShare is a secure file sharing application that implements true zero-knowled
 
 - **🔗 Link-Based Access** — Encryption keys stored in URL fragment (`#`), never sent to server. Anyone with the link can decrypt.
 - **👤 Identity-Based Access** — Encrypt files for specific recipients using ECDH public-key cryptography. Only designated recipients can decrypt.
-- **🔀 Hybrid Mode** — Combine both methods for flexible access control.
+
 
 ### Authenticity
 
