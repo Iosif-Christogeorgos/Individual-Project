@@ -198,7 +198,7 @@ html, body {
   gap: 2rem;
   width: 100%;
   max-width: 1100px;
-  align-items: start;
+  align-items: stretch;
 }
 
 /* Panel Card Base */
@@ -252,22 +252,24 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 1.5rem;
-  padding: 0.75rem 1.5rem;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
   border-top: 1px solid var(--glass-border);
 }
 
 .security-tag {
   font-family: var(--font-mono);
-  font-size: 0.65rem;
-  font-weight: 500;
-  color: var(--text-muted);
-  letter-spacing: 0.02em;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .security-separator {
-  color: var(--text-muted);
-  font-size: 0.7rem;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  opacity: 0.6;
 }
 
 .panel-header-actions {
@@ -3189,16 +3191,12 @@ input[type="checkbox"] {
   0%, 100% {
     box-shadow: 
       0 0 0 1px var(--glass-highlight) inset,
-      0 25px 50px -12px rgba(0, 0, 0, 0.5),
-      0 0 60px -15px var(--cyber-green-glow),
-      0 0 100px -20px rgba(0, 212, 255, 0.15);
+      0 25px 50px -12px rgba(0, 0, 0, 0.5);
   }
   50% {
     box-shadow: 
       0 0 0 1px var(--glass-highlight) inset,
-      0 25px 50px -12px rgba(0, 0, 0, 0.5),
-      0 0 80px -10px var(--cyber-green-glow),
-      0 0 120px -15px rgba(0, 212, 255, 0.25);
+      0 25px 50px -12px rgba(0, 0, 0, 0.5);
   }
 }
 
