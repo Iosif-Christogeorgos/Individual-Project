@@ -237,6 +237,17 @@ html, body {
   font-size: 1.1rem;
 }
 
+.panel-icon.vault-icon {
+  display: flex;
+  align-items: center;
+}
+
+.panel-icon.vault-icon svg {
+  width: 20px;
+  height: 20px;
+  color: var(--cyber-green);
+}
+
 .crypto-badge {
   font-family: var(--font-mono);
   font-size: 0.7rem;
