@@ -253,57 +253,77 @@ function resetToUpload() {
 // =============================================================================
 
 async function initializeIdentityPanel() {
-  const identityPanel = document.getElementById("identityPanel");
+  const identityPanel = document.getElementById("identityVaultPanel");
   if (!identityPanel) return;
 
   try {
     currentIdentity = await IdentityManager.getIdentity();
     updateIdentityUI();
+    initializeContactsTabs();
   } catch (error) {
     console.error("Failed to load identity:", error);
   }
 }
 
+function initializeContactsTabs() {
+  const tabs = document.querySelectorAll(".contacts-tab");
+  const tabContents = {
+    "my-contacts": document.getElementById("myContactsTab"),
+    "add-new": document.getElementById("addNewTab")
+  };
+
+  tabs.forEach(tab => {
+    tab.addEventListener("click", () => {
+      // Remove active from all tabs
+      tabs.forEach(t => t.classList.remove("active"));
+      // Hide all tab contents
+      Object.values(tabContents).forEach(content => {
+        if (content) content.classList.remove("active");
+      });
+      
+      // Activate clicked tab
+      tab.classList.add("active");
+      const tabName = tab.dataset.tab;
+      if (tabContents[tabName]) {
+        tabContents[tabName].classList.add("active");
+      }
+    });
+  });
+}
+
 function updateIdentityUI() {
   const noIdentitySection = document.getElementById("noIdentitySection");
-  const panelTitle = document.getElementById("panelTitle");
   const identityFingerprint = document.getElementById("identityFingerprint");
   const fingerprintValue = document.getElementById("fingerprintValue");
-  const statusIndicator = document.getElementById("statusIndicator");
+  const identityUsername = document.getElementById("identityUsername");
 
   if (currentIdentity) {
+    // Hide create identity section
     noIdentitySection?.classList.add("hidden");
     
-    // Update status indicator
-    statusIndicator?.classList.add("active");
+    // Show fingerprint card
+    identityFingerprint?.classList.remove("hidden");
     
-    // Update title to show username
-    if (panelTitle) {
-      const username = currentIdentity.displayName?.replace('@', '') || "unknown";
-      panelTitle.textContent = username;
-      panelTitle.classList.add("has-identity");
+    // Update username display
+    if (identityUsername) {
+      const username = currentIdentity.displayName || "@unknown";
+      identityUsername.textContent = username.startsWith('@') ? username : `@${username}`;
     }
     
-    // Show fingerprint
-    if (identityFingerprint && fingerprintValue) {
+    // Update fingerprint display (short 16 char version)
+    if (fingerprintValue) {
       fingerprintValue.textContent = IdentityManager.getShortFingerprint(currentIdentity);
-      identityFingerprint.classList.remove("hidden");
     }
   } else {
+    // Show create identity section
     noIdentitySection?.classList.remove("hidden");
     
-    // Update status indicator
-    statusIndicator?.classList.remove("active");
-    
-    // Reset title
-    if (panelTitle) {
-      panelTitle.textContent = "IDENTITY";
-      panelTitle.classList.remove("has-identity");
-    }
-    
-    // Hide fingerprint
+    // Hide fingerprint card
     identityFingerprint?.classList.add("hidden");
   }
+  
+  // Re-validate access config after identity state change
+  validateAccessConfig();
 }
 
 async function createIdentity() {
@@ -554,10 +574,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     const copyBtn = document.getElementById("fingerprintCopyBtn");
     if (currentIdentity && copyBtn) {
       try {
-        // Copy the short fingerprint (same as displayed)
-        const shortFingerprint = IdentityManager.getShortFingerprint(currentIdentity);
-        await navigator.clipboard.writeText(shortFingerprint);
+        // Copy the full fingerprint
+        await navigator.clipboard.writeText(currentIdentity.fingerprint);
         copyBtn.classList.add("copied");
+        showToast("Fingerprint copied ✓");
         setTimeout(() => copyBtn.classList.remove("copied"), 1500);
       } catch (e) {
         console.error("Copy failed:", e);
@@ -581,6 +601,29 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Search on Enter key
   searchInput?.addEventListener("keypress", (e) => {
     if (e.key === "Enter") searchUserByUsername();
+  });
+  
+  // Local contact filter (filters saved contacts list)
+  const filterContactsInput = document.getElementById("filterContactsInput");
+  filterContactsInput?.addEventListener("input", (e) => {
+    const filterValue = e.target.value.toLowerCase().trim();
+    const contactItems = document.querySelectorAll("#contactsList .contact-item");
+    
+    contactItems.forEach(item => {
+      const name = item.querySelector(".contact-name")?.textContent?.toLowerCase() || "";
+      const fingerprint = item.querySelector(".contact-fingerprint")?.textContent?.toLowerCase() || "";
+      const matches = name.includes(filterValue) || fingerprint.includes(filterValue);
+      item.style.display = matches ? "" : "none";
+    });
+    
+    // Update "no contacts" message visibility
+    const noContacts = document.querySelector("#contactsList .no-contacts");
+    const visibleContacts = document.querySelectorAll("#contactsList .contact-item:not([style*='display: none'])");
+    if (noContacts) {
+      noContacts.textContent = visibleContacts.length === 0 && filterValue 
+        ? "No contacts match filter" 
+        : "No contacts added yet";
+    }
   });
   
   // Contact management
