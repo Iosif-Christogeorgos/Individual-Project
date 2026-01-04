@@ -751,6 +751,11 @@ async function executeUpload() {
   uploadBtn.disabled = true;
   uploadBtn.innerHTML = "<span>⏳</span> Processing...";
   isUploading = true; // Lock button during upload
+  
+  // Start cinematic encryption animation
+  if (window.encryptionAnimator && file) {
+    window.encryptionAnimator.startEncryptionSequence(file.name);
+  }
 
   try {
     if (!window.crypto || !window.crypto.subtle) {
@@ -849,6 +854,7 @@ async function executeStreamingUpload(file, enableSigning, includeLinkKey) {
     throw new Error(`Upload failed: ${uploadResponse.status}`);
   }
 
+  updateProgress(98, "Finalizing...");
   const serverData = await uploadResponse.json();
 
   if (!serverData.fileId) {
@@ -857,7 +863,7 @@ async function executeStreamingUpload(file, enableSigning, includeLinkKey) {
 
   await uploadMetadata(serverData.fileId, metadata);
 
-  updateProgress(100, "Complete!");
+  updateProgress(100, "Encryption complete!");
   const shareLink = generateShareLink(
     serverData.fileId,
     exportedKey.k,
@@ -912,6 +918,7 @@ async function executeBufferedUpload(file, enableSigning, includeLinkKey) {
     throw new Error(`Upload failed: ${uploadResponse.status}`);
   }
 
+  updateProgress(85, "Upload complete...");
   const serverData = await uploadResponse.json();
 
   if (!serverData.fileId) {
@@ -920,7 +927,7 @@ async function executeBufferedUpload(file, enableSigning, includeLinkKey) {
 
   await uploadMetadata(serverData.fileId, metadata);
 
-  updateProgress(100, "Complete!");
+  updateProgress(100, "Encryption complete!");
   const shareLink = generateShareLink(
     serverData.fileId,
     exportedKey.k,
@@ -1039,6 +1046,8 @@ function generateShareLink(fileId, keyString, includeLinkKey) {
 }
 
 function showUploadSuccess(shareLink, includeLinkKey, enableSigning, expiresAt) {
+  // Wait for lock animation to complete before showing success view
+  // The lock closing animation takes about 1.5 seconds
   setTimeout(() => {
     hideProgress();
     showShareLink(shareLink);
@@ -1055,7 +1064,7 @@ function showUploadSuccess(shareLink, includeLinkKey, enableSigning, expiresAt) 
     showShareModeInfo(includeLinkKey, getSelectedRecipients().length);
     showSignatureStatusInfo(enableSigning, currentIdentity);
     updateSecurityWarning(includeLinkKey);
-  }, 500);
+  }, 2000);
 }
 
 function showShareModeInfo(hasLinkKey, recipientCount) {

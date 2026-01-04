@@ -134,28 +134,25 @@ export function escapeHtml(text) {
  * @param {number} percent - Progress percentage (0-100)
  * @param {string} status - Status message
  */
+/**
+ * Update progress display.
+ * @param {number} percent - Progress percentage (0-100)
+ * @param {string} status - Status message
+ */
 export function updateProgress(percent, status) {
   const container = document.getElementById("progressContainer");
   const track = document.getElementById("progressTrack");
   const percentEl = document.getElementById("progressPercent");
   const statusEl = document.getElementById("progressStatus");
 
-  if (!container) return;
-
-  container.classList.add("show");
-
-  if (track) {
-    const filled = Math.floor(percent / 4);
-    const empty = 25 - filled;
-    track.textContent = "[" + "#".repeat(filled) + ".".repeat(empty) + "]";
+  // Hide the progress bar - we use the lock animation instead
+  if (container) {
+    container.classList.remove("show");
   }
 
-  if (percentEl) {
-    percentEl.textContent = percent + "%";
-  }
-
-  if (statusEl) {
-    statusEl.textContent = status;
+  // Update encryption animation with progress
+  if (window.encryptionAnimator) {
+    window.encryptionAnimator.updateProgressDisplay(percent, status);
   }
 }
 

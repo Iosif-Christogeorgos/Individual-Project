@@ -198,7 +198,8 @@ app.use(helmet({
     directives: {
       defaultSrc: ["'self'"],
       scriptSrc: ["'self'"],
-      styleSrc: ["'self'", "https://fonts.googleapis.com"],
+      // Note: 'unsafe-inline' is required for GSAP animation library which sets inline transform styles
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc: ["'self'", "https://fonts.gstatic.com", "https://cdn.jsdelivr.net"],
       imgSrc: ["'self'", "data:", "blob:"],
       connectSrc: ["'self'"],

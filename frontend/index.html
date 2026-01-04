@@ -68,20 +68,46 @@
 
               <!-- Drop Zone -->
               <div class="drop-zone" id="dropZone">
-                <span class="drop-zone-icon">📁</span>
-                <div class="drop-zone-text">
-                  <strong>Secure Drop Zone</strong><br>
-                  <small class="text-muted-color">Drag files here to encrypt locally. Supports .pdf, .zip, .enc up to 2GB</small>
+                <div class="drop-zone-content">
+                  <span class="drop-zone-icon">📁</span>
+                  <div class="drop-zone-text">
+                    <strong>Secure Drop Zone</strong><br>
+                    <small class="text-muted-color">Drag files here to encrypt locally. Supports .pdf, .zip, .enc up to 2GB</small>
+                  </div>
                 </div>
                 <input type="file" id="fileInput" title="" />
               </div>
 
-              <!-- Selected File Display -->
+              <!-- Selected File Display with Encryption Animation -->
               <div class="file-selected" id="fileSelected">
-                <span class="file-selected-icon">📄</span>
+                <!-- Cinematic Lock Icon -->
+                <div class="file-selected-icon encryption-lock" id="encryptionLock">
+                  <svg class="lock-svg" viewBox="-4 -4 72 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <!-- Shackle - connected to body at y=36 -->
+                    <path 
+                      class="lock-shackle" 
+                      id="lockShackle"
+                      d="M16 36 L16 20 C16 9 24 2 32 2 C40 2 48 9 48 20 L48 36"
+                      stroke="currentColor" 
+                      stroke-width="6" 
+                      stroke-linecap="round"
+                      fill="none"
+                    />
+                    <!-- Lock Body - starts at y=36 -->
+                    <rect class="lock-body" x="8" y="36" width="48" height="36" rx="4" fill="currentColor"/>
+                    <!-- Keyhole -->
+                    <circle class="lock-keyhole" cx="32" cy="50" r="5" fill="var(--bg-primary)"/>
+                    <rect class="lock-keyhole-slot" x="29.5" y="50" width="5" height="10" rx="2" fill="var(--bg-primary)"/>
+                  </svg>
+                </div>
+                
                 <div class="file-selected-info">
                   <div class="file-selected-name" id="fileName">filename.txt</div>
                   <div class="file-selected-size" id="fileSize">0 KB</div>
+                  <!-- Scramble text for encryption animation -->
+                  <div class="encryption-status" id="encryptionStatus">
+                    <span class="scramble-text" id="scrambleText"></span>
+                  </div>
                 </div>
                 <button
                   class="file-selected-remove"
@@ -484,6 +510,12 @@
       </div>
     </div>
 
+    <!-- GSAP Animation Library (local to bypass CSP) -->
+    <script src="gsap.min.js"></script>
+    
+    <!-- Encryption Animation Controller -->
+    <script src="encryption-animation.js"></script>
+    
     <!-- Scripts (ES Modules) -->
     <script type="module" src="upload.js"></script>
   </body>
