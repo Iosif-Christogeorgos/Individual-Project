@@ -211,7 +211,7 @@ html, body {
   box-shadow: 
     0 0 0 1px var(--glass-highlight) inset,
     0 25px 50px -12px rgba(0, 0, 0, 0.5);
-  overflow: hidden;
+  overflow: visible; /* Changed from hidden to allow dropdown to extend above panel */
 }
 
 .panel-card-header {
@@ -1043,6 +1043,7 @@ p {
   flex-direction: column;
   gap: 0.75rem;
   margin-bottom: 1.5rem;
+  overflow: visible; /* Allow dropdown to extend above */
 }
 
 .option-group {
@@ -3465,6 +3466,109 @@ input[type="checkbox"] {
 }
 
 /* -----------------------------------------------------------------------------
+   Custom Animated Dropdown (Opens Upward)
+   ----------------------------------------------------------------------------- */
+.custom-dropdown {
+  position: relative;
+  width: 100%;
+}
+
+.dropdown-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-family: var(--font-sans);
+  text-align: left;
+}
+
+.dropdown-trigger:hover {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.dropdown-label {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+}
+
+.dropdown-value {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--cyber-green);
+  margin-left: auto;
+  margin-right: 8px;
+}
+
+.dropdown-arrow {
+  width: 16px;
+  height: 16px;
+  color: var(--text-muted);
+  transition: transform 0.3s ease;
+  flex-shrink: 0;
+}
+
+.custom-dropdown.open .dropdown-arrow {
+  transform: rotate(180deg);
+}
+
+.custom-dropdown.open .dropdown-trigger {
+  border-color: var(--cyber-green);
+  background: rgba(0, 255, 65, 0.05);
+}
+
+/* Dropdown Menu - Base styles (visibility controlled by later definition) */
+.dropdown-menu {
+  position: absolute;
+  /* Note: position (top/bottom) is overridden by later CSS definition */
+  left: 0;
+  right: 0;
+  background: var(--bg-primary);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  /* visibility now controlled via opacity/visibility/transform in later definition */
+  z-index: 9999;
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.5);
+}
+
+/* Open state styling handled by later CSS definition */
+
+.dropdown-option {
+  padding: 0.65rem 1rem;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.dropdown-option:hover {
+  background: rgba(0, 255, 65, 0.1);
+  color: var(--text-primary);
+}
+
+.dropdown-option.selected {
+  background: rgba(0, 255, 65, 0.15);
+  color: var(--cyber-green);
+}
+
+.dropdown-option.selected::after {
+  content: '✓';
+  color: var(--cyber-green);
+  font-size: 0.9rem;
+}
+
+/* -----------------------------------------------------------------------------
    Expiry Countdown (Success Page)
    ----------------------------------------------------------------------------- */
 
@@ -4195,13 +4299,14 @@ input[type="checkbox"]:checked {
   top: 100%;
   left: 0;
   right: 0;
+  display: block; /* Always rendered, visibility controlled via opacity/visibility */
   background: rgba(17, 24, 39, 0.95);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--cyber-green);
   border-top: none;
   border-radius: 0 0 var(--radius-sm) var(--radius-sm);
-  overflow: hidden;
+  z-index: 9999;
   opacity: 0;
   visibility: hidden;
   transform: translateY(-8px) scaleY(0.95);
@@ -4214,12 +4319,14 @@ input[type="checkbox"]:checked {
     0 15px 40px -10px rgba(0, 0, 0, 0.6),
     0 0 30px -10px var(--cyber-green-glow),
     inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  pointer-events: none; /* Prevent interaction when hidden */
 }
 
 .custom-dropdown.open .dropdown-menu {
   opacity: 1;
   visibility: visible;
   transform: translateY(0) scaleY(1);
+  pointer-events: auto; /* Re-enable interaction when visible */
 }
 
 /* Dropdown Options */
