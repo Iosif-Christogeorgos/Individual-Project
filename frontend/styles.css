@@ -211,7 +211,8 @@ html, body {
   box-shadow: 
     0 0 0 1px var(--glass-highlight) inset,
     0 25px 50px -12px rgba(0, 0, 0, 0.5);
-  overflow: visible; /* Changed from hidden to allow dropdown to extend above panel */
+  min-width: 0; /* Prevent grid cell from expanding due to content */
+  overflow: hidden; /* Clip all overflow */
 }
 
 .panel-card-header {
@@ -918,7 +919,8 @@ p {
   margin-bottom: 1.5rem;
   align-items: center;
   gap: 1rem;
-  overflow: visible;
+  max-width: 100%; /* Prevent stretching beyond container */
+  overflow: hidden; /* Clip any overflow content */
 }
 
 .file-selected.show {
@@ -981,6 +983,7 @@ p {
 .file-selected-info {
   flex: 1;
   min-width: 0;
+  overflow: hidden; /* Ensure text truncation works */
 }
 
 .file-selected-name {
