@@ -4256,8 +4256,8 @@ input[type="checkbox"]:checked {
 .custom-dropdown.open .dropdown-trigger {
   border-color: rgba(255, 255, 255, 0.3);
   background: rgba(255, 255, 255, 0.06);
-  border-bottom-left-radius: 0;
-  border-bottom-right-radius: 0;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
 }
 
 /* Label inside trigger */
@@ -4293,10 +4293,10 @@ input[type="checkbox"]:checked {
   color: var(--text-primary);
 }
 
-/* Dropdown Menu */
+/* Dropdown Menu - Opens UPWARD */
 .dropdown-menu {
   position: absolute;
-  top: 100%;
+  bottom: 100%; /* Opens upward */
   left: 0;
   right: 0;
   display: block; /* Always rendered, visibility controlled via opacity/visibility */
@@ -4304,21 +4304,21 @@ input[type="checkbox"]:checked {
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--cyber-green);
-  border-top: none;
-  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  border-bottom: none;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
   z-index: 9999;
   opacity: 0;
   visibility: hidden;
-  transform: translateY(-8px) scaleY(0.95);
-  transform-origin: top center;
+  transform: translateY(8px) scaleY(0.95);
+  transform-origin: bottom center;
   transition: 
     opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1),
     transform 0.25s cubic-bezier(0.4, 0, 0.2, 1),
     visibility 0.25s;
   box-shadow: 
-    0 15px 40px -10px rgba(0, 0, 0, 0.6),
+    0 -15px 40px -10px rgba(0, 0, 0, 0.6),
     0 0 30px -10px var(--cyber-green-glow),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    inset 0 -1px 0 rgba(255, 255, 255, 0.05);
   pointer-events: none; /* Prevent interaction when hidden */
 }
 
