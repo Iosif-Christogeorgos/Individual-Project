@@ -29,6 +29,7 @@ let overwriteWarningShown = false;
 let linkCopied = false;
 let currentIdentity = null;
 let isUploading = false; // Prevents checkbox changes from re-enabling button during upload
+let uploadAbortController = null; // AbortController for cancelling in-progress uploads
 
 // =============================================================================
 // Access Configuration Validation
@@ -552,8 +553,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Alert close button
   document.getElementById("alertCloseBtn")?.addEventListener("click", hideAlert);
   
-  // File management
-  document.getElementById("clearFileBtn")?.addEventListener("click", clearFile);
+  // File management - handles both file clearing and upload cancellation
+  document.getElementById("clearFileBtn")?.addEventListener("click", () => {
+    if (isUploading) {
+      cancelUpload();
+    } else {
+      clearFile();
+    }
+  });
   
   // Access configuration checkboxes
   document.getElementById("includeLinkKey")?.addEventListener("change", validateAccessConfig);
@@ -723,6 +730,42 @@ async function processFile() {
 
 const STREAMING_THRESHOLD = 100 * 1024 * 1024;
 
+/**
+ * Cancel an in-progress upload.
+ * Aborts the fetch request, resets UI state, and clears the file.
+ */
+function cancelUpload() {
+  if (!isUploading) return;
+  
+  // Abort any in-progress fetch request
+  if (uploadAbortController) {
+    uploadAbortController.abort();
+    uploadAbortController = null;
+  }
+  
+  // Reset upload state
+  isUploading = false;
+  
+  // Reset UI
+  const uploadBtn = document.getElementById("uploadBtn");
+  if (uploadBtn) {
+    uploadBtn.disabled = false;
+    uploadBtn.innerHTML = "<span>🔒</span> Encrypt & Upload";
+  }
+  
+  // Hide progress and reset animation
+  hideProgress();
+  if (window.encryptionAnimator) {
+    window.encryptionAnimator.reset();
+  }
+  
+  // Clear the file selection
+  clearFile();
+  
+  // Show feedback to user
+  showToast("Upload cancelled ✓");
+}
+
 async function executeUpload() {
   const uploadBtn = document.getElementById("uploadBtn");
   const enableSigning =
@@ -752,6 +795,9 @@ async function executeUpload() {
   uploadBtn.innerHTML = "<span>⏳</span> Processing...";
   isUploading = true; // Lock button during upload
   
+  // Create AbortController for cancellation support
+  uploadAbortController = new AbortController();
+  
   // Start cinematic encryption animation
   if (window.encryptionAnimator && file) {
     window.encryptionAnimator.startEncryptionSequence(file.name);
@@ -776,6 +822,10 @@ async function executeUpload() {
       try {
         await executeStreamingUpload(file, enableSigning, includeLinkKey);
       } catch (streamError) {
+        // Don't fallback if user cancelled
+        if (streamError.name === 'AbortError') {
+          throw streamError;
+        }
         console.warn(
           "⚠️ Streaming upload failed, falling back to buffered:",
           streamError.message
@@ -786,6 +836,10 @@ async function executeUpload() {
       await executeBufferedUpload(file, enableSigning, includeLinkKey);
     }
   } catch (error) {
+    // Don't show error alert if user cancelled
+    if (error.name === 'AbortError') {
+      return; // cancelUpload() already handled the UI reset
+    }
     hideProgress();
     showAlert(
       "Encryption Failed",
@@ -794,6 +848,7 @@ async function executeUpload() {
     );
   } finally {
     isUploading = false; // Unlock button state
+    uploadAbortController = null; // Clean up controller
     uploadBtn.disabled = false;
     uploadBtn.innerHTML = "<span>🔒</span> Encrypt & Upload";
   }
@@ -848,6 +903,7 @@ async function executeStreamingUpload(file, enableSigning, includeLinkKey) {
     },
     body: encryptedStream,
     duplex: "half",
+    signal: uploadAbortController?.signal,
   });
 
   if (!uploadResponse.ok) {
@@ -912,6 +968,7 @@ async function executeBufferedUpload(file, enableSigning, includeLinkKey) {
   const uploadResponse = await fetch("/upload", {
     method: "POST",
     body: formData,
+    signal: uploadAbortController?.signal,
   });
 
   if (!uploadResponse.ok) {
