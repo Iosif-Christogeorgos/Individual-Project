@@ -679,6 +679,43 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 });
 
+// Expose cancelUpload globally for fullscreen overlay cancel button
+window.cancelUpload = function() {
+  // Forward to the module's cancelUpload function
+  if (typeof cancelUpload === 'function') {
+    // This will be called from the global scope - need to check isUploading
+    const uploadBtn = document.getElementById("uploadBtn");
+    
+    // Abort any in-progress fetch request
+    if (uploadAbortController) {
+      uploadAbortController.abort();
+      uploadAbortController = null;
+    }
+    
+    // Reset upload state
+    isUploading = false;
+    
+    // Reset UI
+    if (uploadBtn) {
+      uploadBtn.disabled = false;
+      uploadBtn.innerHTML = "<span>🔒</span> Encrypt & Upload";
+    }
+    
+    // Hide progress and reset animation
+    hideProgress();
+    if (window.encryptionAnimator) {
+      window.encryptionAnimator.reset();
+    }
+    
+    // Clear the file selection
+    clearFile();
+    
+    // Show feedback to user
+    showToast("Upload cancelled ✓");
+  }
+};
+
+
 // =============================================================================
 // Main Upload Process
 // =============================================================================

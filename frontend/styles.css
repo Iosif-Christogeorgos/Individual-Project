@@ -892,6 +892,424 @@ p {
   }
 }
 
+/* =============================================================================
+   Fullscreen Encryption Overlay - Epic Animation (CSP Compliant)
+   ============================================================================= */
+
+.encryption-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.5s ease, visibility 0.5s ease;
+}
+
+.encryption-overlay.active {
+  pointer-events: auto;
+  opacity: 1;
+  visibility: visible;
+}
+
+.encryption-overlay-backdrop {
+  position: absolute;
+  inset: 0;
+  background: 
+    radial-gradient(ellipse 80% 50% at 50% 50%, rgba(0, 200, 255, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse 60% 40% at 50% 50%, rgba(139, 92, 246, 0.06) 0%, transparent 40%),
+    radial-gradient(circle at center, rgba(5, 5, 15, 0.98), rgba(0, 0, 0, 0.99)),
+    repeating-linear-gradient(0deg, transparent, transparent 40px, rgba(0, 200, 255, 0.03) 40px, rgba(0, 200, 255, 0.03) 41px),
+    repeating-linear-gradient(90deg, transparent, transparent 40px, rgba(139, 92, 246, 0.02) 40px, rgba(139, 92, 246, 0.02) 41px);
+  backdrop-filter: blur(30px) saturate(1.2);
+  -webkit-backdrop-filter: blur(30px) saturate(1.2);
+}
+
+/* Animated scan line effect */
+.encryption-overlay-backdrop::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, rgba(0, 200, 255, 0.8), rgba(139, 92, 246, 0.8), transparent);
+  animation: scanLine 3s ease-in-out infinite;
+  box-shadow: 0 0 30px 10px rgba(0, 200, 255, 0.3);
+}
+
+@keyframes scanLine {
+  0%, 100% { top: 0; opacity: 0.8; }
+  50% { top: 100%; opacity: 0.4; }
+}
+
+.encryption-overlay-content {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  padding-bottom: 80px;
+}
+
+/* Mega Lock Container */
+.mega-lock {
+  position: relative;
+  width: 280px;
+  height: 280px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #00d4ff;
+  transform: scale(0.3);
+  opacity: 0;
+  transition: transform 0.7s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.5s ease;
+  background: transparent !important;
+  overflow: visible;
+}
+
+/* Outer pulsing ring */
+.mega-lock::before {
+  content: '';
+  position: absolute;
+  width: 260px;
+  height: 260px;
+  border-radius: 50%;
+  border: 2px solid rgba(0, 212, 255, 0.3);
+  animation: outerRingPulse 2s ease-in-out infinite;
+}
+
+.mega-lock::after {
+  content: '';
+  position: absolute;
+  width: 300px;
+  height: 300px;
+  border-radius: 50%;
+  border: 1px dashed rgba(139, 92, 246, 0.4);
+  animation: outerRingRotate 20s linear infinite;
+}
+
+@keyframes outerRingPulse {
+  0%, 100% { transform: scale(1); opacity: 0.5; }
+  50% { transform: scale(1.05); opacity: 0.8; }
+}
+
+@keyframes outerRingRotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.encryption-overlay.active .mega-lock {
+  transform: scale(1);
+  opacity: 1;
+}
+
+.mega-lock-svg {
+  width: 120px;
+  height: 150px;
+  filter: 
+    drop-shadow(0 0 20px rgba(0, 212, 255, 0.6))
+    drop-shadow(0 0 40px rgba(139, 92, 246, 0.4));
+  animation: megaLockPulse 1.5s ease-in-out infinite;
+  z-index: 2;
+}
+
+@keyframes megaLockPulse {
+  0%, 100% { 
+    filter: 
+      drop-shadow(0 0 15px rgba(0, 212, 255, 0.5))
+      drop-shadow(0 0 30px rgba(139, 92, 246, 0.3))
+      drop-shadow(0 0 60px rgba(0, 212, 255, 0.2)); 
+  }
+  50% { 
+    filter: 
+      drop-shadow(0 0 25px rgba(0, 212, 255, 0.8))
+      drop-shadow(0 0 50px rgba(139, 92, 246, 0.5))
+      drop-shadow(0 0 80px rgba(0, 212, 255, 0.3)); 
+  }
+}
+
+/* Mega Progress Ring - ensure no background visible */
+.mega-progress-ring {
+  position: absolute;
+  width: 280px;
+  height: 280px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1;
+  overflow: visible;
+  background: transparent !important;
+}
+
+.mega-ring-fill {
+  transition: stroke-dashoffset 0.35s ease-out;
+  filter: drop-shadow(0 0 12px rgba(0, 212, 255, 0.8));
+  stroke: url(#megaRingGradient);
+}
+
+/* Mega Particles Container */
+.mega-particles {
+  position: absolute;
+  width: 400px;
+  height: 400px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 0;
+  overflow: visible;
+}
+
+/* Data Stream Particles */
+.mega-data-particle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  color: #00d4ff;
+  text-shadow: 
+    0 0 10px rgba(0, 212, 255, 1),
+    0 0 20px rgba(139, 92, 246, 0.6);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Alternating particle colors */
+.mega-data-particle:nth-child(odd) {
+  color: #8b5cf6;
+  text-shadow: 
+    0 0 10px rgba(139, 92, 246, 1),
+    0 0 20px rgba(0, 212, 255, 0.5);
+}
+
+/* Particle animation classes - CSP compliant (no inline styles) */
+.mega-data-particle.anim-top { animation: streamFromTop 2s ease-in forwards; }
+.mega-data-particle.anim-right { animation: streamFromRight 2s ease-in forwards; }
+.mega-data-particle.anim-bottom { animation: streamFromBottom 2s ease-in forwards; }
+.mega-data-particle.anim-left { animation: streamFromLeft 2s ease-in forwards; }
+.mega-data-particle.anim-topleft { animation: streamFromTopLeft 2s ease-in forwards; }
+.mega-data-particle.anim-topright { animation: streamFromTopRight 2s ease-in forwards; }
+.mega-data-particle.anim-bottomleft { animation: streamFromBottomLeft 2s ease-in forwards; }
+.mega-data-particle.anim-bottomright { animation: streamFromBottomRight 2s ease-in forwards; }
+
+@keyframes streamFromTop {
+  0% { transform: translate(-50%, -200px); opacity: 0; }
+  15% { opacity: 1; }
+  85% { opacity: 0.8; }
+  100% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+}
+
+@keyframes streamFromRight {
+  0% { transform: translate(150px, -50%); opacity: 0; }
+  15% { opacity: 1; }
+  85% { opacity: 0.8; }
+  100% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+}
+
+@keyframes streamFromBottom {
+  0% { transform: translate(-50%, 150px); opacity: 0; }
+  15% { opacity: 1; }
+  85% { opacity: 0.8; }
+  100% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+}
+
+@keyframes streamFromLeft {
+  0% { transform: translate(-200px, -50%); opacity: 0; }
+  15% { opacity: 1; }
+  85% { opacity: 0.8; }
+  100% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+}
+
+@keyframes streamFromTopLeft {
+  0% { transform: translate(-150px, -150px); opacity: 0; }
+  15% { opacity: 1; }
+  85% { opacity: 0.8; }
+  100% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+}
+
+@keyframes streamFromTopRight {
+  0% { transform: translate(100px, -150px); opacity: 0; }
+  15% { opacity: 1; }
+  85% { opacity: 0.8; }
+  100% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+}
+
+@keyframes streamFromBottomLeft {
+  0% { transform: translate(-150px, 100px); opacity: 0; }
+  15% { opacity: 1; }
+  85% { opacity: 0.8; }
+  100% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+}
+
+@keyframes streamFromBottomRight {
+  0% { transform: translate(100px, 100px); opacity: 0; }
+  15% { opacity: 1; }
+  85% { opacity: 0.8; }
+  100% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+}
+
+/* Status Display */
+.mega-status {
+  text-align: center;
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 0.5s ease 0.3s, transform 0.5s ease 0.3s;
+  margin-bottom: 20px;
+}
+
+.encryption-overlay.active .mega-status {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.mega-status-text {
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #00d4ff;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  text-shadow: 
+    0 0 10px rgba(0, 212, 255, 0.8),
+    0 0 30px rgba(139, 92, 246, 0.5);
+  animation: statusGlow 1s ease-in-out infinite;
+}
+
+@keyframes statusGlow {
+  0%, 100% { opacity: 1; text-shadow: 0 0 10px rgba(0, 212, 255, 0.8), 0 0 30px rgba(139, 92, 246, 0.5); }
+  50% { opacity: 0.85; text-shadow: 0 0 20px rgba(0, 212, 255, 1), 0 0 50px rgba(139, 92, 246, 0.8); }
+}
+
+.mega-progress-percent {
+  font-family: var(--font-mono);
+  font-size: 3rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, #00d4ff 0%, #8b5cf6 50%, #00d4ff 100%);
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: percentGradient 2s ease infinite;
+  margin-top: 0.5rem;
+  letter-spacing: -0.02em;
+  filter: drop-shadow(0 0 15px rgba(0, 212, 255, 0.5));
+}
+
+@keyframes percentGradient {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+/* Cancel Button - Fixed positioning to appear BELOW percentage */
+.mega-cancel-btn {
+  position: fixed;
+  bottom: 25px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10001;
+  padding: 12px 28px;
+  background: rgba(255, 59, 59, 0.15);
+  border: 2px solid rgba(255, 59, 59, 0.6);
+  border-radius: 8px;
+  color: #ff6b6b;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  cursor: pointer;
+  opacity: 0;
+  transition: all 0.3s ease;
+}
+
+.encryption-overlay.active .mega-cancel-btn {
+  opacity: 1;
+  transition-delay: 0.4s;
+}
+
+.mega-cancel-btn:hover {
+  border-color: rgba(255, 59, 59, 0.7);
+  color: #ff4444;
+  background: rgba(255, 59, 59, 0.2);
+  box-shadow: 
+    0 0 20px rgba(255, 59, 59, 0.3),
+    inset 0 0 20px rgba(255, 59, 59, 0.1);
+  transform: translateX(-50%) scale(1.02);
+}
+
+/* Success State */
+.mega-lock.success {
+  color: var(--cyber-green);
+}
+
+.mega-lock.success .mega-lock-svg {
+  animation: none;
+  filter: 
+    drop-shadow(0 0 30px rgba(0, 255, 65, 0.7))
+    drop-shadow(0 0 60px rgba(0, 255, 65, 0.4))
+    drop-shadow(0 0 100px rgba(0, 255, 65, 0.2));
+}
+
+.mega-lock.success ~ .mega-status .mega-status-text {
+  color: var(--cyber-green);
+  text-shadow: 0 0 20px rgba(0, 255, 65, 0.6);
+  animation: none;
+}
+
+.mega-lock.success ~ .mega-status .mega-progress-percent {
+  text-shadow: 
+    0 0 20px rgba(0, 255, 65, 0.6),
+    0 0 40px rgba(0, 255, 65, 0.4);
+}
+
+/* Energy Burst on Complete */
+.mega-energy-burst {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(0, 255, 65, 0.8), rgba(0, 255, 65, 0.2));
+  transform: translate(-50%, -50%);
+  animation: megaBurst 0.9s ease-out forwards;
+  pointer-events: none;
+}
+
+@keyframes megaBurst {
+  0% { 
+    transform: translate(-50%, -50%) scale(1); 
+    opacity: 0.9;
+    box-shadow: 0 0 30px rgba(0, 255, 65, 0.8);
+  }
+  100% { 
+    transform: translate(-50%, -50%) scale(6); 
+    opacity: 0;
+    box-shadow: 0 0 80px rgba(0, 255, 65, 0.3);
+  }
+}
+
+/* Shackle Lock Animation Class */
+.mega-lock.locking .mega-lock-svg {
+  animation: none;
+}
+
+/* Hide file-selected during fullscreen mode */
+.encryption-overlay.active ~ .app-layout .file-selected {
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+
 .drop-zone-text {
   font-family: var(--font-mono);
   font-size: 0.9rem;
