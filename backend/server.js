@@ -288,7 +288,7 @@ function generateUniqueFileId() {
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 1024 * 1024 * 1024, // 1GB
+    fileSize: 750 * 1024 * 1024, // 750MB
   },
 });
 
@@ -338,7 +338,7 @@ app.post("/upload", uploadLimiter, upload.single("encryptedFile"), async (req, r
 // POST /upload-stream - Accept encrypted file via raw stream (for large files)
 // MEMORY-EFFICIENT: Streams directly to R2 without buffering entire file in RAM
 app.post("/upload-stream", uploadLimiter, async (req, res) => {
-  const MAX_STREAM_SIZE = 1024 * 1024 * 1024; // 1GB
+  const MAX_STREAM_SIZE = 750 * 1024 * 1024; // 750MB
 
   try {
     const fileId = generateUniqueFileId();
@@ -348,7 +348,7 @@ app.post("/upload-stream", uploadLimiter, async (req, res) => {
     if (contentLength > MAX_STREAM_SIZE) {
       return res.status(413).json({
         success: false,
-        error: "File too large. Maximum size is 1GB.",
+        error: "File too large. Maximum size is 750MB.",
       });
     }
 

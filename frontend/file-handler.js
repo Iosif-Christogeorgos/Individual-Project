@@ -7,18 +7,18 @@
 import { showAlert, hideAlert, formatFileSize } from './ui-utils.js';
 
 // Absolute maximum file size (used for initial file selection validation)
-const MAX_FILE_SIZE = 1.5 * 1024 * 1024 * 1024; // 1.5GB
+const MAX_FILE_SIZE = 750 * 1024 * 1024; // 750MB
 
 // =============================================================================
 // Dynamic File Size Limits Based on Expiration Duration
 // =============================================================================
 // Longer expiration periods = smaller max file size to manage storage
 export const EXPIRY_SIZE_LIMITS = {
-  1: 1.5 * 1024 * 1024 * 1024,   // 1 hour: 1.5 GB
-  6: 1.0 * 1024 * 1024 * 1024,   // 6 hours: 1.0 GB
-  24: 500 * 1024 * 1024,          // 24 hours: 500 MB
-  72: 200 * 1024 * 1024,          // 3 days: 200 MB
-  168: 100 * 1024 * 1024,         // 7 days: 100 MB
+  1: 750 * 1024 * 1024,           // 1 hour: 750 MB
+  6: 500 * 1024 * 1024,           // 6 hours: 500 MB
+  24: 250 * 1024 * 1024,          // 24 hours: 250 MB
+  72: 100 * 1024 * 1024,          // 3 days: 100 MB
+  168: 50 * 1024 * 1024,          // 7 days: 50 MB
 };
 
 /**
