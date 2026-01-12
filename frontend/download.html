@@ -30,10 +30,15 @@
 
       <!-- Download Icon -->
       <div class="download-hero-icon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-          <polyline points="7 10 12 15 17 10"/>
-          <line x1="12" y1="15" x2="12" y2="3"/>
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+          <polyline points="7 10 12 15 17 10" />
+          <line x1="12" y1="15" x2="12" y2="3" />
         </svg>
       </div>
 
@@ -63,14 +68,17 @@
       </div>
 
       <!-- Download Button -->
-      <button
-        class="btn btn-primary"
-        id="downloadBtn"
-      >
-        <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-          <polyline points="7 10 12 15 17 10"/>
-          <line x1="12" y1="15" x2="12" y2="3"/>
+      <button class="btn btn-primary" id="downloadBtn">
+        <svg
+          class="btn-icon"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.5"
+        >
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+          <polyline points="7 10 12 15 17 10" />
+          <line x1="12" y1="15" x2="12" y2="3" />
         </svg>
         Download & Decrypt
       </button>
@@ -93,10 +101,7 @@
           <span class="status-icon">○</span>
           <span>Preparing download...</span>
         </div>
-        <div
-          class="download-status-line pending d-none"
-          id="step5"
-        >
+        <div class="download-status-line pending d-none" id="step5">
           <span class="status-icon">○</span>
           <span>Verifying signature...</span>
         </div>
@@ -108,7 +113,7 @@
       <!-- Expiry Notice -->
       <div class="expiry-notice">
         <span class="expiry-notice-icon">⏳</span>
-        <span>This link expires <strong>24 hours</strong> after upload</span>
+        <span id="expiryNoticeText">This link will expire after download</span>
       </div>
 
       <!-- Security Badge -->

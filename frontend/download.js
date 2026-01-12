@@ -6,15 +6,72 @@
 // 2. Identity-based access - Decrypt AES key using user's private key
 // =============================================================================
 
-import * as CryptoModule from './crypto.js';
-import * as IdentityManager from './identity.js';
-import { showAlert, hideAlert, escapeHtml, updateStep } from './ui-utils.js';
+import * as CryptoModule from "./crypto.js";
+import * as IdentityManager from "./identity.js";
+import { showAlert, hideAlert, escapeHtml, updateStep } from "./ui-utils.js";
 
 let currentIdentity = null;
 let fileMetadata = null;
 
 // Threshold for streaming download (100MB)
 const STREAMING_DOWNLOAD_THRESHOLD = 100 * 1024 * 1024;
+
+// =============================================================================
+// Expiry Formatting Helpers
+// =============================================================================
+
+/**
+ * Format expiry hours into a human-readable string.
+ * @param {number} hours - Expiry duration in hours
+ * @returns {string} Human-readable duration (e.g., "24 hours" or "3 days")
+ */
+function formatExpiryDuration(hours) {
+  if (hours < 24) {
+    return hours === 1 ? "1 hour" : `${hours} hours`;
+  } else {
+    const days = Math.floor(hours / 24);
+    return days === 1 ? "1 day" : `${days} days`;
+  }
+}
+
+/**
+ * Update the expiry notice on the download page based on metadata.
+ * Falls back to generic message if expiry info is not available.
+ */
+function updateExpiryNotice() {
+  const expiryNoticeText = document.getElementById("expiryNoticeText");
+  if (!expiryNoticeText) return;
+
+  if (fileMetadata?.expiryHours) {
+    // Use expiryHours from metadata for exact duration
+    const duration = formatExpiryDuration(fileMetadata.expiryHours);
+    expiryNoticeText.innerHTML = `This link expires <strong>${duration}</strong> after upload`;
+  } else if (fileMetadata?.expiresAt) {
+    // Calculate remaining time from expiresAt timestamp
+    const now = Date.now();
+    const remaining = fileMetadata.expiresAt - now;
+    if (remaining > 0) {
+      const hoursRemaining = Math.ceil(remaining / (1000 * 60 * 60));
+      if (hoursRemaining < 1) {
+        expiryNoticeText.innerHTML = `This link expires in <strong>less than 1 hour</strong>`;
+      } else if (hoursRemaining < 24) {
+        expiryNoticeText.innerHTML = `This link expires in <strong>${hoursRemaining} hour${
+          hoursRemaining !== 1 ? "s" : ""
+        }</strong>`;
+      } else {
+        const daysRemaining = Math.ceil(hoursRemaining / 24);
+        expiryNoticeText.innerHTML = `This link expires in <strong>${daysRemaining} day${
+          daysRemaining !== 1 ? "s" : ""
+        }</strong>`;
+      }
+    } else {
+      expiryNoticeText.innerHTML = `This link may have <strong>expired</strong>`;
+    }
+  } else {
+    // Default fallback - most files use 24 hour default
+    expiryNoticeText.innerHTML = `This link expires <strong>24 hours</strong> after upload`;
+  }
+}
 
 // =============================================================================
 // Link Validation on Page Load
@@ -52,7 +109,7 @@ async function validateDownloadLink() {
     if (response.status === 404) {
       showInvalidLinkPage(
         "File Not Found",
-        "This file has expired or been deleted. Files are automatically removed after 24 hours."
+        "This file has expired or been deleted. Files are automatically removed after their expiry period."
       );
       return;
     }
@@ -70,6 +127,9 @@ async function validateDownloadLink() {
 
     // Load user identity
     await loadUserIdentity();
+
+    // Update expiry notice with actual metadata
+    updateExpiryNotice();
 
     // Determine access mode
     if (keyString) {
@@ -283,8 +343,7 @@ function showDownloadReady(accessMode) {
 
   // Show signature info if available
   if (signatureInfo && fileMetadata?.signature) {
-    const signerName =
-      fileMetadata.signature.signerDisplayName || "Unknown";
+    const signerName = fileMetadata.signature.signerDisplayName || "Unknown";
     const signerFingerprint =
       fileMetadata.signature.signerFingerprint
         ?.substring(0, 16)
@@ -320,7 +379,9 @@ function showDownloadReady(accessMode) {
           </button>
           <div class="sig-fingerprint-panel" hidden>
             <div class="sig-fingerprint-content">
-              <code class="sig-fingerprint-code">${signerFingerprint || "Not available"}</code>
+              <code class="sig-fingerprint-code">${
+                signerFingerprint || "Not available"
+              }</code>
               <button type="button" class="sig-copy-btn" title="Copy fingerprint">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <rect x="9" y="9" width="13" height="13" rx="2"/>
@@ -334,18 +395,18 @@ function showDownloadReady(accessMode) {
       </div>
     `;
     signatureInfo.classList.add("show");
-    
+
     // Set up interactive fingerprint toggle
     const toggle = signatureInfo.querySelector(".sig-fingerprint-toggle");
     const panel = signatureInfo.querySelector(".sig-fingerprint-panel");
     const copyBtn = signatureInfo.querySelector(".sig-copy-btn");
-    
+
     toggle?.addEventListener("click", () => {
       const expanded = toggle.getAttribute("aria-expanded") === "true";
       toggle.setAttribute("aria-expanded", !expanded);
       panel.hidden = expanded;
     });
-    
+
     copyBtn?.addEventListener("click", async () => {
       try {
         await navigator.clipboard.writeText(signerFingerprint || "");
@@ -389,12 +450,16 @@ function showSignatureStep() {
 // Use a more robust initialization that ensures all modules are ready
 async function initializeDownloadPage() {
   await validateDownloadLink();
-  
+
   // ==========================================================================
   // Event Listeners (replaces inline onclick handlers for strict CSP)
   // ==========================================================================
-  document.getElementById("alertCloseBtn")?.addEventListener("click", hideAlert);
-  document.getElementById("downloadBtn")?.addEventListener("click", startDownload);
+  document
+    .getElementById("alertCloseBtn")
+    ?.addEventListener("click", hideAlert);
+  document
+    .getElementById("downloadBtn")
+    ?.addEventListener("click", startDownload);
 }
 
 document.addEventListener("DOMContentLoaded", initializeDownloadPage);
@@ -557,7 +622,8 @@ async function startDownload() {
         );
       } catch (decryptError) {
         throw new Error(
-          "Decryption failed: " + decryptError.message || "The file may be corrupted or the key is incorrect."
+          "Decryption failed: " + decryptError.message ||
+            "The file may be corrupted or the key is incorrect."
         );
       }
       updateStep("step3", "complete");
@@ -675,4 +741,3 @@ function showSignatureWarning() {
   `;
   infoEl.classList.add("show", "warning");
 }
-
