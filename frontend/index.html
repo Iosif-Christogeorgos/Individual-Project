@@ -32,8 +32,9 @@
           <span class="hero-title-accent">Infinite Privacy.</span>
         </h1>
         <p class="hero-tagline">
-          End-to-end encrypted file transfer. No servers ever see your keys.<br>
-          Drag sensitive files to encrypt locally before they ever leave your device.
+          End-to-end encrypted file transfer. No servers ever sees your keys.<br />
+          Drag sensitive files to encrypt locally before they ever leave your
+          device.
         </p>
       </header>
 
@@ -71,8 +72,11 @@
                 <div class="drop-zone-content">
                   <span class="drop-zone-icon">📁</span>
                   <div class="drop-zone-text">
-                    <strong>Secure Drop Zone</strong><br>
-                    <small class="text-muted-color">Drag files here to encrypt locally. Supports .pdf, .zip, .enc up to 2GB</small>
+                    <strong>Secure Drop Zone</strong><br />
+                    <small class="text-muted-color"
+                      >Drag files here to encrypt locally. Supports .pdf, .zip,
+                      .enc up to 2GB</small
+                    >
                   </div>
                 </div>
                 <input type="file" id="fileInput" title="" />
@@ -81,28 +85,60 @@
               <!-- Selected File Display with Encryption Animation -->
               <div class="file-selected" id="fileSelected">
                 <!-- Cinematic Lock Icon -->
-                <div class="file-selected-icon encryption-lock" id="encryptionLock">
-                  <svg class="lock-svg" viewBox="-4 -4 72 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <div
+                  class="file-selected-icon encryption-lock"
+                  id="encryptionLock"
+                >
+                  <svg
+                    class="lock-svg"
+                    viewBox="-4 -4 72 80"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
                     <!-- Shackle - connected to body at y=36 -->
-                    <path 
-                      class="lock-shackle" 
+                    <path
+                      class="lock-shackle"
                       id="lockShackle"
                       d="M16 36 L16 20 C16 9 24 2 32 2 C40 2 48 9 48 20 L48 36"
-                      stroke="currentColor" 
-                      stroke-width="6" 
+                      stroke="currentColor"
+                      stroke-width="6"
                       stroke-linecap="round"
                       fill="none"
                     />
                     <!-- Lock Body - starts at y=36 -->
-                    <rect class="lock-body" x="8" y="36" width="48" height="36" rx="4" fill="currentColor"/>
+                    <rect
+                      class="lock-body"
+                      x="8"
+                      y="36"
+                      width="48"
+                      height="36"
+                      rx="4"
+                      fill="currentColor"
+                    />
                     <!-- Keyhole -->
-                    <circle class="lock-keyhole" cx="32" cy="50" r="5" fill="var(--bg-primary)"/>
-                    <rect class="lock-keyhole-slot" x="29.5" y="50" width="5" height="10" rx="2" fill="var(--bg-primary)"/>
+                    <circle
+                      class="lock-keyhole"
+                      cx="32"
+                      cy="50"
+                      r="5"
+                      fill="var(--bg-primary)"
+                    />
+                    <rect
+                      class="lock-keyhole-slot"
+                      x="29.5"
+                      y="50"
+                      width="5"
+                      height="10"
+                      rx="2"
+                      fill="var(--bg-primary)"
+                    />
                   </svg>
                 </div>
-                
+
                 <div class="file-selected-info">
-                  <div class="file-selected-name" id="fileName">filename.txt</div>
+                  <div class="file-selected-name" id="fileName">
+                    filename.txt
+                  </div>
                   <div class="file-selected-size" id="fileSize">0 KB</div>
                   <!-- Scramble text for encryption animation -->
                   <div class="encryption-status" id="encryptionStatus">
@@ -122,15 +158,12 @@
               <div class="access-options">
                 <div class="option-group">
                   <label class="option-label">
-                    <input
-                      type="checkbox"
-                      id="includeLinkKey"
-                      checked
-                    />
+                    <input type="checkbox" id="includeLinkKey" checked />
                     <span class="option-text">
                       <span class="option-title">🔗 Include key in link</span>
                       <span class="option-desc"
-                        >Anyone with the link can decrypt (default behavior)</span
+                        >Anyone with the link can decrypt (default
+                        behavior)</span
                       >
                     </span>
                   </label>
@@ -138,10 +171,7 @@
 
                 <div class="option-group">
                   <label class="option-label">
-                    <input
-                      type="checkbox"
-                      id="enableSigning"
-                    />
+                    <input type="checkbox" id="enableSigning" />
                     <span class="option-text">
                       <span class="option-title">✍️ Sign file</span>
                       <span class="option-desc"
@@ -155,17 +185,31 @@
                 <div class="option-group expiry-selector">
                   <!-- Custom Animated Dropdown -->
                   <div class="custom-dropdown" id="expiryDropdown">
-                    <button type="button" class="dropdown-trigger" id="dropdownTrigger">
+                    <button
+                      type="button"
+                      class="dropdown-trigger"
+                      id="dropdownTrigger"
+                    >
                       <span class="dropdown-label">⏳ File expires in</span>
-                      <span class="dropdown-value" id="dropdownValue">24 hours</span>
-                      <svg class="dropdown-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <span class="dropdown-value" id="dropdownValue"
+                        >24 hours</span
+                      >
+                      <svg
+                        class="dropdown-arrow"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                      >
                         <polyline points="6 9 12 15 18 9"></polyline>
                       </svg>
                     </button>
                     <div class="dropdown-menu" id="dropdownMenu">
                       <div class="dropdown-option" data-value="1">1 hour</div>
                       <div class="dropdown-option" data-value="6">6 hours</div>
-                      <div class="dropdown-option selected" data-value="24">24 hours</div>
+                      <div class="dropdown-option selected" data-value="24">
+                        24 hours
+                      </div>
                       <div class="dropdown-option" data-value="72">3 days</div>
                       <div class="dropdown-option" data-value="168">7 days</div>
                     </div>
@@ -194,10 +238,7 @@
               </div>
 
               <!-- Upload Button -->
-              <button
-                class="btn btn-primary"
-                id="uploadBtn"
-              >
+              <button class="btn btn-primary" id="uploadBtn">
                 <span>🔒</span> Encrypt & Upload
               </button>
 
@@ -225,14 +266,25 @@
               <!-- Success Header -->
               <div class="success-header">
                 <div class="success-link-icon">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <path
+                      d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"
+                    />
+                    <path
+                      d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"
+                    />
                   </svg>
                 </div>
                 <h2>Link Ready</h2>
               </div>
-              <p>Your file has been encrypted and uploaded. Share the link below.</p>
+              <p>
+                Your file has been encrypted and uploaded. Share the link below.
+              </p>
 
               <!-- Upload Status Badges -->
               <div class="upload-status-badges" id="uploadStatusBadges">
@@ -247,10 +299,7 @@
                   id="shareLink"
                   readonly
                 />
-                <button
-                  class="btn btn-primary btn-copy"
-                  id="copyBtn"
-                >
+                <button class="btn btn-primary btn-copy" id="copyBtn">
                   <span>📋</span> Copy
                 </button>
               </div>
@@ -258,42 +307,80 @@
               <!-- Expiry Countdown -->
               <div class="expiry-countdown" id="expiryCountdown">
                 <div class="countdown-icon">
-                  <svg class="hourglass-svg" viewBox="0 0 50 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <svg
+                    class="hourglass-svg"
+                    viewBox="0 0 50 80"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
                     <defs>
                       <!-- Clip path for top sand - will be animated -->
                       <clipPath id="topSandClip">
-                        <rect class="sand-top-mask" x="0" y="0" width="50" height="35"/>
+                        <rect
+                          class="sand-top-mask"
+                          x="0"
+                          y="0"
+                          width="50"
+                          height="35"
+                        />
                       </clipPath>
                       <!-- Clip path for bottom sand - will be animated -->
                       <clipPath id="bottomSandClip">
-                        <rect class="sand-bottom-mask" x="0" y="45" width="50" height="35"/>
+                        <rect
+                          class="sand-bottom-mask"
+                          x="0"
+                          y="45"
+                          width="50"
+                          height="35"
+                        />
                       </clipPath>
                     </defs>
-                    
+
                     <!-- Glass frame -->
-                    <path class="hourglass-frame" 
-                          d="M8 8 L8 28 L25 40 L8 52 L8 72 L42 72 L42 52 L25 40 L42 28 L42 8 Z" 
-                          stroke="var(--accent-blue)" stroke-width="3" fill="none" 
-                          stroke-linecap="round" stroke-linejoin="round"/>
-                    
+                    <path
+                      class="hourglass-frame"
+                      d="M8 8 L8 28 L25 40 L8 52 L8 72 L42 72 L42 52 L25 40 L42 28 L42 8 Z"
+                      stroke="var(--accent-blue)"
+                      stroke-width="3"
+                      fill="none"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+
                     <!-- Top sand (full triangle, clipped) -->
-                    <path class="sand-top" clip-path="url(#topSandClip)"
-                          d="M12 12 L12 26 L25 37 L38 26 L38 12 Z" 
-                          fill="var(--cyber-green)"/>
-                    
+                    <path
+                      class="sand-top"
+                      clip-path="url(#topSandClip)"
+                      d="M12 12 L12 26 L25 37 L38 26 L38 12 Z"
+                      fill="var(--cyber-green)"
+                    />
+
                     <!-- Bottom sand (full triangle, clipped) -->
-                    <path class="sand-bottom" clip-path="url(#bottomSandClip)"
-                          d="M12 68 L12 54 L25 43 L38 54 L38 68 Z" 
-                          fill="var(--cyber-green)"/>
-                    
+                    <path
+                      class="sand-bottom"
+                      clip-path="url(#bottomSandClip)"
+                      d="M12 68 L12 54 L25 43 L38 54 L38 68 Z"
+                      fill="var(--cyber-green)"
+                    />
+
                     <!-- Falling sand stream -->
-                    <line class="sand-stream" x1="25" y1="37" x2="25" y2="43" 
-                          stroke="var(--cyber-green)" stroke-width="3" stroke-linecap="round"/>
+                    <line
+                      class="sand-stream"
+                      x1="25"
+                      y1="37"
+                      x2="25"
+                      y2="43"
+                      stroke="var(--cyber-green)"
+                      stroke-width="3"
+                      stroke-linecap="round"
+                    />
                   </svg>
                 </div>
                 <div class="countdown-info">
                   <span class="countdown-label">Link expires in</span>
-                  <span class="countdown-timer" id="countdownTimer">--:--:--</span>
+                  <span class="countdown-timer" id="countdownTimer"
+                    >--:--:--</span
+                  >
                 </div>
               </div>
 
@@ -310,15 +397,15 @@
                   <span class="spw-title">ENCRYPTION SUCCESSFUL</span>
                 </div>
                 <p class="spw-instruction">
-                  This link contains the unique decryption key. To share the file,
-                  send this link to your recipient.
+                  This link contains the unique decryption key. To share the
+                  file, send this link to your recipient.
                 </p>
                 <div class="spw-critical-box">
                   <span class="spw-warning-icon">⚠️</span>
                   <span class="spw-warning-text">
-                    <strong>PROTOCOL WARNING:</strong> The link grants full access.
-                    Do not post on public forums or group chats unless you intend
-                    for everyone to see it.
+                    <strong>PROTOCOL WARNING:</strong> The link grants full
+                    access. Do not post on public forums or group chats unless
+                    you intend for everyone to see it.
                   </span>
                 </div>
               </div>
@@ -343,7 +430,14 @@
           <div class="panel-card-header">
             <div class="panel-card-title">
               <span class="panel-icon vault-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
                   <!-- Vault body -->
                   <rect x="2" y="4" width="20" height="16" rx="2" />
                   <!-- Inner door frame -->
@@ -388,7 +482,9 @@
                     spellcheck="false"
                   />
                 </div>
-                <div class="input-hint">3-20 lowercase characters, numbers, _</div>
+                <div class="input-hint">
+                  3-20 lowercase characters, numbers, _
+                </div>
               </div>
               <button class="btn btn-primary btn-small" id="createIdentityBtn">
                 <span>🚀</span> Create & Publish
@@ -397,16 +493,36 @@
           </div>
 
           <!-- Identity Fingerprint (shown when logged in) -->
-          <div class="identity-fingerprint-card hidden" id="identityFingerprint">
+          <div
+            class="identity-fingerprint-card hidden"
+            id="identityFingerprint"
+          >
             <div class="fingerprint-card">
               <div class="fingerprint-info">
-                <span class="fingerprint-username" id="identityUsername">@username</span>
+                <span class="fingerprint-username" id="identityUsername"
+                  >@username</span
+                >
                 <div class="fingerprint-key-row">
-                  <code class="fingerprint-full-key" id="fingerprintValue">0x71C4A8B2...</code>
-                  <button type="button" class="fingerprint-copy-btn" id="fingerprintCopyBtn" title="Copy fingerprint">
-                    <svg class="copy-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <rect x="9" y="9" width="13" height="13" rx="2"/>
-                      <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+                  <code class="fingerprint-full-key" id="fingerprintValue"
+                    >0x71C4A8B2...</code
+                  >
+                  <button
+                    type="button"
+                    class="fingerprint-copy-btn"
+                    id="fingerprintCopyBtn"
+                    title="Copy fingerprint"
+                  >
+                    <svg
+                      class="copy-icon"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                    >
+                      <rect x="9" y="9" width="13" height="13" rx="2" />
+                      <path
+                        d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"
+                      />
                     </svg>
                   </button>
                 </div>
@@ -416,7 +532,9 @@
 
           <!-- Contacts Tabs -->
           <div class="contacts-tabs">
-            <button class="contacts-tab active" data-tab="my-contacts">My Contacts</button>
+            <button class="contacts-tab active" data-tab="my-contacts">
+              My Contacts
+            </button>
             <button class="contacts-tab" data-tab="add-new">Add New</button>
           </div>
 
@@ -445,8 +563,10 @@
 
           <!-- Tab Content: Add New (database search) -->
           <div class="tab-content" id="addNewTab">
-            <p class="tab-desc">Search for users in the directory to add them as contacts.</p>
-            
+            <p class="tab-desc">
+              Search for users in the directory to add them as contacts.
+            </p>
+
             <!-- Database User Search -->
             <div class="user-search">
               <div class="search-box">
@@ -474,7 +594,11 @@
       </div>
 
       <!-- Mobile Sidebar Toggle (for responsive) -->
-      <button class="mobile-sidebar-toggle hidden" id="sidebarToggle" aria-label="Toggle panels">
+      <button
+        class="mobile-sidebar-toggle hidden"
+        id="sidebarToggle"
+        aria-label="Toggle panels"
+      >
         <span class="toggle-icon">👥</span>
         <span class="toggle-text">Panels</span>
       </button>
@@ -485,67 +609,133 @@
 
     <!-- Fullscreen Encryption Overlay -->
     <div class="encryption-overlay" id="encryptionOverlay">
-
       <div class="encryption-overlay-backdrop"></div>
       <div class="encryption-overlay-content">
         <!-- Massive Lock -->
         <div class="mega-lock" id="megaLock">
-          <svg class="mega-lock-svg" viewBox="-4 -4 72 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <svg
+            class="mega-lock-svg"
+            viewBox="-4 -4 72 80"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
             <defs>
-              <linearGradient id="megaLockGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stop-color="#00d4ff"/>
-                <stop offset="100%" stop-color="#8b5cf6"/>
+              <linearGradient
+                id="megaLockGradient"
+                x1="0%"
+                y1="0%"
+                x2="100%"
+                y2="100%"
+              >
+                <stop offset="0%" stop-color="#00d4ff" />
+                <stop offset="100%" stop-color="#8b5cf6" />
               </linearGradient>
-              <linearGradient id="megaRingGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stop-color="#00d4ff"/>
-                <stop offset="50%" stop-color="#8b5cf6"/>
-                <stop offset="100%" stop-color="#00ff88"/>
+              <linearGradient
+                id="megaRingGradient"
+                x1="0%"
+                y1="0%"
+                x2="100%"
+                y2="100%"
+              >
+                <stop offset="0%" stop-color="#00d4ff" />
+                <stop offset="50%" stop-color="#8b5cf6" />
+                <stop offset="100%" stop-color="#00ff88" />
               </linearGradient>
 
-              <filter id="megaGlow" x="-100%" y="-100%" width="300%" height="300%">
-                <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+              <filter
+                id="megaGlow"
+                x="-100%"
+                y="-100%"
+                width="300%"
+                height="300%"
+              >
+                <feGaussianBlur stdDeviation="4" result="coloredBlur" />
                 <feMerge>
-                  <feMergeNode in="coloredBlur"/>
-                  <feMergeNode in="SourceGraphic"/>
+                  <feMergeNode in="coloredBlur" />
+                  <feMergeNode in="SourceGraphic" />
                 </feMerge>
               </filter>
             </defs>
             <!-- Shackle -->
-            <path class="mega-lock-shackle" id="megaLockShackle"
-                  d="M16 36 L16 16 C16 5 24 -2 32 -2 C40 -2 48 5 48 16 L48 36"
-                  stroke="currentColor" stroke-width="6" stroke-linecap="round" fill="none"/>
+            <path
+              class="mega-lock-shackle"
+              id="megaLockShackle"
+              d="M16 36 L16 16 C16 5 24 -2 32 -2 C40 -2 48 5 48 16 L48 36"
+              stroke="currentColor"
+              stroke-width="6"
+              stroke-linecap="round"
+              fill="none"
+            />
             <!-- Body -->
-            <rect class="mega-lock-body" x="8" y="36" width="48" height="36" rx="4" fill="currentColor"/>
+            <rect
+              class="mega-lock-body"
+              x="8"
+              y="36"
+              width="48"
+              height="36"
+              rx="4"
+              fill="currentColor"
+            />
             <!-- Keyhole -->
-            <circle class="mega-lock-keyhole" cx="32" cy="50" r="5" fill="var(--bg-primary)"/>
-            <rect class="mega-lock-keyhole-slot" x="29.5" y="50" width="5" height="10" rx="2" fill="var(--bg-primary)"/>
+            <circle
+              class="mega-lock-keyhole"
+              cx="32"
+              cy="50"
+              r="5"
+              fill="var(--bg-primary)"
+            />
+            <rect
+              class="mega-lock-keyhole-slot"
+              x="29.5"
+              y="50"
+              width="5"
+              height="10"
+              rx="2"
+              fill="var(--bg-primary)"
+            />
           </svg>
-          
+
           <!-- Progress Ring -->
           <svg class="mega-progress-ring" viewBox="0 0 100 100">
-            <circle class="mega-ring-bg" cx="50" cy="50" r="45" 
-                    stroke="rgba(255,255,255,0.08)" stroke-width="2" fill="none"/>
-            <circle class="mega-ring-fill" id="megaRingFill" cx="50" cy="50" r="45" 
-                    stroke="url(#megaRingGradient)" stroke-width="4" fill="none"
-                    stroke-linecap="round" stroke-dasharray="283" stroke-dashoffset="283"
-                    transform="rotate(-90 50 50)"/>
+            <circle
+              class="mega-ring-bg"
+              cx="50"
+              cy="50"
+              r="45"
+              stroke="rgba(255,255,255,0.08)"
+              stroke-width="2"
+              fill="none"
+            />
+            <circle
+              class="mega-ring-fill"
+              id="megaRingFill"
+              cx="50"
+              cy="50"
+              r="45"
+              stroke="url(#megaRingGradient)"
+              stroke-width="4"
+              fill="none"
+              stroke-linecap="round"
+              stroke-dasharray="283"
+              stroke-dashoffset="283"
+              transform="rotate(-90 50 50)"
+            />
           </svg>
-          
+
           <!-- Particle Container -->
           <div class="mega-particles" id="megaParticles"></div>
         </div>
-        
+
         <!-- Status Display -->
         <div class="mega-status">
           <div class="mega-status-text" id="megaStatusText">INITIALIZING</div>
           <div class="mega-progress-percent" id="megaProgressPercent">0%</div>
         </div>
-        
+
         <!-- Cancel Button -->
         <button class="mega-cancel-btn" id="megaCancelBtn">Cancel</button>
       </div>
     </div>
-
 
     <!-- Link Overwrite Warning Modal -->
     <div class="modal-overlay" id="linkOverwriteModal">
@@ -576,10 +766,10 @@
 
     <!-- GSAP Animation Library (local to bypass CSP) -->
     <script src="gsap.min.js"></script>
-    
+
     <!-- Encryption Animation Controller -->
     <script src="encryption-animation.js"></script>
-    
+
     <!-- Scripts (ES Modules) -->
     <script type="module" src="upload.js"></script>
   </body>
