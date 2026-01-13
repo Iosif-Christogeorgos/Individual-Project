@@ -592,14 +592,32 @@
         </div>
       </div>
 
-      <!-- Mobile Sidebar Toggle (for responsive) -->
+      <!-- Mobile Identity Toggle (for responsive) -->
       <button
-        class="mobile-sidebar-toggle hidden"
-        id="sidebarToggle"
-        aria-label="Toggle panels"
+        class="mobile-identity-toggle"
+        id="identityToggle"
+        aria-label="Toggle Identity Vault"
       >
-        <span class="toggle-icon">👥</span>
-        <span class="toggle-text">Panels</span>
+        <span class="toggle-icon">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <rect x="2" y="4" width="20" height="16" rx="2" />
+            <rect x="4" y="6" width="16" height="12" rx="1" />
+            <circle cx="12" cy="12" r="4" />
+            <line x1="12" y1="8" x2="12" y2="10" />
+            <line x1="12" y1="14" x2="12" y2="16" />
+            <line x1="8" y1="12" x2="10" y2="12" />
+            <line x1="14" y1="12" x2="16" y2="12" />
+            <circle cx="12" cy="12" r="1" fill="currentColor" />
+          </svg>
+        </span>
+        <span class="toggle-text">Identity</span>
       </button>
 
       <!-- Mobile Overlay -->

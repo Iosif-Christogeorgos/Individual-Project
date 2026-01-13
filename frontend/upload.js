@@ -4,24 +4,44 @@
 // Main orchestration module for file encryption and upload.
 // Delegates to specialized modules for specific concerns:
 // - expiry.js: Countdown timer and expiry selection
-// - recipients.js: Contact/recipient management  
+// - recipients.js: Contact/recipient management
 // - file-handler.js: File selection and drag/drop
 // =============================================================================
 
-import * as CryptoModule from './crypto.js';
-import * as IdentityManager from './identity.js';
-import { showAlert, hideAlert, showToast, escapeHtml, updateProgress, hideProgress } from './ui-utils.js';
-import { getSelectedExpiryHours, updateExpiryNotice, startCountdownTimer, initializeExpiryDropdown } from './expiry.js';
-import { 
-  getSelectedRecipients, 
-  clearSelectedRecipients, 
-  loadContacts, 
+import * as CryptoModule from "./crypto.js";
+import * as IdentityManager from "./identity.js";
+import {
+  showAlert,
+  hideAlert,
+  showToast,
+  escapeHtml,
+  updateProgress,
+  hideProgress,
+} from "./ui-utils.js";
+import {
+  getSelectedExpiryHours,
+  updateExpiryNotice,
+  startCountdownTimer,
+  initializeExpiryDropdown,
+} from "./expiry.js";
+import {
+  getSelectedRecipients,
+  clearSelectedRecipients,
+  loadContacts,
   toggleRecipient as toggleRecipientBase,
   updateRecipientCount,
-  removeContactUI as removeContactUIBase
-} from './recipients.js';
-import { initializeFileHandler, clearFile, getSelectedFile, getMaxFileSize, validateFileForExpiry, getMaxFileSizeForExpiry, EXPIRY_SIZE_LIMITS } from './file-handler.js';
-import { formatFileSize } from './ui-utils.js';
+  removeContactUI as removeContactUIBase,
+} from "./recipients.js";
+import {
+  initializeFileHandler,
+  clearFile,
+  getSelectedFile,
+  getMaxFileSize,
+  validateFileForExpiry,
+  getMaxFileSizeForExpiry,
+  EXPIRY_SIZE_LIMITS,
+} from "./file-handler.js";
+import { formatFileSize } from "./ui-utils.js";
 
 // State tracking
 let hasActiveLink = false;
@@ -145,21 +165,17 @@ function removeContactUI(contactId) {
  */
 function validateFileForCurrentExpiry() {
   const expiryHours = getSelectedExpiryHours();
-  
+
   // Always update the max size hint in the drop zone
   updateMaxSizeHint(expiryHours);
-  
+
   const file = getSelectedFile();
   if (!file) return; // No file selected yet
-  
+
   const validation = validateFileForExpiry(file, expiryHours);
-  
+
   if (!validation.valid) {
-    showAlert(
-      "File Exceeds Size Limit",
-      validation.message,
-      "warning"
-    );
+    showAlert("File Exceeds Size Limit", validation.message, "warning");
   } else {
     // File is valid for new expiry, hide any previous warning
     hideAlert();
@@ -179,11 +195,11 @@ function updateMaxSizeHint(expiryHours) {
 }
 
 function showShareLink(link) {
-  const container = document.querySelector('.container[data-state]');
+  const container = document.querySelector(".container[data-state]");
   const input = document.getElementById("shareLink");
 
   input.value = link;
-  container.setAttribute('data-state', 'success');
+  container.setAttribute("data-state", "success");
 
   hasActiveLink = true;
   linkCopied = false;
@@ -210,7 +226,7 @@ function copyLink() {
       input.select();
       input.setSelectionRange(0, 99999); // For mobile
       btn.innerHTML = "<span>⚠️</span> Select & Copy";
-      
+
       setTimeout(() => {
         btn.innerHTML = "<span>📋</span> Copy";
       }, 3000);
@@ -218,26 +234,26 @@ function copyLink() {
 }
 
 function resetToUpload() {
-  const container = document.querySelector('.container[data-state]');
-  
-  container.setAttribute('data-state', 'upload');
+  const container = document.querySelector(".container[data-state]");
+
+  container.setAttribute("data-state", "upload");
   clearFile();
-  
+
   hasActiveLink = false;
   overwriteWarningShown = false;
   linkCopied = false;
-  
+
   const uploadStatusBadges = document.getElementById("uploadStatusBadges");
   const shareModeInfo = document.getElementById("shareModeInfo");
   const signatureStatusInfo = document.getElementById("signatureStatusInfo");
-  
+
   if (uploadStatusBadges) {
     uploadStatusBadges.classList.remove("show");
     uploadStatusBadges.innerHTML = "";
   }
   if (shareModeInfo) shareModeInfo.classList.remove("show");
   if (signatureStatusInfo) signatureStatusInfo.classList.remove("show");
-  
+
   const copyBtn = document.getElementById("copyBtn");
   if (copyBtn) {
     copyBtn.classList.remove("copied");
@@ -270,18 +286,18 @@ function initializeContactsTabs() {
   const tabs = document.querySelectorAll(".contacts-tab");
   const tabContents = {
     "my-contacts": document.getElementById("myContactsTab"),
-    "add-new": document.getElementById("addNewTab")
+    "add-new": document.getElementById("addNewTab"),
   };
 
-  tabs.forEach(tab => {
+  tabs.forEach((tab) => {
     tab.addEventListener("click", () => {
       // Remove active from all tabs
-      tabs.forEach(t => t.classList.remove("active"));
+      tabs.forEach((t) => t.classList.remove("active"));
       // Hide all tab contents
-      Object.values(tabContents).forEach(content => {
+      Object.values(tabContents).forEach((content) => {
         if (content) content.classList.remove("active");
       });
-      
+
       // Activate clicked tab
       tab.classList.add("active");
       const tabName = tab.dataset.tab;
@@ -301,28 +317,31 @@ function updateIdentityUI() {
   if (currentIdentity) {
     // Hide create identity section
     noIdentitySection?.classList.add("hidden");
-    
+
     // Show fingerprint card
     identityFingerprint?.classList.remove("hidden");
-    
+
     // Update username display
     if (identityUsername) {
       const username = currentIdentity.displayName || "@unknown";
-      identityUsername.textContent = username.startsWith('@') ? username : `@${username}`;
+      identityUsername.textContent = username.startsWith("@")
+        ? username
+        : `@${username}`;
     }
-    
+
     // Update fingerprint display (short 16 char version)
     if (fingerprintValue) {
-      fingerprintValue.textContent = IdentityManager.getShortFingerprint(currentIdentity);
+      fingerprintValue.textContent =
+        IdentityManager.getShortFingerprint(currentIdentity);
     }
   } else {
     // Show create identity section
     noIdentitySection?.classList.remove("hidden");
-    
+
     // Hide fingerprint card
     identityFingerprint?.classList.add("hidden");
   }
-  
+
   // Re-validate access config after identity state change
   validateAccessConfig();
 }
@@ -330,7 +349,7 @@ function updateIdentityUI() {
 async function createIdentity() {
   const usernameInput = document.getElementById("usernameInput");
   const createBtn = document.getElementById("createIdentityBtn");
-  
+
   const username = usernameInput?.value.toLowerCase().trim();
 
   if (!username || !/^[a-z0-9_]{3,20}$/.test(username)) {
@@ -345,11 +364,12 @@ async function createIdentity() {
     // 1. Generate Identity (using @username as display name)
     const displayName = `@${username}`;
     currentIdentity = await IdentityManager.generateIdentity(displayName);
-    
+
     // 2. Publish Immediately
     createBtn.innerHTML = "<span>🌐</span> Publishing...";
-    
-    const publicIdentity = IdentityManager.exportPublicIdentity(currentIdentity);
+
+    const publicIdentity =
+      IdentityManager.exportPublicIdentity(currentIdentity);
     const response = await fetch("/pubkey", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -371,7 +391,6 @@ async function createIdentity() {
     updateIdentityUI();
     validateAccessConfig();
     showToast(`Identity created & published as @${username} 🚀`);
-
   } catch (error) {
     console.error("Creation error:", error);
     showToast(error.message || "Failed to create identity ✗");
@@ -396,48 +415,61 @@ async function searchUserByUsername() {
   const searchBtn = document.getElementById("searchUserBtn");
   const btnText = searchBtn?.querySelector(".search-submit-text");
   const btnLoader = searchBtn?.querySelector(".search-submit-loader");
-  
+
   const username = searchInput?.value.toLowerCase().trim();
 
   if (!username || !/^[a-z0-9_]{3,20}$/.test(username)) {
-    if (searchResult) searchResult.innerHTML = '<div class="search-error">Enter a valid username (3-20 chars)</div>';
+    if (searchResult)
+      searchResult.innerHTML =
+        '<div class="search-error">Enter a valid username (3-20 chars)</div>';
     return;
   }
 
   // Storm off animation - button flies away
   searchBtn?.classList.add("storm-off");
   searchBtn?.classList.remove("visible");
-  
+
   // Show loading state
-  if (searchResult) searchResult.innerHTML = '<div class="search-loading">Searching...</div>';
+  if (searchResult)
+    searchResult.innerHTML = '<div class="search-loading">Searching...</div>';
 
   try {
-    const response = await fetch(`/pubkey/username/${encodeURIComponent(username)}`);
-    
+    const response = await fetch(
+      `/pubkey/username/${encodeURIComponent(username)}`
+    );
+
     // Reset storm-off animation
     searchBtn?.classList.remove("storm-off");
-    
+
     if (!response.ok) {
       if (response.status === 404) {
-        searchResult.innerHTML = '<div class="search-not-found">User not found</div>';
+        searchResult.innerHTML =
+          '<div class="search-not-found">User not found</div>';
       } else {
-        searchResult.innerHTML = '<div class="search-error">Search failed</div>';
+        searchResult.innerHTML =
+          '<div class="search-error">Search failed</div>';
       }
       return;
     }
 
     const userData = await response.json();
-    
+
     // Clear input on success
     searchInput.value = "";
-    
+
     // Display search result with add button
     searchResult.innerHTML = `
       <div class="search-result-card">
         <div class="search-result-info">
-          <div class="search-result-name">@${escapeHtml(userData.username)}</div>
-          <div class="search-result-fingerprint" title="${escapeHtml(userData.fingerprint)}">
-            🔑 ${escapeHtml(userData.fingerprint.substring(0, 8))}...${escapeHtml(userData.fingerprint.substring(56))}
+          <div class="search-result-name">@${escapeHtml(
+            userData.username
+          )}</div>
+          <div class="search-result-fingerprint" title="${escapeHtml(
+            userData.fingerprint
+          )}">
+            🔑 ${escapeHtml(
+              userData.fingerprint.substring(0, 8)
+            )}...${escapeHtml(userData.fingerprint.substring(56))}
           </div>
         </div>
         <button class="btn btn-small btn-secondary" id="addSearchResultBtn">
@@ -447,30 +479,33 @@ async function searchUserByUsername() {
     `;
 
     // Add click handler for the add button
-    document.getElementById("addSearchResultBtn")?.addEventListener("click", async () => {
-      const contact = {
-        id: userData.id,
-        displayName: `@${userData.username}`,
-        encryptionPublicKey: userData.encryptionPublicKey,
-        signingPublicKey: userData.signingPublicKey,
-        fingerprint: userData.fingerprint,
-      };
+    document
+      .getElementById("addSearchResultBtn")
+      ?.addEventListener("click", async () => {
+        const contact = {
+          id: userData.id,
+          displayName: `@${userData.username}`,
+          encryptionPublicKey: userData.encryptionPublicKey,
+          signingPublicKey: userData.signingPublicKey,
+          fingerprint: userData.fingerprint,
+        };
 
-      try {
-        await IdentityManager.addContact(contact);
-        loadContacts(updateLinkKeyState);
-        searchResult.innerHTML = ''; // Clear - toast handles feedback
-        showToast(`Added @${userData.username} as contact ✓`);
-      } catch (error) {
-        console.error("Add contact error:", error);
-        searchResult.innerHTML = '<div class="search-error">Failed to add contact</div>';
-      }
-    });
-
+        try {
+          await IdentityManager.addContact(contact);
+          loadContacts(updateLinkKeyState);
+          searchResult.innerHTML = ""; // Clear - toast handles feedback
+          showToast(`Added @${userData.username} as contact ✓`);
+        } catch (error) {
+          console.error("Add contact error:", error);
+          searchResult.innerHTML =
+            '<div class="search-error">Failed to add contact</div>';
+        }
+      });
   } catch (error) {
     console.error("Search error:", error);
     searchBtn?.classList.remove("storm-off");
-    if (searchResult) searchResult.innerHTML = '<div class="search-error">Search failed</div>';
+    if (searchResult)
+      searchResult.innerHTML = '<div class="search-error">Search failed</div>';
   }
 }
 
@@ -511,10 +546,10 @@ function confirmNewUpload() {
 document.addEventListener("DOMContentLoaded", async () => {
   // Initialize identity panel
   await initializeIdentityPanel();
-  
+
   // Reveal page now that auth state is determined
-  document.documentElement.classList.add('auth-resolved');
-  
+  document.documentElement.classList.add("auth-resolved");
+
   loadContacts(updateLinkKeyState);
 
   // Initialize custom expiry dropdown
@@ -525,19 +560,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Immediately validate file against current expiry limit
     const expiryHours = getSelectedExpiryHours();
     const validation = validateFileForExpiry(file, expiryHours);
-    
+
     if (!validation.valid) {
-      showAlert(
-        "File Exceeds Size Limit",
-        validation.message,
-        "error"
-      );
+      showAlert("File Exceeds Size Limit", validation.message, "error");
     }
   });
 
   // Initial validation check
   setTimeout(validateAccessConfig, 100);
-  
+
   // Expiry selector change listener (for the hidden native select, synced by custom dropdown)
   const expirySelect = document.getElementById("expirySelect");
   if (expirySelect) {
@@ -549,10 +580,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   // ==========================================================================
   // Event Listeners (replaces inline onclick handlers for strict CSP)
   // ==========================================================================
-  
+
   // Alert close button
-  document.getElementById("alertCloseBtn")?.addEventListener("click", hideAlert);
-  
+  document
+    .getElementById("alertCloseBtn")
+    ?.addEventListener("click", hideAlert);
+
   // File management - handles both file clearing and upload cancellation
   document.getElementById("clearFileBtn")?.addEventListener("click", () => {
     if (isUploading) {
@@ -561,160 +594,205 @@ document.addEventListener("DOMContentLoaded", async () => {
       clearFile();
     }
   });
-  
+
   // Access configuration checkboxes
-  document.getElementById("includeLinkKey")?.addEventListener("change", validateAccessConfig);
-  document.getElementById("enableSigning")?.addEventListener("change", validateAccessConfig);
-  
+  document
+    .getElementById("includeLinkKey")
+    ?.addEventListener("change", validateAccessConfig);
+  document
+    .getElementById("enableSigning")
+    ?.addEventListener("change", validateAccessConfig);
+
   // Main upload button
   document.getElementById("uploadBtn")?.addEventListener("click", processFile);
-  
+
   // Success view buttons
   document.getElementById("copyBtn")?.addEventListener("click", copyLink);
   document.getElementById("backBtn")?.addEventListener("click", resetToUpload);
-  
+
   // Identity management
-  document.getElementById("createIdentityBtn")?.addEventListener("click", createIdentity);
-  
+  document
+    .getElementById("createIdentityBtn")
+    ?.addEventListener("click", createIdentity);
+
   // Fingerprint copy button
-  document.getElementById("fingerprintCopyBtn")?.addEventListener("click", async () => {
-    const copyBtn = document.getElementById("fingerprintCopyBtn");
-    if (currentIdentity && copyBtn) {
-      try {
-        // Copy the full fingerprint
-        await navigator.clipboard.writeText(currentIdentity.fingerprint);
-        copyBtn.classList.add("copied");
-        showToast("Fingerprint copied ✓");
-        setTimeout(() => copyBtn.classList.remove("copied"), 1500);
-      } catch (e) {
-        console.error("Copy failed:", e);
+  document
+    .getElementById("fingerprintCopyBtn")
+    ?.addEventListener("click", async () => {
+      const copyBtn = document.getElementById("fingerprintCopyBtn");
+      if (currentIdentity && copyBtn) {
+        try {
+          // Copy the full fingerprint
+          await navigator.clipboard.writeText(currentIdentity.fingerprint);
+          copyBtn.classList.add("copied");
+          showToast("Fingerprint copied ✓");
+          setTimeout(() => copyBtn.classList.remove("copied"), 1500);
+        } catch (e) {
+          console.error("Copy failed:", e);
+        }
       }
-    }
-  });
-  
+    });
+
   // User directory search
-  document.getElementById("searchUserBtn")?.addEventListener("click", searchUserByUsername);
-  
+  document
+    .getElementById("searchUserBtn")
+    ?.addEventListener("click", searchUserByUsername);
+
   const searchInput = document.getElementById("searchUsernameInput");
   const searchBtn = document.getElementById("searchUserBtn");
-  
+
   // Show/hide search button based on input length
   searchInput?.addEventListener("input", (e) => {
     const value = e.target.value.trim();
     const isValid = value.length > 2;
     searchBtn?.classList.toggle("visible", isValid);
   });
-  
+
   // Search on Enter key
   searchInput?.addEventListener("keypress", (e) => {
     if (e.key === "Enter") searchUserByUsername();
   });
-  
+
   // Local contact filter (filters saved contacts list)
   const filterContactsInput = document.getElementById("filterContactsInput");
   filterContactsInput?.addEventListener("input", (e) => {
     const filterValue = e.target.value.toLowerCase().trim();
-    const contactItems = document.querySelectorAll("#contactsList .contact-item");
-    
-    contactItems.forEach(item => {
-      const name = item.querySelector(".contact-name")?.textContent?.toLowerCase() || "";
-      const fingerprint = item.querySelector(".contact-fingerprint")?.textContent?.toLowerCase() || "";
-      const matches = name.includes(filterValue) || fingerprint.includes(filterValue);
+    const contactItems = document.querySelectorAll(
+      "#contactsList .contact-item"
+    );
+
+    contactItems.forEach((item) => {
+      const name =
+        item.querySelector(".contact-name")?.textContent?.toLowerCase() || "";
+      const fingerprint =
+        item
+          .querySelector(".contact-fingerprint")
+          ?.textContent?.toLowerCase() || "";
+      const matches =
+        name.includes(filterValue) || fingerprint.includes(filterValue);
       item.style.display = matches ? "" : "none";
     });
-    
+
     // Update "no contacts" message visibility
     const noContacts = document.querySelector("#contactsList .no-contacts");
-    const visibleContacts = document.querySelectorAll("#contactsList .contact-item:not([style*='display: none'])");
+    const visibleContacts = document.querySelectorAll(
+      "#contactsList .contact-item:not([style*='display: none'])"
+    );
     if (noContacts) {
-      noContacts.textContent = visibleContacts.length === 0 && filterValue 
-        ? "No contacts match filter" 
-        : "No contacts added yet";
+      noContacts.textContent =
+        visibleContacts.length === 0 && filterValue
+          ? "No contacts match filter"
+          : "No contacts added yet";
     }
   });
-  
+
   // Contact management
-  
+
   // Modal buttons
-  document.getElementById("modalCloseBtn")?.addEventListener("click", hideOverwriteModal);
-  document.getElementById("modalCancelBtn")?.addEventListener("click", hideOverwriteModal);
-  document.getElementById("modalConfirmBtn")?.addEventListener("click", confirmNewUpload);
+  document
+    .getElementById("modalCloseBtn")
+    ?.addEventListener("click", hideOverwriteModal);
+  document
+    .getElementById("modalCancelBtn")
+    ?.addEventListener("click", hideOverwriteModal);
+  document
+    .getElementById("modalConfirmBtn")
+    ?.addEventListener("click", confirmNewUpload);
 
   // ==========================================================================
-  // Mobile Sidebar Toggle
+  // Mobile Identity Panel Toggle
   // ==========================================================================
-  const sidebarToggle = document.getElementById("sidebarToggle");
-  const sidePanel = document.getElementById("identityPanel");
+  const identityToggle = document.getElementById("identityToggle");
+  const identityVaultPanel = document.getElementById("identityVaultPanel");
   const mobileOverlay = document.getElementById("mobileOverlay");
-  
-  function openMobileSidebar() {
-    sidePanel?.classList.add("open");
+
+  function openIdentityPanel() {
+    identityVaultPanel?.classList.add("mobile-open");
+    identityToggle?.classList.add("active");
     mobileOverlay?.classList.add("show");
-    document.body.style.overflow = "hidden"; // Prevent scroll when sidebar open
+    document.body.style.overflow = "hidden"; // Prevent scroll when panel open
   }
-  
-  function closeMobileSidebar() {
-    sidePanel?.classList.remove("open");
+
+  function closeIdentityPanel() {
+    identityVaultPanel?.classList.remove("mobile-open");
+    identityToggle?.classList.remove("active");
     mobileOverlay?.classList.remove("show");
     document.body.style.overflow = ""; // Restore scroll
   }
-  
+
   // Toggle button click
-  sidebarToggle?.addEventListener("click", () => {
-    if (sidePanel?.classList.contains("open")) {
-      closeMobileSidebar();
+  identityToggle?.addEventListener("click", () => {
+    if (identityVaultPanel?.classList.contains("mobile-open")) {
+      closeIdentityPanel();
     } else {
-      openMobileSidebar();
+      openIdentityPanel();
     }
   });
-  
-  // Overlay click closes sidebar
-  mobileOverlay?.addEventListener("click", closeMobileSidebar);
-  
-  // Escape key closes sidebar
+
+  // Overlay click closes panel
+  mobileOverlay?.addEventListener("click", closeIdentityPanel);
+
+  // Panel header click closes panel (for the X button on mobile)
+  const identityPanelHeader =
+    identityVaultPanel?.querySelector(".panel-card-header");
+  identityPanelHeader?.addEventListener("click", (e) => {
+    // Only close if clicking the X area (right side of header) on mobile
+    if (window.innerWidth <= 480) {
+      const headerRect = identityPanelHeader.getBoundingClientRect();
+      const clickX = e.clientX - headerRect.left;
+      // X button is in the right 50px of the header
+      if (clickX > headerRect.width - 50) {
+        closeIdentityPanel();
+      }
+    }
+  });
+
+  // Escape key closes panel
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && sidePanel?.classList.contains("open")) {
-      closeMobileSidebar();
+    if (
+      e.key === "Escape" &&
+      identityVaultPanel?.classList.contains("mobile-open")
+    ) {
+      closeIdentityPanel();
     }
   });
 });
 
 // Expose cancelUpload globally for fullscreen overlay cancel button
-window.cancelUpload = function() {
+window.cancelUpload = function () {
   // Forward to the module's cancelUpload function
-  if (typeof cancelUpload === 'function') {
+  if (typeof cancelUpload === "function") {
     // This will be called from the global scope - need to check isUploading
     const uploadBtn = document.getElementById("uploadBtn");
-    
+
     // Abort any in-progress fetch request
     if (uploadAbortController) {
       uploadAbortController.abort();
       uploadAbortController = null;
     }
-    
+
     // Reset upload state
     isUploading = false;
-    
+
     // Reset UI
     if (uploadBtn) {
       uploadBtn.disabled = false;
       uploadBtn.innerHTML = "<span>🔒</span> Encrypt & Upload";
     }
-    
+
     // Hide progress and reset animation
     hideProgress();
     if (window.encryptionAnimator) {
       window.encryptionAnimator.reset();
     }
-    
+
     // Clear the file selection
     clearFile();
-    
+
     // Show feedback to user
     showToast("Upload cancelled ✓");
   }
 };
-
 
 // =============================================================================
 // Main Upload Process
@@ -773,32 +851,32 @@ const STREAMING_THRESHOLD = 100 * 1024 * 1024;
  */
 function cancelUpload() {
   if (!isUploading) return;
-  
+
   // Abort any in-progress fetch request
   if (uploadAbortController) {
     uploadAbortController.abort();
     uploadAbortController = null;
   }
-  
+
   // Reset upload state
   isUploading = false;
-  
+
   // Reset UI
   const uploadBtn = document.getElementById("uploadBtn");
   if (uploadBtn) {
     uploadBtn.disabled = false;
     uploadBtn.innerHTML = "<span>🔒</span> Encrypt & Upload";
   }
-  
+
   // Hide progress and reset animation
   hideProgress();
   if (window.encryptionAnimator) {
     window.encryptionAnimator.reset();
   }
-  
+
   // Clear the file selection
   clearFile();
-  
+
   // Show feedback to user
   showToast("Upload cancelled ✓");
 }
@@ -810,9 +888,9 @@ async function executeUpload() {
   const includeLinkKey =
     document.getElementById("includeLinkKey")?.checked !== false;
 
-  const container = document.querySelector('.container[data-state]');
+  const container = document.querySelector(".container[data-state]");
   if (container) {
-    container.setAttribute('data-state', 'upload');
+    container.setAttribute("data-state", "upload");
   }
 
   const file = getSelectedFile();
@@ -831,10 +909,10 @@ async function executeUpload() {
   uploadBtn.disabled = true;
   uploadBtn.innerHTML = "<span>⏳</span> Processing...";
   isUploading = true; // Lock button during upload
-  
+
   // Create AbortController for cancellation support
   uploadAbortController = new AbortController();
-  
+
   // Start cinematic encryption animation
   if (window.encryptionAnimator && file) {
     window.encryptionAnimator.startEncryptionSequence(file.name);
@@ -849,10 +927,10 @@ async function executeUpload() {
 
     // Streaming uploads require HTTP/2 (HTTPS only)
     // On HTTP, skip directly to buffered to avoid console errors
-    const isSecureContext = window.location.protocol === 'https:';
+    const isSecureContext = window.location.protocol === "https:";
     const useStreaming =
       isSecureContext &&
-      file.size > STREAMING_THRESHOLD && 
+      file.size > STREAMING_THRESHOLD &&
       CryptoModule.supportsStreamingUpload();
 
     if (useStreaming) {
@@ -860,7 +938,7 @@ async function executeUpload() {
         await executeStreamingUpload(file, enableSigning, includeLinkKey);
       } catch (streamError) {
         // Don't fallback if user cancelled
-        if (streamError.name === 'AbortError') {
+        if (streamError.name === "AbortError") {
           throw streamError;
         }
         console.warn(
@@ -874,7 +952,7 @@ async function executeUpload() {
     }
   } catch (error) {
     // Don't show error alert if user cancelled
-    if (error.name === 'AbortError') {
+    if (error.name === "AbortError") {
       return; // cancelUpload() already handled the UI reset
     }
     hideProgress();
@@ -900,13 +978,10 @@ async function executeStreamingUpload(file, enableSigning, includeLinkKey) {
   let originalFileHash = null;
   if (enableSigning) {
     updateProgress(10, "Computing file hash for signature...");
-    originalFileHash = await CryptoModule.hashFile(
-      file,
-      (hashProgress) => {
-        const overallProgress = 10 + Math.round(hashProgress * 0.15);
-        updateProgress(overallProgress, `Hashing... ${hashProgress}%`);
-      }
-    );
+    originalFileHash = await CryptoModule.hashFile(file, (hashProgress) => {
+      const overallProgress = 10 + Math.round(hashProgress * 0.15);
+      updateProgress(overallProgress, `Hashing... ${hashProgress}%`);
+    });
   }
 
   const encryptStartProgress = enableSigning ? 25 : 10;
@@ -925,7 +1000,10 @@ async function executeStreamingUpload(file, enableSigning, includeLinkKey) {
     aesKey,
     (encryptProgress) => {
       const progressRange = enableSigning ? 60 : 80;
-      const overallProgress = (encryptStartProgress + 5) + Math.round(encryptProgress * (progressRange / 100));
+      const overallProgress =
+        encryptStartProgress +
+        5 +
+        Math.round(encryptProgress * (progressRange / 100));
       updateProgress(
         overallProgress,
         `Encrypting & uploading... ${encryptProgress}%`
@@ -962,7 +1040,12 @@ async function executeStreamingUpload(file, enableSigning, includeLinkKey) {
     exportedKey.k,
     includeLinkKey
   );
-  showUploadSuccess(shareLink, includeLinkKey, enableSigning, metadata.expiresAt);
+  showUploadSuccess(
+    shareLink,
+    includeLinkKey,
+    enableSigning,
+    metadata.expiresAt
+  );
 }
 
 async function executeBufferedUpload(file, enableSigning, includeLinkKey) {
@@ -976,7 +1059,8 @@ async function executeBufferedUpload(file, enableSigning, includeLinkKey) {
     aesKey,
     (chunkProgress) => {
       const progressRange = enableSigning ? 40 : 55;
-      const overallProgress = 10 + Math.round(chunkProgress * (progressRange / 100));
+      const overallProgress =
+        10 + Math.round(chunkProgress * (progressRange / 100));
       updateProgress(overallProgress, `Encrypting... ${chunkProgress}%`);
     }
   );
@@ -1027,7 +1111,12 @@ async function executeBufferedUpload(file, enableSigning, includeLinkKey) {
     exportedKey.k,
     includeLinkKey
   );
-  showUploadSuccess(shareLink, includeLinkKey, enableSigning, metadata.expiresAt);
+  showUploadSuccess(
+    shareLink,
+    includeLinkKey,
+    enableSigning,
+    metadata.expiresAt
+  );
 }
 
 async function prepareMetadata(
@@ -1038,9 +1127,9 @@ async function prepareMetadata(
   includeLinkKey
 ) {
   const expiryHours = getSelectedExpiryHours();
-  const expiresAt = Date.now() + (expiryHours * 60 * 60 * 1000);
+  const expiresAt = Date.now() + expiryHours * 60 * 60 * 1000;
   const selectedRecipients = getSelectedRecipients();
-  
+
   const metadata = {
     version: 2,
     filename: file.name,
@@ -1107,7 +1196,7 @@ async function uploadMetadata(fileId, metadata) {
   const hasCustomExpiry = metadata.expiryHours !== 24;
   const hasRecipients = metadata.encryptedKeys.length > 0;
   const hasSignature = metadata.signature !== null;
-  
+
   if (hasCustomExpiry || hasRecipients || hasSignature) {
     updateProgress(95, "Uploading metadata...");
 
@@ -1123,7 +1212,7 @@ async function uploadMetadata(fileId, metadata) {
       );
     }
   }
-  
+
   return metadata;
 }
 
@@ -1139,17 +1228,22 @@ function generateShareLink(fileId, keyString, includeLinkKey) {
   }
 }
 
-function showUploadSuccess(shareLink, includeLinkKey, enableSigning, expiresAt) {
+function showUploadSuccess(
+  shareLink,
+  includeLinkKey,
+  enableSigning,
+  expiresAt
+) {
   // Wait for lock animation to complete before showing success view
   // The lock closing animation takes about 1.5 seconds
   setTimeout(() => {
     hideProgress();
     showShareLink(shareLink);
-    
+
     if (expiresAt) {
       startCountdownTimer(expiresAt);
     }
-    
+
     showUploadStatusBadges(
       includeLinkKey,
       getSelectedRecipients().length,

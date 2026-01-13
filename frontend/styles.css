@@ -5142,8 +5142,8 @@ input[type="checkbox"]:checked {
    All changes below ONLY affect mobile devices. Desktop remains unchanged.
    ============================================================================= */
 
-/* Mobile Sidebar Toggle - Hidden by default (desktop) */
-.mobile-sidebar-toggle {
+/* Mobile Identity Toggle - Hidden by default (desktop) */
+.mobile-identity-toggle {
   display: none;
 }
 
@@ -5193,45 +5193,66 @@ input[type="checkbox"]:checked {
   }
 
   /* -------------------------------------------------------------------------
-     Sidebar: Slide-out Drawer
+     Identity Vault Panel: Slide-out Drawer from Right
      ------------------------------------------------------------------------- */
-  .side-panel {
+  #identityVaultPanel {
     position: fixed;
-    left: 0;
+    right: 0;
     top: 0;
     bottom: 0;
-    width: 85%;
-    max-width: 320px;
+    width: 90%;
+    max-width: 360px;
     z-index: 1000;
-    transform: translateX(-100%);
+    transform: translateX(100%);
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     box-shadow: none;
     overflow-y: auto;
-    /* Override animated border for performance */
-    animation: none;
-    background-image: none;
     background: var(--bg-void);
-    border-right: 1px solid var(--glass-border);
+    border-left: 1px solid var(--glass-border);
+    border-radius: 0;
   }
 
-  .side-panel.open {
+  #identityVaultPanel.mobile-open {
     transform: translateX(0);
-    box-shadow: 10px 0 40px rgba(0, 0, 0, 0.5);
+    box-shadow: -10px 0 40px rgba(0, 0, 0, 0.5);
+  }
+
+  /* Add a close button inside the panel header on mobile */
+  #identityVaultPanel .panel-card-header {
+    position: relative;
+  }
+
+  #identityVaultPanel .panel-card-header::after {
+    content: "✕";
+    position: absolute;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    border-radius: 50%;
+    transition: all 0.2s ease;
   }
 
   /* -------------------------------------------------------------------------
-     Mobile Sidebar Toggle Button
+     Mobile Identity Toggle Button
      ------------------------------------------------------------------------- */
-  .mobile-sidebar-toggle {
+  .mobile-identity-toggle {
     display: flex;
     align-items: center;
     gap: 8px;
     position: fixed;
-    bottom: 20px;
+    bottom: 24px;
     right: 20px;
     z-index: 900;
     padding: 14px 18px;
-    min-height: 48px;
+    min-height: 52px;
     background: linear-gradient(
       135deg,
       var(--cyber-green-dim),
@@ -5249,18 +5270,30 @@ input[type="checkbox"]:checked {
     transition: all 0.25s ease;
   }
 
-  .mobile-sidebar-toggle:hover,
-  .mobile-sidebar-toggle:active {
+  .mobile-identity-toggle:hover,
+  .mobile-identity-toggle:active {
     transform: scale(1.05);
     box-shadow: 0 6px 25px rgba(0, 255, 65, 0.5),
       0 0 50px -5px var(--cyber-green-glow);
   }
 
-  .mobile-sidebar-toggle .toggle-icon {
-    font-size: 1.1rem;
+  .mobile-identity-toggle.active {
+    background: linear-gradient(135deg, #ff3b3b, #ff6b6b);
+    box-shadow: 0 4px 20px rgba(255, 59, 59, 0.4);
   }
 
-  .mobile-sidebar-toggle .toggle-text {
+  .mobile-identity-toggle .toggle-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .mobile-identity-toggle .toggle-icon svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .mobile-identity-toggle .toggle-text {
     display: inline;
   }
 
@@ -5539,11 +5572,11 @@ input[type="checkbox"]:checked {
     padding: 1rem 0.75rem;
   }
 
-  .mobile-sidebar-toggle .toggle-text {
+  .mobile-identity-toggle .toggle-text {
     display: none;
   }
 
-  .mobile-sidebar-toggle {
+  .mobile-identity-toggle {
     padding: 14px;
     border-radius: 50%;
     min-width: 56px;
@@ -5551,8 +5584,14 @@ input[type="checkbox"]:checked {
     justify-content: center;
   }
 
-  .mobile-sidebar-toggle .toggle-icon {
-    font-size: 1.3rem;
+  .mobile-identity-toggle .toggle-icon svg {
+    width: 24px;
+    height: 24px;
+  }
+
+  #identityVaultPanel {
+    width: 100%;
+    max-width: none;
   }
 }
 
