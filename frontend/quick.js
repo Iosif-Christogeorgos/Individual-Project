@@ -373,7 +373,8 @@ async function uploadMetadata(fileId, file, expiryHours) {
 
   const metadata = {
     version: 2,
-    filename: file.name,
+    // NOTE: filename intentionally omitted - it's encrypted in the file blob header
+    // Storing it here would break zero-knowledge architecture
     size: file.size,
     contentHash: null,
     timestamp: new Date().toISOString(),

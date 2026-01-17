@@ -580,10 +580,12 @@ app.post("/metadata/:fileId", metadataLimiter, async (req, res) => {
     }
 
     // Upsert metadata to Supabase
+    // NOTE: filename is NOT stored here - it's encrypted in the file blob
+    // This maintains our zero-knowledge architecture
     console.log(`📝 Storing metadata for ${fileId} in Supabase...`);
     const { error } = await supabase.from("files").upsert({
       id: fileId,
-      filename: metadata.filename || "unknown",
+      filename: "[encrypted]", // Filename is encrypted in the file blob - we don't store it
       size: metadata.size || 0,
       content_hash: metadata.contentHash || null,
       expires_at: expiresAt,

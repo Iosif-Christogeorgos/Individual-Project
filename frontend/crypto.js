@@ -604,14 +604,24 @@ export async function verify(data, signature, publicKey) {
 
 export async function signFileMetadata(metadata, signingPrivateKey) {
   const timestamp = new Date().toISOString();
+  
+  // Hash the filename to avoid storing plaintext in the signature bundle
+  // This maintains zero-knowledge while still allowing verification that
+  // the file wasn't tampered with (since we sign the hash)
+  const encoder = new TextEncoder();
+  const filenameHashBuffer = await window.crypto.subtle.digest(
+    "SHA-256",
+    encoder.encode(metadata.filename)
+  );
+  const filenameHash = arrayBufferToHex(filenameHashBuffer);
+  
   const dataToSign = JSON.stringify({
-    filename: metadata.filename,
+    filenameHash: filenameHash, // Hash instead of plaintext filename
     size: metadata.size,
     contentHash: metadata.contentHash,
     timestamp: timestamp,
   });
 
-  const encoder = new TextEncoder();
   const dataBytes = encoder.encode(dataToSign);
   const signature = await sign(dataBytes, signingPrivateKey);
 

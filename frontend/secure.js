@@ -1132,7 +1132,8 @@ async function prepareMetadata(
 
   const metadata = {
     version: 2,
-    filename: file.name,
+    // NOTE: filename intentionally omitted - it's encrypted in the file blob header
+    // Storing it here would break zero-knowledge architecture
     size: file.size,
     contentHash: contentHash,
     timestamp: new Date().toISOString(),
