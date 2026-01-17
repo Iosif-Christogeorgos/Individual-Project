@@ -26,10 +26,8 @@ import {
 } from "./expiry.js";
 import {
   getSelectedRecipients,
-  clearSelectedRecipients,
   loadContacts,
   toggleRecipient as toggleRecipientBase,
-  updateRecipientCount,
   removeContactUI as removeContactUIBase,
 } from "./recipients.js";
 import {
@@ -38,7 +36,6 @@ import {
   getSelectedFile,
   validateFileForExpiry,
   getMaxFileSizeForExpiry,
-  EXPIRY_SIZE_LIMITS,
 } from "./file-handler.js";
 import { formatFileSize } from "./ui-utils.js";
 
