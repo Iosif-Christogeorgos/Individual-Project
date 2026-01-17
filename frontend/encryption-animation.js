@@ -31,6 +31,8 @@ class EncryptionAnimator {
     // Animation state
     this.isAnimating = false;
     this.isFullscreenMode = false;
+    this.isCompleting = false;  // Guard against multiple completion calls
+    this.currentProgress = 0;   // Track progress to prevent backwards updates
     this.scrambleInterval = null;
     this.particleInterval = null;
     this.megaParticleInterval = null;
@@ -89,6 +91,8 @@ class EncryptionAnimator {
     if (!this.overlay) return;
     
     this.isFullscreenMode = true;
+    this.isCompleting = false;  // Reset completion guard
+    this.currentProgress = 0;   // Reset progress tracker
     
     // Reset mega lock state
     if (this.megaLock) {
@@ -132,6 +136,8 @@ class EncryptionAnimator {
     if (!this.overlay) return;
     
     this.isFullscreenMode = false;
+    this.isCompleting = false;  // Reset completion guard
+    this.currentProgress = 0;   // Reset progress tracker
     this.stopMegaParticles();
     
     // Fade out
@@ -152,7 +158,14 @@ class EncryptionAnimator {
    * Update mega progress display
    */
   updateMegaProgress(percent, status) {
-    if (!this.isFullscreenMode) return;
+    // Ignore updates if not in fullscreen mode or if completion has started
+    if (!this.isFullscreenMode || this.isCompleting) return;
+    
+    // Prevent backwards progress (except for explicit reset)
+    if (percent < this.currentProgress && percent > 0) {
+      return;  // Ignore backwards progress updates
+    }
+    this.currentProgress = percent;
     
     // Update progress ring (circumference = 2 * PI * 45 = 283)
     if (this.megaRingFill) {
@@ -229,7 +242,9 @@ class EncryptionAnimator {
    * Complete mega encryption with dramatic lock close
    */
   async completeMegaEncryption() {
-    if (!this.isFullscreenMode) return;
+    // Guard against multiple calls during async completion
+    if (!this.isFullscreenMode || this.isCompleting) return;
+    this.isCompleting = true;  // Lock to prevent re-entry
     
     // Stop particles
     this.stopMegaParticles();
@@ -444,23 +459,8 @@ class EncryptionAnimator {
     }
     
     // === FULLSCREEN MODE ===
-    // Show the epic fullscreen overlay
+    // Show the epic fullscreen overlay (no inline lock animation - fullscreen only)
     this.showFullscreenOverlay();
-    
-    // Also update inline lock state for when overlay closes
-    if (this.lockContainer) {
-      this.lockContainer.classList.remove('file-ready', 'success', 'error');
-      this.lockContainer.classList.add('processing');
-    }
-    
-    // Use CSS classes for visibility on inline elements
-    if (this.fileNameEl) this.fileNameEl.classList.add('hidden');
-    if (this.fileSizeEl) this.fileSizeEl.classList.add('hidden');
-    if (this.encryptionStatusEl) this.encryptionStatusEl.classList.remove('hidden');
-    if (this.scrambleText) {
-      this.scrambleText.classList.remove('hidden', 'show-success');
-      this.scrambleText.textContent = 'ENCRYPTING...';
-    }
   }
 
   
@@ -842,6 +842,8 @@ class EncryptionAnimator {
     
     this.isAnimating = false;
     this.isFullscreenMode = false;
+    this.isCompleting = false;  // Reset completion guard
+    this.currentProgress = 0;   // Reset progress tracker
   }
 }
 
