@@ -579,13 +579,10 @@ app.post("/metadata/:fileId", metadataLimiter, async (req, res) => {
       expiresAt = new Date(Date.now() + expiryHours * 60 * 60 * 1000).toISOString();
     }
 
-    // Upsert metadata to Supabase
-    // NOTE: filename is NOT stored here - it's encrypted in the file blob
-    // This maintains our zero-knowledge architecture
+    // Upsert metadata to Supabase (zero-knowledge: no plaintext data stored)
     console.log(`📝 Storing metadata for ${fileId} in Supabase...`);
     const { error } = await supabase.from("files").upsert({
       id: fileId,
-      filename: "[encrypted]", // Filename is encrypted in the file blob - we don't store it
       size: metadata.size || 0,
       content_hash: metadata.contentHash || null,
       expires_at: expiresAt,

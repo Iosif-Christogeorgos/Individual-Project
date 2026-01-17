@@ -36,7 +36,6 @@ import {
   initializeFileHandler,
   clearFile,
   getSelectedFile,
-  getMaxFileSize,
   validateFileForExpiry,
   getMaxFileSizeForExpiry,
   EXPIRY_SIZE_LIMITS,

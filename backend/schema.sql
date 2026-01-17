@@ -8,7 +8,6 @@
 CREATE TABLE IF NOT EXISTS files (
   id TEXT PRIMARY KEY,                         -- File ID (matches R2 object key)
   owner_id UUID REFERENCES auth.users(id),     -- Links to authenticated user
-  filename TEXT NOT NULL,
   size BIGINT NOT NULL,
   content_hash TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -38,7 +37,6 @@ CREATE POLICY "Owner List Own Files" ON files
 CREATE OR REPLACE FUNCTION get_file_metadata(lookup_id TEXT)
 RETURNS TABLE (
   id TEXT,
-  filename TEXT,
   size BIGINT,
   content_hash TEXT,
   created_at TIMESTAMPTZ,
@@ -53,7 +51,6 @@ BEGIN
   RETURN QUERY
   SELECT 
     f.id,
-    f.filename,
     f.size,
     f.content_hash,
     f.created_at,
