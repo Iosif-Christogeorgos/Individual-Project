@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="CrypShare Secure Share - Identity-based encryption for maximum security. Only selected recipients can decrypt your files."
+    />
+    <meta name="theme-color" content="#0a0a0a" />
+    <title>Secure Share - CrypShare</title>
+    <link rel="canonical" href="https://crypshare.app/secure" />
+
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="critical.css" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <!-- Back Button -->
+    <a href="/" class="back-button">
+      <span class="back-arrow">←</span>
+      <span>Back</span>
+    </a>
+
+    <div class="app-layout">
+      <!-- Hero Header Section -->
+      <header class="hero-header">
+        <h1 class="hero-title">
+          <span class="hero-title-primary">Secure Share</span>
+          <span class="hero-title-accent">Maximum Security.</span>
+        </h1>
+        <p class="hero-tagline">
+          Identity-based encryption. Only selected recipients can decrypt.<br />
+          No decryption key in the URL.
+        </p>
+      </header>
+
+      <!-- Two-Column Panels Row -->
+      <div class="panels-row">
+        <!-- Left Panel: Secure Transfer -->
+        <div class="panel-card" id="secureTransferPanel">
+          <!-- Panel Header -->
+          <div class="panel-card-header">
+            <div class="panel-card-title">
+              <span class="panel-icon">🛡️</span>
+              <span>Secure Transfer</span>
+            </div>
+            <span class="crypto-badge">ECDH + AES-256</span>
+          </div>
+
+          <!-- Upload Container -->
+          <div class="container" data-state="upload">
+            <!-- Upload View (default state) -->
+            <div class="upload-view">
+              <!-- Alert Box -->
+              <div id="alert" class="alert alert-error">
+                <span class="alert-icon" id="alert-icon">⚠️</span>
+                <div class="alert-content">
+                  <div class="alert-title" id="alert-title">Error</div>
+                  <div class="alert-message" id="alert-message">
+                    Something went wrong.
+                  </div>
+                </div>
+                <button class="alert-close" id="alertCloseBtn">×</button>
+              </div>
+
+              <!-- Drop Zone -->
+              <div class="drop-zone" id="dropZone">
+                <div class="drop-zone-content">
+                  <span class="drop-zone-icon">📁</span>
+                  <div class="drop-zone-text">
+                    <strong>Secure Drop Zone</strong><br />
+                    <small class="text-muted-color"
+                      >Drag files here to encrypt for specific recipients</small
+                    >
+                  </div>
+                </div>
+                <input type="file" id="fileInput" title="" />
+              </div>
+
+              <!-- Selected File Display with Encryption Animation -->
+              <div class="file-selected" id="fileSelected">
+                <!-- Cinematic Lock Icon -->
+                <div
+                  class="file-selected-icon encryption-lock"
+                  id="encryptionLock"
+                >
+                  <svg
+                    class="lock-svg"
+                    viewBox="-4 -4 72 80"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <!-- Shackle - connected to body at y=36 -->
+                    <path
+                      class="lock-shackle"
+                      id="lockShackle"
+                      d="M16 36 L16 20 C16 9 24 2 32 2 C40 2 48 9 48 20 L48 36"
+                      stroke="currentColor"
+                      stroke-width="6"
+                      stroke-linecap="round"
+                      fill="none"
+                    />
+                    <!-- Lock Body - starts at y=36 -->
+                    <rect
+                      class="lock-body"
+                      x="8"
+                      y="36"
+                      width="48"
+                      height="36"
+                      rx="4"
+                      fill="currentColor"
+                    />
+                    <!-- Keyhole -->
+                    <circle
+                      class="lock-keyhole"
+                      cx="32"
+                      cy="50"
+                      r="5"
+                      fill="var(--bg-primary)"
+                    />
+                    <rect
+                      class="lock-keyhole-slot"
+                      x="29.5"
+                      y="50"
+                      width="5"
+                      height="10"
+                      rx="2"
+                      fill="var(--bg-primary)"
+                    />
+                  </svg>
+                </div>
+
+                <div class="file-selected-info">
+                  <div class="file-selected-name" id="fileName">
+                    filename.txt
+                  </div>
+                  <div class="file-selected-size" id="fileSize">0 KB</div>
+                  <!-- Scramble text for encryption animation -->
+                  <div class="encryption-status" id="encryptionStatus">
+                    <span class="scramble-text" id="scrambleText"></span>
+                  </div>
+                </div>
+                <button
+                  class="file-selected-remove"
+                  id="clearFileBtn"
+                  title="Remove file"
+                >
+                  Cancel
+                </button>
+              </div>
+
+              <!-- Access Control Options -->
+              <div class="access-options">
+                <div class="option-group">
+                  <label class="option-label">
+                    <input type="checkbox" id="includeLinkKey" />
+                    <span class="option-text">
+                      <span class="option-title">🔗 Include key in link</span>
+                      <span class="option-desc"
+                        >Enable hybrid mode (recipients + link access)</span
+                      >
+                    </span>
+                  </label>
+                </div>
+
+                <div class="option-group">
+                  <label class="option-label">
+                    <input type="checkbox" id="enableSigning" />
+                    <span class="option-text">
+                      <span class="option-title">✍️ Sign file</span>
+                      <span class="option-desc"
+                        >Cryptographically prove you uploaded this file</span
+                      >
+                    </span>
+                  </label>
+                </div>
+
+                <!-- Expiry Selector -->
+                <div class="option-group expiry-selector">
+                  <!-- Custom Animated Dropdown -->
+                  <div class="custom-dropdown" id="expiryDropdown">
+                    <button
+                      type="button"
+                      class="dropdown-trigger"
+                      id="dropdownTrigger"
+                    >
+                      <span class="dropdown-label">⏳ File expires in</span>
+                      <span class="dropdown-value" id="dropdownValue"
+                        >24 hours</span
+                      >
+                      <svg
+                        class="dropdown-arrow"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                      >
+                        <polyline points="6 9 12 15 18 9"></polyline>
+                      </svg>
+                    </button>
+                    <div class="dropdown-menu" id="dropdownMenu">
+                      <div class="dropdown-option" data-value="1">1 hour</div>
+                      <div class="dropdown-option" data-value="6">6 hours</div>
+                      <div class="dropdown-option selected" data-value="24">
+                        24 hours
+                      </div>
+                      <div class="dropdown-option" data-value="72">3 days</div>
+                      <div class="dropdown-option" data-value="168">7 days</div>
+                    </div>
+                  </div>
+                  <!-- Hidden native select for form compatibility -->
+                  <select id="expirySelect" class="sr-only" aria-hidden="true">
+                    <option value="1">1 hour</option>
+                    <option value="6">6 hours</option>
+                    <option value="24" selected>24 hours</option>
+                    <option value="72">3 days</option>
+                    <option value="168">7 days</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Access Validation Warning -->
+              <div class="access-warning" id="accessWarning">
+                <span class="access-warning-icon">⚠️</span>
+                <div class="access-warning-content">
+                  <strong id="accessWarningTitle">No Decryption Method</strong>
+                  <span id="accessWarningMessage"
+                    >Select at least one recipient or enable 'Include key in link'.</span
+                  >
+                </div>
+              </div>
+
+              <!-- Upload Button -->
+              <button class="btn btn-primary" id="uploadBtn">
+                <span>🔒</span> Encrypt & Upload
+              </button>
+
+              <!-- Progress Bar -->
+              <div class="progress-container" id="progressContainer">
+                <div class="progress-bar">
+                  <div class="progress-bar-inner">
+                    <span class="progress-bar-label">ENCRYPTING</span>
+                    <span class="progress-bar-track" id="progressTrack"
+                      >[.......................]</span
+                    >
+                    <span class="progress-bar-percent" id="progressPercent"
+                      >0%</span
+                    >
+                  </div>
+                </div>
+                <div class="progress-status" id="progressStatus">
+                  Initializing...
+                </div>
+              </div>
+            </div>
+
+            <!-- Success View (shown after upload) -->
+            <div class="success-view">
+              <!-- Success Header -->
+              <div class="success-header">
+                <div class="success-link-icon">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <path
+                      d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"
+                    />
+                    <path
+                      d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"
+                    />
+                  </svg>
+                </div>
+                <h2>Securely Encrypted</h2>
+              </div>
+              <p>
+                Your file is encrypted for the selected recipient(s) only.
+              </p>
+
+              <!-- Upload Status Badges -->
+              <div class="upload-status-badges" id="uploadStatusBadges">
+                <!-- Dynamically populated by JavaScript -->
+              </div>
+
+              <!-- Share Link -->
+              <div class="share-link-wrapper">
+                <input
+                  type="text"
+                  class="share-link-input"
+                  id="shareLink"
+                  readonly
+                />
+                <button class="btn btn-primary btn-copy" id="copyBtn">
+                  <span>📋</span> Copy
+                </button>
+              </div>
+
+              <!-- Expiry Countdown -->
+              <div class="expiry-countdown" id="expiryCountdown">
+                <div class="countdown-icon">
+                  <svg
+                    class="hourglass-svg"
+                    viewBox="0 0 50 80"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <defs>
+                      <clipPath id="topSandClip">
+                        <rect
+                          class="sand-top-mask"
+                          x="0"
+                          y="0"
+                          width="50"
+                          height="35"
+                        />
+                      </clipPath>
+                      <clipPath id="bottomSandClip">
+                        <rect
+                          class="sand-bottom-mask"
+                          x="0"
+                          y="45"
+                          width="50"
+                          height="35"
+                        />
+                      </clipPath>
+                    </defs>
+                    <path
+                      class="hourglass-frame"
+                      d="M8 8 L8 28 L25 40 L8 52 L8 72 L42 72 L42 52 L25 40 L42 28 L42 8 Z"
+                      stroke="var(--accent-blue)"
+                      stroke-width="3"
+                      fill="none"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                    <path
+                      class="sand-top"
+                      clip-path="url(#topSandClip)"
+                      d="M12 12 L12 26 L25 37 L38 26 L38 12 Z"
+                      fill="var(--cyber-green)"
+                    />
+                    <path
+                      class="sand-bottom"
+                      clip-path="url(#bottomSandClip)"
+                      d="M12 68 L12 54 L25 43 L38 54 L38 68 Z"
+                      fill="var(--cyber-green)"
+                    />
+                    <line
+                      class="sand-stream"
+                      x1="25"
+                      y1="37"
+                      x2="25"
+                      y2="43"
+                      stroke="var(--cyber-green)"
+                      stroke-width="3"
+                      stroke-linecap="round"
+                    />
+                  </svg>
+                </div>
+                <div class="countdown-info">
+                  <span class="countdown-label">Link expires in</span>
+                  <span class="countdown-timer" id="countdownTimer"
+                    >--:--:--</span
+                  >
+                </div>
+              </div>
+
+              <!-- Share Mode Info -->
+              <div class="share-mode-info" id="shareModeInfo"></div>
+
+              <!-- Signature Status Info -->
+              <div class="signature-status-info" id="signatureStatusInfo"></div>
+
+              <!-- Security Protocol Warning -->
+              <div class="security-protocol-warning" id="securityWarning">
+                <div class="spw-header">
+                  <span class="spw-indicator">▶</span>
+                  <span class="spw-title">IDENTITY-BASED ENCRYPTION</span>
+                </div>
+                <p class="spw-instruction">
+                  Only the selected recipient(s) can decrypt this file using their
+                  private identity key.
+                </p>
+              </div>
+
+              <!-- Back Button -->
+              <button class="btn btn-ghost btn-back" id="backBtn">
+                <span>←</span> Upload Another File
+              </button>
+            </div>
+          </div>
+
+          <!-- Panel Footer with Security Tags -->
+          <div class="panel-card-footer">
+            <span class="security-tag">E2EE</span>
+            <span class="security-separator">·</span>
+            <span class="security-tag">Identity-Based</span>
+          </div>
+        </div>
+
+        <!-- Right Panel: Identity Vault -->
+        <div class="panel-card" id="identityVaultPanel">
+          <div class="panel-card-header">
+            <div class="panel-card-title">
+              <span class="panel-icon vault-icon">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <!-- Vault body -->
+                  <rect x="2" y="4" width="20" height="16" rx="2" />
+                  <!-- Inner door frame -->
+                  <rect x="4" y="6" width="16" height="12" rx="1" />
+                  <!-- Circular handle/dial -->
+                  <circle cx="12" cy="12" r="4" />
+                  <!-- Handle crossbars -->
+                  <line x1="12" y1="8" x2="12" y2="10" />
+                  <line x1="12" y1="14" x2="12" y2="16" />
+                  <line x1="8" y1="12" x2="10" y2="12" />
+                  <line x1="14" y1="12" x2="16" y2="12" />
+                  <!-- Handle center dot -->
+                  <circle cx="12" cy="12" r="1" fill="currentColor" />
+                  <!-- Hinges -->
+                  <line x1="20" y1="8" x2="22" y2="8" />
+                  <line x1="20" y1="16" x2="22" y2="16" />
+                </svg>
+              </span>
+              <span>Identity Vault</span>
+            </div>
+          </div>
+
+          <!-- Create Identity Section (shown when no identity) -->
+          <div class="create-identity-section" id="noIdentitySection">
+            <div class="create-identity-card">
+              <div class="create-identity-header">
+                <span class="create-identity-icon">🆔</span>
+                <span class="create-identity-title">Create Your Identity</span>
+              </div>
+              <p class="create-identity-desc">
+                Create a public profile to receive encrypted files.
+              </p>
+              <div class="input-group">
+                <div class="username-input-wrapper">
+                  <span class="input-prefix">@</span>
+                  <input
+                    type="text"
+                    id="usernameInput"
+                    class="panel-input"
+                    placeholder="username"
+                    maxlength="20"
+                    spellcheck="false"
+                  />
+                </div>
+                <div class="input-hint">
+                  3-20 lowercase characters, numbers, _
+                </div>
+              </div>
+              <button class="btn btn-primary btn-small" id="createIdentityBtn">
+                <span>🚀</span> Create & Publish
+              </button>
+            </div>
+          </div>
+
+          <!-- Identity Fingerprint (shown when logged in) -->
+          <div
+            class="identity-fingerprint-card hidden"
+            id="identityFingerprint"
+          >
+            <div class="fingerprint-card">
+              <div class="fingerprint-info">
+                <span class="fingerprint-username" id="identityUsername"
+                  >@username</span
+                >
+                <div class="fingerprint-key-row">
+                  <code class="fingerprint-full-key" id="fingerprintValue"
+                    >0x71C4A8B2...</code
+                  >
+                  <button
+                    type="button"
+                    class="fingerprint-copy-btn"
+                    id="fingerprintCopyBtn"
+                    title="Copy fingerprint"
+                  >
+                    <svg
+                      class="copy-icon"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                    >
+                      <rect x="9" y="9" width="13" height="13" rx="2" />
+                      <path
+                        d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"
+                      />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Contacts Tabs -->
+          <div class="contacts-tabs">
+            <button class="contacts-tab active" data-tab="my-contacts">
+              My Contacts
+            </button>
+            <button class="contacts-tab" data-tab="add-new">Add New</button>
+          </div>
+
+          <!-- Tab Content: My Contacts (local search) -->
+          <div class="tab-content active" id="myContactsTab">
+            <!-- Local Contact Filter -->
+            <div class="local-search">
+              <div class="search-box local">
+                <span class="search-icon">🔍</span>
+                <input
+                  type="text"
+                  id="filterContactsInput"
+                  class="search-field"
+                  placeholder="Filter saved contacts..."
+                  spellcheck="false"
+                />
+              </div>
+            </div>
+
+            <div class="contacts-list" id="contactsList">
+              <div class="no-contacts">No contacts added yet</div>
+            </div>
+
+            <div class="recipient-count" id="recipientCount"></div>
+          </div>
+
+          <!-- Tab Content: Add New (database search) -->
+          <div class="tab-content" id="addNewTab">
+            <p class="tab-desc">
+              Search for users in the directory to add them as contacts.
+            </p>
+
+            <!-- Database User Search -->
+            <div class="user-search">
+              <div class="search-box">
+                <span class="search-icon">🔍</span>
+                <input
+                  type="text"
+                  id="searchUsernameInput"
+                  class="search-field"
+                  placeholder="Search by username..."
+                  maxlength="20"
+                  spellcheck="false"
+                />
+                <button class="search-submit" id="searchUserBtn">
+                  <span class="search-submit-text">→</span>
+                  <span class="search-submit-loader hidden">...</span>
+                </button>
+              </div>
+              <div class="search-result" id="searchResult"></div>
+            </div>
+          </div>
+
+          <!-- Has Identity Section (Hidden by default, used for logic toggling) -->
+          <div id="hasIdentitySection" class="hidden"></div>
+        </div>
+      </div>
+
+      <!-- Mobile Identity Toggle (for responsive) -->
+      <button
+        class="mobile-identity-toggle"
+        id="identityToggle"
+        aria-label="Toggle Identity Vault"
+      >
+        <span class="toggle-icon">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <rect x="2" y="4" width="20" height="16" rx="2" />
+            <rect x="4" y="6" width="16" height="12" rx="1" />
+            <circle cx="12" cy="12" r="4" />
+            <line x1="12" y1="8" x2="12" y2="10" />
+            <line x1="12" y1="14" x2="12" y2="16" />
+            <line x1="8" y1="12" x2="10" y2="12" />
+            <line x1="14" y1="12" x2="16" y2="12" />
+            <circle cx="12" cy="12" r="1" fill="currentColor" />
+          </svg>
+        </span>
+        <span class="toggle-text">Identity</span>
+      </button>
+
+      <!-- Mobile Overlay -->
+      <div class="mobile-overlay" id="mobileOverlay"></div>
+    </div>
+
+    <!-- Fullscreen Encryption Overlay -->
+    <div class="encryption-overlay" id="encryptionOverlay">
+      <div class="encryption-overlay-backdrop"></div>
+      <div class="encryption-overlay-content">
+        <!-- Massive Lock -->
+        <div class="mega-lock" id="megaLock">
+          <svg
+            class="mega-lock-svg"
+            viewBox="-4 -4 72 80"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <defs>
+              <linearGradient
+                id="megaLockGradient"
+                x1="0%"
+                y1="0%"
+                x2="100%"
+                y2="100%"
+              >
+                <stop offset="0%" stop-color="#00d4ff" />
+                <stop offset="100%" stop-color="#8b5cf6" />
+              </linearGradient>
+              <linearGradient
+                id="megaRingGradient"
+                x1="0%"
+                y1="0%"
+                x2="100%"
+                y2="100%"
+              >
+                <stop offset="0%" stop-color="#00d4ff" />
+                <stop offset="50%" stop-color="#8b5cf6" />
+                <stop offset="100%" stop-color="#00ff88" />
+              </linearGradient>
+
+              <filter
+                id="megaGlow"
+                x="-100%"
+                y="-100%"
+                width="300%"
+                height="300%"
+              >
+                <feGaussianBlur stdDeviation="4" result="coloredBlur" />
+                <feMerge>
+                  <feMergeNode in="coloredBlur" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
+            </defs>
+            <!-- Shackle -->
+            <path
+              class="mega-lock-shackle"
+              id="megaLockShackle"
+              d="M16 36 L16 16 C16 5 24 -2 32 -2 C40 -2 48 5 48 16 L48 36"
+              stroke="currentColor"
+              stroke-width="6"
+              stroke-linecap="round"
+              fill="none"
+            />
+            <!-- Body -->
+            <rect
+              class="mega-lock-body"
+              x="8"
+              y="36"
+              width="48"
+              height="36"
+              rx="4"
+              fill="currentColor"
+            />
+            <!-- Keyhole -->
+            <circle
+              class="mega-lock-keyhole"
+              cx="32"
+              cy="50"
+              r="5"
+              fill="var(--bg-primary)"
+            />
+            <rect
+              class="mega-lock-keyhole-slot"
+              x="29.5"
+              y="50"
+              width="5"
+              height="10"
+              rx="2"
+              fill="var(--bg-primary)"
+            />
+          </svg>
+
+          <!-- Progress Ring -->
+          <svg class="mega-progress-ring" viewBox="0 0 100 100">
+            <circle
+              class="mega-ring-bg"
+              cx="50"
+              cy="50"
+              r="45"
+              stroke="rgba(255,255,255,0.08)"
+              stroke-width="2"
+              fill="none"
+            />
+            <circle
+              class="mega-ring-fill"
+              id="megaRingFill"
+              cx="50"
+              cy="50"
+              r="45"
+              stroke="url(#megaRingGradient)"
+              stroke-width="4"
+              fill="none"
+              stroke-linecap="round"
+              stroke-dasharray="283"
+              stroke-dashoffset="283"
+              transform="rotate(-90 50 50)"
+            />
+          </svg>
+
+          <!-- Particle Container -->
+          <div class="mega-particles" id="megaParticles"></div>
+        </div>
+
+        <!-- Status Display -->
+        <div class="mega-status">
+          <div class="mega-status-text" id="megaStatusText">INITIALIZING</div>
+          <div class="mega-progress-percent" id="megaProgressPercent">0%</div>
+        </div>
+
+        <!-- Cancel Button -->
+        <button class="mega-cancel-btn" id="megaCancelBtn">Cancel</button>
+      </div>
+    </div>
+
+    <!-- Link Overwrite Warning Modal -->
+    <div class="modal-overlay" id="linkOverwriteModal">
+      <div class="modal-terminal">
+        <div class="modal-terminal-header">
+          <span class="modal-terminal-prompt">⚠️ SYSTEM_WARNING</span>
+          <button class="modal-close" id="modalCloseBtn">×</button>
+        </div>
+        <div class="modal-terminal-body">
+          <div class="modal-warning-icon">🔗</div>
+          <h3 class="modal-title">Active Link Will Be Lost</h3>
+          <p class="modal-message">
+            You have an active share link. Uploading a new file will replace it
+            and the previous link will no longer be accessible.
+          </p>
+          <div class="modal-link-preview" id="modalLinkPreview"></div>
+          <div class="modal-actions">
+            <button class="btn btn-secondary" id="modalCancelBtn">
+              <span>✖</span> Cancel
+            </button>
+            <button class="btn btn-warning" id="modalConfirmBtn">
+              <span>▶</span> Continue Anyway
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- GSAP Animation Library (local to bypass CSP) -->
+    <script src="gsap.min.js"></script>
+
+    <!-- Encryption Animation Controller -->
+    <script src="encryption-animation.js"></script>
+
+    <!-- Scripts (ES Modules) -->
+    <script type="module" src="secure.js"></script>
+  </body>
+</html>

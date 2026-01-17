@@ -269,6 +269,16 @@ app.get("/download", (req, res) => {
   res.sendFile(path.join(__dirname, "../frontend/download.html"));
 });
 
+// Quick Share page
+app.get("/quick", (req, res) => {
+  res.sendFile(path.join(__dirname, "../frontend/quick.html"));
+});
+
+// Secure Share page
+app.get("/secure", (req, res) => {
+  res.sendFile(path.join(__dirname, "../frontend/secure.html"));
+});
+
 app.use(express.static(path.join(__dirname, "../frontend")));
 
 // =============================================================================

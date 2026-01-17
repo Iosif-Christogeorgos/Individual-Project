@@ -5937,12 +5937,302 @@ input[type="checkbox"]:checked {
 }
 
 /* -----------------------------------------------------------------------------
-   Responsive - Two-Column to Single-Column
+   Mode Selector - Landing Page
+   ----------------------------------------------------------------------------- */
+.mode-selector {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  width: 100%;
+  max-width: 900px;
+  margin-top: 1rem;
+}
+
+.mode-card {
+  position: relative;
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  text-decoration: none;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}
+
+.mode-card-glow {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.mode-card-quick .mode-card-glow {
+  background: radial-gradient(
+    circle at 50% 0%,
+    rgba(255, 200, 0, 0.15),
+    transparent 60%
+  );
+}
+
+.mode-card-secure .mode-card-glow {
+  background: radial-gradient(
+    circle at 50% 0%,
+    rgba(0, 255, 65, 0.15),
+    transparent 60%
+  );
+}
+
+.mode-card:hover .mode-card-glow {
+  opacity: 1;
+}
+
+.mode-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.5);
+}
+
+.mode-card-quick:hover {
+  border-color: rgba(255, 200, 0, 0.3);
+  box-shadow: 0 20px 40px -15px rgba(255, 200, 0, 0.2);
+}
+
+.mode-card-secure:hover {
+  border-color: rgba(0, 255, 65, 0.3);
+  box-shadow: 0 20px 40px -15px rgba(0, 255, 65, 0.2);
+}
+
+.mode-card-content {
+  position: relative;
+  z-index: 1;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.mode-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.mode-icon {
+  font-size: 2rem;
+}
+
+.mode-badge {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.badge-fast {
+  background: rgba(255, 200, 0, 0.15);
+  border: 1px solid rgba(255, 200, 0, 0.3);
+  color: #ffc800;
+}
+
+.badge-secure {
+  background: rgba(0, 255, 65, 0.1);
+  border: 1px solid rgba(0, 255, 65, 0.3);
+  color: var(--cyber-green);
+}
+
+.mode-title {
+  font-family: var(--font-sans);
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+/* Remove the terminal cursor from mode titles */
+.mode-title::before {
+  display: none;
+}
+
+.mode-description {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.mode-features {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.mode-features li {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.feature-icon {
+  font-size: 1rem;
+}
+
+.mode-security {
+  margin-top: 0.5rem;
+}
+
+.security-level {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.security-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.dot-yellow {
+  background: #ffc800;
+  box-shadow: 0 0 8px rgba(255, 200, 0, 0.5);
+}
+
+.dot-green {
+  background: var(--cyber-green);
+  box-shadow: 0 0 8px var(--cyber-green-glow);
+}
+
+.mode-cta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--glass-border);
+}
+
+.cta-text {
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.cta-arrow {
+  font-size: 1.25rem;
+  color: var(--text-muted);
+  transition: transform 0.3s ease, color 0.3s ease;
+}
+
+.mode-card:hover .cta-arrow {
+  transform: translateX(4px);
+}
+
+.mode-card-quick:hover .cta-arrow {
+  color: #ffc800;
+}
+
+.mode-card-secure:hover .cta-arrow {
+  color: var(--cyber-green);
+}
+
+/* Encryption Footer */
+.encryption-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 2rem;
+  flex-wrap: wrap;
+}
+
+.encryption-badge {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
+}
+
+.encryption-separator {
+  color: var(--text-muted);
+  opacity: 0.5;
+}
+
+/* Back Button */
+.back-button {
+  position: absolute;
+  top: 1.5rem;
+  left: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 0.875rem;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  z-index: 100;
+}
+
+.back-button:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.back-arrow {
+  font-size: 1rem;
+}
+
+/* Centered Single Panel Layout (for Quick Share) */
+.single-panel-layout {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 550px;
+}
+
+.single-panel-layout .panel-card {
+  width: 100%;
+}
+
+/* -----------------------------------------------------------------------------
+   Responsive - Mode Selector
    ----------------------------------------------------------------------------- */
 @media (max-width: 900px) {
   .panels-row {
     grid-template-columns: 1fr;
     max-width: 600px;
+  }
+
+  .mode-selector {
+    grid-template-columns: 1fr;
+    max-width: 500px;
   }
 
   .hero-title {
@@ -5988,5 +6278,29 @@ input[type="checkbox"]:checked {
 
   .tab-content {
     padding: 0 1rem 1rem;
+  }
+
+  .mode-card-content {
+    padding: 1.5rem;
+  }
+
+  .mode-title {
+    font-size: 1.25rem;
+  }
+
+  .encryption-footer {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .encryption-separator {
+    display: none;
+  }
+
+  .back-button {
+    top: 1rem;
+    left: 1rem;
+    padding: 0.4rem 0.75rem;
+    font-size: 0.8rem;
   }
 }

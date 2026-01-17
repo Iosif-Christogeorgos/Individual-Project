@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="CrypShare Quick Share - Fast, anonymous file sharing with AES-256 encryption. No account required."
+    />
+    <meta name="theme-color" content="#0a0a0a" />
+    <title>Quick Share - CrypShare</title>
+    <link rel="canonical" href="https://crypshare.app/quick" />
+
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="critical.css" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <!-- Back Button -->
+    <a href="/" class="back-button">
+      <span class="back-arrow">←</span>
+      <span>Back</span>
+    </a>
+
+    <div class="app-layout">
+      <!-- Hero Header Section -->
+      <header class="hero-header">
+        <h1 class="hero-title">
+          <span class="hero-title-primary">Quick Share</span>
+          <span class="hero-title-accent">Fast & Simple.</span>
+        </h1>
+        <p class="hero-tagline">
+          AES-256 encrypted file sharing. The decryption key is included in the link.<br />
+          Anyone with the link can download and decrypt.
+        </p>
+      </header>
+
+      <!-- Single Centered Panel -->
+      <div class="single-panel-layout">
+        <div class="panel-card" id="quickSharePanel">
+          <!-- Panel Header -->
+          <div class="panel-card-header">
+            <div class="panel-card-title">
+              <span class="panel-icon">⚡</span>
+              <span>Quick Share</span>
+            </div>
+            <span class="crypto-badge">AES-256-GCM</span>
+          </div>
+
+          <!-- Upload Container -->
+          <div class="container" data-state="upload">
+            <!-- Upload View (default state) -->
+            <div class="upload-view">
+              <!-- Alert Box -->
+              <div id="alert" class="alert alert-error">
+                <span class="alert-icon" id="alert-icon">⚠️</span>
+                <div class="alert-content">
+                  <div class="alert-title" id="alert-title">Error</div>
+                  <div class="alert-message" id="alert-message">
+                    Something went wrong.
+                  </div>
+                </div>
+                <button class="alert-close" id="alertCloseBtn">×</button>
+              </div>
+
+              <!-- Drop Zone -->
+              <div class="drop-zone" id="dropZone">
+                <div class="drop-zone-content">
+                  <span class="drop-zone-icon">📁</span>
+                  <div class="drop-zone-text">
+                    <strong>Drop Your File</strong><br />
+                    <small class="text-muted-color"
+                      >Drag files here to encrypt. Supports any file up to 500MB</small
+                    >
+                  </div>
+                </div>
+                <input type="file" id="fileInput" title="" />
+              </div>
+
+              <!-- Selected File Display -->
+              <div class="file-selected" id="fileSelected">
+                <div class="file-selected-icon encryption-lock" id="encryptionLock">
+                  <svg
+                    class="lock-svg"
+                    viewBox="-4 -4 72 80"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      class="lock-shackle"
+                      id="lockShackle"
+                      d="M16 36 L16 20 C16 9 24 2 32 2 C40 2 48 9 48 20 L48 36"
+                      stroke="currentColor"
+                      stroke-width="6"
+                      stroke-linecap="round"
+                      fill="none"
+                    />
+                    <rect
+                      class="lock-body"
+                      x="8"
+                      y="36"
+                      width="48"
+                      height="36"
+                      rx="4"
+                      fill="currentColor"
+                    />
+                    <circle
+                      class="lock-keyhole"
+                      cx="32"
+                      cy="50"
+                      r="5"
+                      fill="var(--bg-primary)"
+                    />
+                    <rect
+                      class="lock-keyhole-slot"
+                      x="29.5"
+                      y="50"
+                      width="5"
+                      height="10"
+                      rx="2"
+                      fill="var(--bg-primary)"
+                    />
+                  </svg>
+                </div>
+
+                <div class="file-selected-info">
+                  <div class="file-selected-name" id="fileName">filename.txt</div>
+                  <div class="file-selected-size" id="fileSize">0 KB</div>
+                  <div class="encryption-status" id="encryptionStatus">
+                    <span class="scramble-text" id="scrambleText"></span>
+                  </div>
+                </div>
+                <button
+                  class="file-selected-remove"
+                  id="clearFileBtn"
+                  title="Remove file"
+                >
+                  Cancel
+                </button>
+              </div>
+
+              <!-- Expiry Selector -->
+              <div class="access-options">
+                <div class="option-group expiry-selector">
+                  <div class="custom-dropdown" id="expiryDropdown">
+                    <button
+                      type="button"
+                      class="dropdown-trigger"
+                      id="dropdownTrigger"
+                    >
+                      <span class="dropdown-label">⏳ File expires in</span>
+                      <span class="dropdown-value" id="dropdownValue">24 hours</span>
+                      <svg
+                        class="dropdown-arrow"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                      >
+                        <polyline points="6 9 12 15 18 9"></polyline>
+                      </svg>
+                    </button>
+                    <div class="dropdown-menu" id="dropdownMenu">
+                      <div class="dropdown-option" data-value="1">1 hour</div>
+                      <div class="dropdown-option" data-value="6">6 hours</div>
+                      <div class="dropdown-option selected" data-value="24">24 hours</div>
+                      <div class="dropdown-option" data-value="72">3 days</div>
+                      <div class="dropdown-option" data-value="168">7 days</div>
+                    </div>
+                  </div>
+                  <select id="expirySelect" class="sr-only" aria-hidden="true">
+                    <option value="1">1 hour</option>
+                    <option value="6">6 hours</option>
+                    <option value="24" selected>24 hours</option>
+                    <option value="72">3 days</option>
+                    <option value="168">7 days</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Upload Button -->
+              <button class="btn btn-primary" id="uploadBtn">
+                <span>🔒</span> Encrypt & Upload
+              </button>
+
+              <!-- Progress Bar -->
+              <div class="progress-container" id="progressContainer">
+                <div class="progress-bar">
+                  <div class="progress-bar-inner">
+                    <span class="progress-bar-label">ENCRYPTING</span>
+                    <span class="progress-bar-track" id="progressTrack"
+                      >[.......................]</span
+                    >
+                    <span class="progress-bar-percent" id="progressPercent">0%</span>
+                  </div>
+                </div>
+                <div class="progress-status" id="progressStatus">Initializing...</div>
+              </div>
+            </div>
+
+            <!-- Success View (shown after upload) -->
+            <div class="success-view">
+              <!-- Success Header -->
+              <div class="success-header">
+                <div class="success-link-icon">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <path
+                      d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"
+                    />
+                    <path
+                      d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"
+                    />
+                  </svg>
+                </div>
+                <h2>Link Ready</h2>
+              </div>
+              <p>Your file is encrypted and ready to share!</p>
+
+              <!-- Share Link -->
+              <div class="share-link-wrapper">
+                <input
+                  type="text"
+                  class="share-link-input"
+                  id="shareLink"
+                  readonly
+                />
+                <button class="btn btn-primary btn-copy" id="copyBtn">
+                  <span>📋</span> Copy
+                </button>
+              </div>
+
+              <!-- Expiry Countdown -->
+              <div class="expiry-countdown" id="expiryCountdown">
+                <div class="countdown-icon">
+                  <svg
+                    class="hourglass-svg"
+                    viewBox="0 0 50 80"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <defs>
+                      <clipPath id="topSandClip">
+                        <rect
+                          class="sand-top-mask"
+                          x="0"
+                          y="0"
+                          width="50"
+                          height="35"
+                        />
+                      </clipPath>
+                      <clipPath id="bottomSandClip">
+                        <rect
+                          class="sand-bottom-mask"
+                          x="0"
+                          y="45"
+                          width="50"
+                          height="35"
+                        />
+                      </clipPath>
+                    </defs>
+                    <path
+                      class="hourglass-frame"
+                      d="M8 8 L8 28 L25 40 L8 52 L8 72 L42 72 L42 52 L25 40 L42 28 L42 8 Z"
+                      stroke="var(--accent-blue)"
+                      stroke-width="3"
+                      fill="none"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                    <path
+                      class="sand-top"
+                      clip-path="url(#topSandClip)"
+                      d="M12 12 L12 26 L25 37 L38 26 L38 12 Z"
+                      fill="var(--cyber-green)"
+                    />
+                    <path
+                      class="sand-bottom"
+                      clip-path="url(#bottomSandClip)"
+                      d="M12 68 L12 54 L25 43 L38 54 L38 68 Z"
+                      fill="var(--cyber-green)"
+                    />
+                    <line
+                      class="sand-stream"
+                      x1="25"
+                      y1="37"
+                      x2="25"
+                      y2="43"
+                      stroke="var(--cyber-green)"
+                      stroke-width="3"
+                      stroke-linecap="round"
+                    />
+                  </svg>
+                </div>
+                <div class="countdown-info">
+                  <span class="countdown-label">Link expires in</span>
+                  <span class="countdown-timer" id="countdownTimer">--:--:--</span>
+                </div>
+              </div>
+
+              <!-- Security Info -->
+              <div class="security-protocol-warning" id="securityWarning">
+                <div class="spw-header">
+                  <span class="spw-indicator">▶</span>
+                  <span class="spw-title">LINK CONTAINS DECRYPTION KEY</span>
+                </div>
+                <p class="spw-instruction">
+                  This link includes the encryption key. Anyone with the link can
+                  decrypt and download the file.
+                </p>
+                <div class="spw-critical-box">
+                  <span class="spw-warning-icon">⚠️</span>
+                  <span class="spw-warning-text">
+                    <strong>TIP:</strong> For maximum security, use
+                    <a href="/secure" class="secure-link">Secure Share</a> which
+                    encrypts files for specific recipients only.
+                  </span>
+                </div>
+              </div>
+
+              <!-- Back Button -->
+              <button class="btn btn-ghost btn-back" id="backBtn">
+                <span>←</span> Upload Another File
+              </button>
+            </div>
+          </div>
+
+          <!-- Panel Footer -->
+          <div class="panel-card-footer">
+            <span class="security-tag">E2EE</span>
+            <span class="security-separator">·</span>
+            <span class="security-tag">Link-Based</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Fullscreen Encryption Overlay -->
+    <div class="encryption-overlay" id="encryptionOverlay">
+      <div class="encryption-overlay-backdrop"></div>
+      <div class="encryption-overlay-content">
+        <div class="mega-lock" id="megaLock">
+          <svg
+            class="mega-lock-svg"
+            viewBox="-4 -4 72 80"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <defs>
+              <linearGradient
+                id="megaLockGradient"
+                x1="0%"
+                y1="0%"
+                x2="100%"
+                y2="100%"
+              >
+                <stop offset="0%" stop-color="#00d4ff" />
+                <stop offset="100%" stop-color="#8b5cf6" />
+              </linearGradient>
+              <linearGradient
+                id="megaRingGradient"
+                x1="0%"
+                y1="0%"
+                x2="100%"
+                y2="100%"
+              >
+                <stop offset="0%" stop-color="#00d4ff" />
+                <stop offset="50%" stop-color="#8b5cf6" />
+                <stop offset="100%" stop-color="#00ff88" />
+              </linearGradient>
+              <filter
+                id="megaGlow"
+                x="-100%"
+                y="-100%"
+                width="300%"
+                height="300%"
+              >
+                <feGaussianBlur stdDeviation="4" result="coloredBlur" />
+                <feMerge>
+                  <feMergeNode in="coloredBlur" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
+            </defs>
+            <path
+              class="mega-lock-shackle"
+              id="megaLockShackle"
+              d="M16 36 L16 16 C16 5 24 -2 32 -2 C40 -2 48 5 48 16 L48 36"
+              stroke="currentColor"
+              stroke-width="6"
+              stroke-linecap="round"
+              fill="none"
+            />
+            <rect
+              class="mega-lock-body"
+              x="8"
+              y="36"
+              width="48"
+              height="36"
+              rx="4"
+              fill="currentColor"
+            />
+            <circle
+              class="mega-lock-keyhole"
+              cx="32"
+              cy="50"
+              r="5"
+              fill="var(--bg-primary)"
+            />
+            <rect
+              class="mega-lock-keyhole-slot"
+              x="29.5"
+              y="50"
+              width="5"
+              height="10"
+              rx="2"
+              fill="var(--bg-primary)"
+            />
+          </svg>
+          <svg class="mega-progress-ring" viewBox="0 0 100 100">
+            <circle
+              class="mega-ring-bg"
+              cx="50"
+              cy="50"
+              r="45"
+              stroke="rgba(255,255,255,0.08)"
+              stroke-width="2"
+              fill="none"
+            />
+            <circle
+              class="mega-ring-fill"
+              id="megaRingFill"
+              cx="50"
+              cy="50"
+              r="45"
+              stroke="url(#megaRingGradient)"
+              stroke-width="4"
+              fill="none"
+              stroke-linecap="round"
+              stroke-dasharray="283"
+              stroke-dashoffset="283"
+              transform="rotate(-90 50 50)"
+            />
+          </svg>
+          <div class="mega-particles" id="megaParticles"></div>
+        </div>
+        <div class="mega-status">
+          <div class="mega-status-text" id="megaStatusText">INITIALIZING</div>
+          <div class="mega-progress-percent" id="megaProgressPercent">0%</div>
+        </div>
+        <button class="mega-cancel-btn" id="megaCancelBtn">Cancel</button>
+      </div>
+    </div>
+
+    <!-- GSAP Animation Library -->
+    <script src="gsap.min.js"></script>
+    <script src="encryption-animation.js"></script>
+    <script type="module" src="quick.js"></script>
+  </body>
+</html>
