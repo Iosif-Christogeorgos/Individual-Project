@@ -52,7 +52,6 @@ let uploadAbortController = null; // AbortController for cancelling in-progress 
 // =============================================================================
 
 function validateAccessConfig() {
-  const includeLinkKeyCheckbox = document.getElementById("includeLinkKey");
   const enableSigning =
     document.getElementById("enableSigning")?.checked || false;
   const uploadBtn = document.getElementById("uploadBtn");
@@ -60,22 +59,21 @@ function validateAccessConfig() {
   const warningTitle = document.getElementById("accessWarningTitle");
   const warningMessage = document.getElementById("accessWarningMessage");
 
-  if (!warningEl || !uploadBtn || !includeLinkKeyCheckbox)
+  if (!warningEl || !uploadBtn)
     return { valid: true, canUpload: true };
 
-  const includeLinkKey = includeLinkKeyCheckbox.checked;
   const selectedRecipients = getSelectedRecipients();
 
   let isValid = true;
   let canUpload = true;
   let warningType = "error";
 
-  if (!includeLinkKey && selectedRecipients.length === 0) {
+  if (selectedRecipients.length === 0) {
     isValid = false;
     canUpload = false;
-    warningTitle.textContent = "No Decryption Method";
+    warningTitle.textContent = "No Recipients Selected";
     warningMessage.textContent =
-      "Enable 'Include key in link' OR select at least one recipient. Without either, no one can decrypt the file.";
+      "Select at least one recipient to encrypt the file for.";
     warningType = "error";
   } else if (enableSigning && !currentIdentity) {
     isValid = false;
@@ -103,51 +101,20 @@ function validateAccessConfig() {
 }
 
 // =============================================================================
-// Mutual Exclusivity: Recipients vs Link Key
+// Recipient Selection Callback
 // =============================================================================
 
-function updateLinkKeyState() {
-  const includeLinkKeyCheckbox = document.getElementById("includeLinkKey");
-  const linkKeyLabel = includeLinkKeyCheckbox?.closest(".option-label");
-  const linkKeyDesc = linkKeyLabel?.querySelector(".option-desc");
-
-  if (!includeLinkKeyCheckbox) return;
-
-  const hasRecipients = getSelectedRecipients().length > 0;
-
-  if (hasRecipients) {
-    if (includeLinkKeyCheckbox.checked) {
-      includeLinkKeyCheckbox.checked = false;
-      showToast("Public link disabled for secure recipient delivery 🛡️");
-    }
-    includeLinkKeyCheckbox.disabled = true;
-    linkKeyLabel?.classList.add("disabled");
-    if (linkKeyDesc) {
-      linkKeyDesc.textContent =
-        "Disabled — file encrypted for specific recipients";
-    }
-  } else {
-    includeLinkKeyCheckbox.disabled = false;
-    linkKeyLabel?.classList.remove("disabled");
-    if (linkKeyDesc) {
-      linkKeyDesc.textContent =
-        "Anyone with the link can decrypt (default behavior)";
-    }
-    if (!includeLinkKeyCheckbox.checked) {
-      includeLinkKeyCheckbox.checked = true;
-    }
-  }
-
+function onRecipientChange() {
   validateAccessConfig();
 }
 
-// Wrappers for recipient functions that also update link key state
+// Wrappers for recipient functions that validate after changes
 function toggleRecipient(contactId, selected) {
-  toggleRecipientBase(contactId, selected, updateLinkKeyState);
+  toggleRecipientBase(contactId, selected, onRecipientChange);
 }
 
 function removeContactUI(contactId) {
-  removeContactUIBase(contactId, updateLinkKeyState);
+  removeContactUIBase(contactId, onRecipientChange);
 }
 
 // =============================================================================
@@ -488,7 +455,7 @@ async function searchUserByUsername() {
 
         try {
           await IdentityManager.addContact(contact);
-          loadContacts(updateLinkKeyState);
+          loadContacts(onRecipientChange);
           searchResult.innerHTML = ""; // Clear - toast handles feedback
           showToast(`Added @${userData.username} as contact ✓`);
         } catch (error) {
@@ -546,7 +513,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Reveal page now that auth state is determined
   document.documentElement.classList.add("auth-resolved");
 
-  loadContacts(updateLinkKeyState);
+  loadContacts(onRecipientChange);
 
   // Initialize custom expiry dropdown
   initializeExpiryDropdown();
@@ -591,10 +558,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
-  // Access configuration checkboxes
-  document
-    .getElementById("includeLinkKey")
-    ?.addEventListener("change", validateAccessConfig);
+  // Access configuration checkbox
   document
     .getElementById("enableSigning")
     ?.addEventListener("change", validateAccessConfig);
@@ -881,8 +845,8 @@ async function executeUpload() {
   const uploadBtn = document.getElementById("uploadBtn");
   const enableSigning =
     document.getElementById("enableSigning")?.checked || false;
-  const includeLinkKey =
-    document.getElementById("includeLinkKey")?.checked !== false;
+  // Secure Share never includes key in link - that's what makes it "secure"
+  const includeLinkKey = false;
 
   const container = document.querySelector(".container[data-state]");
   if (container) {
