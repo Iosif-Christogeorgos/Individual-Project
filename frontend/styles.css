@@ -522,403 +522,52 @@ p {
 }
 
 /* -----------------------------------------------------------------------------
-   Cinematic Encryption Lock Animation
+   Security Shield Badge (File Selected Icon)
    ----------------------------------------------------------------------------- */
-.encryption-lock {
+.file-selected-icon.security-badge {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 0.5rem;
-  color: var(--text-muted);
-  transition: color 0.3s ease;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  color: var(--cyber-green);
+  transition: color 0.3s ease, filter 0.3s ease;
+  flex-shrink: 0;
 }
 
-.encryption-lock .lock-svg {
-  width: 48px;
-  height: 60px;
+.security-badge .shield-svg {
+  width: 28px;
+  height: 28px;
+  filter: drop-shadow(0 0 8px rgba(0, 255, 65, 0.4));
   transition: filter 0.3s ease;
 }
 
-.encryption-lock .lock-shackle {
-  transition: stroke 0.3s ease;
-}
-
-.encryption-lock .lock-body {
+.security-badge .shield-body {
   transition: fill 0.3s ease;
 }
 
-/* Hover state - subtle lift */
-.drop-zone:hover .encryption-lock {
-  color: var(--text-secondary);
+.security-badge .shield-check {
+  stroke-dasharray: 20;
+  stroke-dashoffset: 0;
 }
 
-.drop-zone:hover .encryption-lock .lock-svg {
-  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.15));
+/* Signed state - purple accent */
+.security-badge.signed {
+  color: var(--accent-purple, #8b5cf6);
 }
 
-/* File ready state */
-.encryption-lock.file-ready {
-  color: var(--text-primary);
+.security-badge.signed .shield-svg {
+  filter: drop-shadow(0 0 8px rgba(139, 92, 246, 0.5));
 }
 
-/* Processing state - orange glow */
-.encryption-lock.processing {
-  color: #f59e0b;
-}
-
-.encryption-lock.processing .lock-svg {
-  filter: drop-shadow(0 0 15px rgba(245, 158, 11, 0.6));
-  animation: processingPulse 1s ease-in-out infinite;
-}
-
-@keyframes processingPulse {
-  0%,
-  100% {
-    filter: drop-shadow(0 0 10px rgba(245, 158, 11, 0.4));
-  }
-  50% {
-    filter: drop-shadow(0 0 20px rgba(245, 158, 11, 0.7));
-  }
-}
-
-/* Success state - neon green glow */
-.encryption-lock.success {
-  color: var(--cyber-green);
-}
-
-.encryption-lock.success .lock-svg {
-  filter: drop-shadow(0 0 15px rgba(0, 255, 65, 0.6));
-}
-
-/* Error state - red */
-.encryption-lock.error {
-  color: var(--error);
-}
-
-.encryption-lock.error .lock-svg {
-  filter: drop-shadow(0 0 15px rgba(255, 59, 59, 0.6));
-}
-
-/* Status text */
-.encryption-status {
-  text-align: center;
-  min-height: 1.5rem;
-}
-
-.encryption-lock .status-text {
+/* Ready status text */
+.file-ready-status {
   font-family: var(--font-mono);
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: inherit;
-  transition: color 0.3s ease;
-}
-
-.encryption-lock.success .status-text {
-  color: var(--cyber-green);
-}
-
-.encryption-lock.error .status-text {
-  color: var(--error);
-}
-
-/* Scramble text - encryption effect */
-.encryption-lock .scramble-text {
-  display: none;
-  font-family: var(--font-mono);
-  font-size: 0.85rem;
-  font-weight: 500;
-  color: #f59e0b;
-  letter-spacing: 0.05em;
-  text-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
-}
-
-.encryption-lock.processing .scramble-text {
-  display: inline;
-}
-
-/* -----------------------------------------------------------------------------
-   Enhanced Encryption Animation Effects
-   ----------------------------------------------------------------------------- */
-
-/* Progress Ring - Circular indicator around lock */
-.encryption-lock .progress-ring {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 90px;
-  height: 90px;
-  transform: translate(-50%, -50%);
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  pointer-events: none;
-  z-index: 1;
-}
-
-.encryption-lock.processing .progress-ring {
-  opacity: 1;
-}
-
-.progress-ring-bg {
-  opacity: 0.3;
-}
-
-.progress-ring-fill {
-  transition: stroke-dashoffset 0.3s ease-out;
-}
-
-/* Particle Container */
-.encryption-lock .particle-container {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 100px;
-  height: 100px;
-  transform: translate(-50%, -50%);
-  pointer-events: none;
-  z-index: 2;
-}
-
-/* Individual Encryption Particles */
-.encryption-particle {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 600;
-  color: #f59e0b;
-  text-shadow: 0 0 8px rgba(245, 158, 11, 0.8);
-  opacity: 0;
-  animation: particleFloat var(--duration, 1.5s) ease-out forwards;
-}
-
-@keyframes particleFloat {
-  0% {
-    transform: translate(var(--start-x, 0), var(--start-y, 0));
-    opacity: 1;
-  }
-  70% {
-    opacity: 0.8;
-  }
-  100% {
-    transform: translate(var(--end-x, 0), var(--end-y, 0));
-    opacity: 0;
-  }
-}
-
-/* Scan Lines Overlay */
-.encryption-lock .scan-lines {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 2px,
-    rgba(0, 0, 0, 0.03) 2px,
-    rgba(0, 0, 0, 0.03) 4px
-  );
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  z-index: 3;
-}
-
-.encryption-lock.processing .scan-lines {
-  opacity: 1;
-  animation: scanMove 2s linear infinite;
-}
-
-@keyframes scanMove {
-  0% {
-    transform: translateY(0);
-  }
-  100% {
-    transform: translateY(4px);
-  }
-}
-
-/* Energy Pulse Effect - Success */
-.energy-pulse {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: rgba(0, 255, 65, 0.6);
-  transform: translate(-50%, -50%);
-  animation: energyPulse 0.8s ease-out forwards;
-  pointer-events: none;
-  z-index: 0;
-}
-
-@keyframes energyPulse {
-  0% {
-    width: 20px;
-    height: 20px;
-    opacity: 0.8;
-    box-shadow: 0 0 20px rgba(0, 255, 65, 0.8), 0 0 40px rgba(0, 255, 65, 0.4);
-  }
-  100% {
-    width: 150px;
-    height: 150px;
-    opacity: 0;
-    box-shadow: 0 0 60px rgba(0, 255, 65, 0.3), 0 0 100px rgba(0, 255, 65, 0.1);
-  }
-}
-
-/* Enhanced Processing State - Multi-layer glow */
-.encryption-lock.processing {
-  color: #f59e0b;
-}
-
-.encryption-lock.processing .lock-svg {
-  filter: drop-shadow(0 0 8px rgba(245, 158, 11, 0.6))
-    drop-shadow(0 0 20px rgba(245, 158, 11, 0.3));
-  animation: processingPulseEnhanced 1.2s ease-in-out infinite;
-}
-
-@keyframes processingPulseEnhanced {
-  0%,
-  100% {
-    filter: drop-shadow(0 0 8px rgba(245, 158, 11, 0.5))
-      drop-shadow(0 0 15px rgba(245, 158, 11, 0.2));
-  }
-  50% {
-    filter: drop-shadow(0 0 15px rgba(245, 158, 11, 0.8))
-      drop-shadow(0 0 30px rgba(245, 158, 11, 0.4))
-      drop-shadow(0 0 45px rgba(255, 107, 53, 0.2));
-  }
-}
-
-/* Enhanced Success State - Brilliant glow */
-.encryption-lock.success {
-  color: var(--cyber-green);
-}
-
-.encryption-lock.success .lock-svg {
-  filter: drop-shadow(0 0 10px rgba(0, 255, 65, 0.7))
-    drop-shadow(0 0 25px rgba(0, 255, 65, 0.4))
-    drop-shadow(0 0 40px rgba(0, 255, 65, 0.2));
-  animation: successGlow 2s ease-in-out infinite;
-}
-
-@keyframes successGlow {
-  0%,
-  100% {
-    filter: drop-shadow(0 0 10px rgba(0, 255, 65, 0.6))
-      drop-shadow(0 0 20px rgba(0, 255, 65, 0.3));
-  }
-  50% {
-    filter: drop-shadow(0 0 15px rgba(0, 255, 65, 0.8))
-      drop-shadow(0 0 30px rgba(0, 255, 65, 0.5))
-      drop-shadow(0 0 50px rgba(0, 255, 65, 0.2));
-  }
-}
-
-/* Enhanced Scramble Text */
-.encryption-lock .scramble-text {
-  display: none;
-  font-family: var(--font-mono);
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: #f59e0b;
-  letter-spacing: 0.08em;
-  text-shadow: 0 0 10px rgba(245, 158, 11, 0.6);
-  text-transform: uppercase;
-}
-
-.encryption-lock.processing .scramble-text {
-  display: inline;
-  animation: textFlicker 0.1s linear infinite;
-}
-
-@keyframes textFlicker {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.85;
-  }
-}
-
-.encryption-lock.success .scramble-text {
-  display: inline;
-  color: var(--cyber-green);
-  text-shadow: 0 0 12px rgba(0, 255, 65, 0.7);
-  animation: none;
-}
-
-/* File Ready State - Subtle breathing glow */
-.encryption-lock.file-ready {
-  color: var(--text-primary);
-}
-
-.encryption-lock.file-ready .lock-svg {
-  animation: readyBreathing 2s ease-in-out infinite;
-}
-
-@keyframes readyBreathing {
-  0%,
-  100% {
-    filter: drop-shadow(0 0 5px rgba(0, 255, 65, 0.3));
-  }
-  50% {
-    filter: drop-shadow(0 0 12px rgba(0, 255, 65, 0.5));
-  }
-}
-
-/* CSP-Compliant Utility Classes for Animation */
-.progress-ring.visible {
-  opacity: 1;
-}
-
-.scramble-text.hidden {
-  display: none !important;
-}
-
-.scramble-text.show-success {
-  display: inline !important;
-  color: var(--cyber-green) !important;
-  text-shadow: 0 0 12px rgba(0, 255, 65, 0.7) !important;
-  animation: none !important;
-}
-
-.scramble-text.show-error {
-  display: inline !important;
-  color: var(--error) !important;
-  text-shadow: 0 0 12px rgba(255, 59, 59, 0.7) !important;
-  animation: none !important;
-}
-
-.file-selected-name.hidden,
-.file-selected-size.hidden,
-.encryption-status.hidden {
-  display: none !important;
-}
-
-/* Particle animation using CSS (fallback for CSP) */
-.encryption-particle.particle-animate {
-  animation: particleFloatDefault 1.5s ease-out forwards;
-}
-
-@keyframes particleFloatDefault {
-  0% {
-    transform: translate(40px, 0);
-    opacity: 1;
-  }
-  70% {
-    opacity: 0.8;
-  }
-  100% {
-    transform: translate(12px, 0);
-    opacity: 0;
-  }
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+  opacity: 0.7;
 }
 
 /* =============================================================================
@@ -1503,72 +1152,29 @@ p {
 /* Selected File */
 .file-selected {
   display: none;
+  flex-direction: row;
   background: rgba(0, 255, 65, 0.05);
   border: 1px solid rgba(0, 255, 65, 0.3);
   border-radius: var(--radius-sm);
-  padding: 1rem 1.25rem;
+  padding: 0.875rem 1rem;
   margin-bottom: 1.5rem;
   align-items: center;
-  gap: 1rem;
-  max-width: 100%; /* Prevent stretching beyond container */
-  overflow: hidden; /* Clip any overflow content */
+  gap: 0.875rem;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .file-selected.show {
   display: flex;
 }
 
-/* File Icon with Lock Animation */
+/* File Icon */
 .file-selected-icon {
   font-size: 1.5rem;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-}
-
-.file-selected-icon.encryption-lock {
-  position: relative;
-  width: 48px;
-  height: 60px;
-  color: var(--cyber-green);
-  transition: color 0.3s ease;
-  margin-top: 4px;
-  overflow: visible;
-}
-
-.file-selected-icon.encryption-lock .lock-svg {
-  width: 100%;
-  height: 100%;
-  transition: filter 0.3s ease;
-}
-
-/* Processing state - orange glow */
-.file-selected-icon.encryption-lock.processing {
-  color: #f59e0b;
-}
-
-.file-selected-icon.encryption-lock.processing .lock-svg {
-  filter: drop-shadow(0 0 12px rgba(245, 158, 11, 0.6));
-  animation: processingPulse 1s ease-in-out infinite;
-}
-
-/* Success state - neon green glow */
-.file-selected-icon.encryption-lock.success {
-  color: var(--cyber-green);
-}
-
-.file-selected-icon.encryption-lock.success .lock-svg {
-  filter: drop-shadow(0 0 12px rgba(0, 255, 65, 0.6));
-}
-
-/* Error state - red */
-.file-selected-icon.encryption-lock.error {
-  color: var(--error);
-}
-
-.file-selected-icon.encryption-lock.error .lock-svg {
-  filter: drop-shadow(0 0 12px rgba(255, 59, 59, 0.6));
 }
 
 .file-selected-info {
@@ -1591,27 +1197,7 @@ p {
   color: var(--text-muted);
 }
 
-/* Encryption status text within file-selected - hidden by default */
-.file-selected-info .encryption-status {
-  display: none;
-}
 
-/* Show encryption status during processing */
-.file-selected-icon.encryption-lock.processing
-  ~ .file-selected-info
-  .encryption-status {
-  display: block;
-}
-
-.file-selected-info .scramble-text {
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: #f59e0b;
-  letter-spacing: 0.05em;
-  text-shadow: 0 0 8px rgba(245, 158, 11, 0.4);
-  margin-top: 10px;
-}
 
 .file-selected-remove {
   background: transparent;
@@ -3152,9 +2738,9 @@ input[type="checkbox"] {
 }
 
 /* -----------------------------------------------------------------------------
-   Security Badge
+   Panel Security Badge (Footer element - NOT the file icon)
    ----------------------------------------------------------------------------- */
-.security-badge {
+.panel-security-badge {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3167,7 +2753,7 @@ input[type="checkbox"] {
   color: var(--text-muted);
 }
 
-.security-badge-icon {
+.panel-security-badge-icon {
   color: var(--cyber-green);
 }
 
@@ -4844,8 +4430,8 @@ input[type="checkbox"]:checked {
   }
 }
 
-/* Security badge pulse */
-.security-badge {
+/* Panel security badge pulse */
+.panel-security-badge {
   animation: badgePulse 3s ease-in-out infinite;
 }
 
@@ -5465,8 +5051,8 @@ input[type="checkbox"]:checked {
     font-size: 0.8rem;
   }
 
-  /* Security badge */
-  .security-badge {
+  /* Panel security badge */
+  .panel-security-badge {
     font-size: 0.7rem;
     flex-wrap: wrap;
     text-align: center;

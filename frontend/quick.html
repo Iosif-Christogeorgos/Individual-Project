@@ -85,46 +85,32 @@
 
               <!-- Selected File Display -->
               <div class="file-selected" id="fileSelected">
-                <div class="file-selected-icon encryption-lock" id="encryptionLock">
+                <!-- Shield Badge Icon -->
+                <div class="file-selected-icon security-badge" id="securityBadge">
                   <svg
-                    class="lock-svg"
-                    viewBox="-4 -4 72 80"
+                    class="shield-svg"
+                    viewBox="0 0 24 24"
                     fill="none"
                     xmlns="http://www.w3.org/2000/svg"
                   >
+                    <!-- Shield outline -->
                     <path
-                      class="lock-shackle"
-                      id="lockShackle"
-                      d="M16 36 L16 20 C16 9 24 2 32 2 C40 2 48 9 48 20 L48 36"
-                      stroke="currentColor"
-                      stroke-width="6"
-                      stroke-linecap="round"
-                      fill="none"
-                    />
-                    <rect
-                      class="lock-body"
-                      x="8"
-                      y="36"
-                      width="48"
-                      height="36"
-                      rx="4"
+                      class="shield-body"
+                      d="M12 2L4 5v6c0 5.25 3.4 10.15 8 11.5 4.6-1.35 8-6.25 8-11.5V5l-8-3z"
                       fill="currentColor"
+                      stroke="currentColor"
+                      stroke-width="1"
+                      stroke-linejoin="round"
                     />
-                    <circle
-                      class="lock-keyhole"
-                      cx="32"
-                      cy="50"
-                      r="5"
-                      fill="var(--bg-primary)"
-                    />
-                    <rect
-                      class="lock-keyhole-slot"
-                      x="29.5"
-                      y="50"
-                      width="5"
-                      height="10"
-                      rx="2"
-                      fill="var(--bg-primary)"
+                    <!-- Checkmark -->
+                    <path
+                      class="shield-check"
+                      d="M9 12l2 2 4-4"
+                      stroke="var(--bg-primary)"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      fill="none"
                     />
                   </svg>
                 </div>
@@ -132,9 +118,7 @@
                 <div class="file-selected-info">
                   <div class="file-selected-name" id="fileName">filename.txt</div>
                   <div class="file-selected-size" id="fileSize">0 KB</div>
-                  <div class="encryption-status" id="encryptionStatus">
-                    <span class="scramble-text" id="scrambleText"></span>
-                  </div>
+                  <div class="file-ready-status">Ready to encrypt</div>
                 </div>
                 <button
                   class="file-selected-remove"

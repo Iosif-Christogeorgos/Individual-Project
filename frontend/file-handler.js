@@ -148,11 +148,6 @@ export function handleFileSelect(file, onValid) {
   fileSize.textContent = formatFileSize(file.size);
   fileSelected.classList.add("show");
   dropZone.classList.add("hidden");
-  
-  // Trigger lock animation for file ready state
-  if (window.encryptionAnimator) {
-    window.encryptionAnimator.onFileSelect(file.name);
-  }
 
   if (onValid) {
     onValid(file);
@@ -170,11 +165,6 @@ export function clearFile() {
   if (fileInput) fileInput.value = "";
   if (fileSelected) fileSelected.classList.remove("show");
   if (dropZone) dropZone.classList.remove("hidden");
-  
-  // Reset lock animation to idle
-  if (window.encryptionAnimator) {
-    window.encryptionAnimator.reset();
-  }
 }
 
 /**
