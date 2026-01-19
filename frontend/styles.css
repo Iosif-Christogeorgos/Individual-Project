@@ -233,7 +233,7 @@ body {
   box-shadow: 0 0 0 1px var(--glass-highlight) inset,
     0 25px 50px -12px rgba(0, 0, 0, 0.5);
   min-width: 0; /* Prevent grid cell from expanding due to content */
-  overflow: hidden; /* Clip all overflow */
+  overflow: visible; /* Allow dropdown to extend above */
 }
 
 .panel-card-header {
