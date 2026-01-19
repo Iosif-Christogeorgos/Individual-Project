@@ -5728,8 +5728,25 @@ input[type="checkbox"]:checked {
   justify-content: space-between;
 }
 
+.mode-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
 .mode-icon {
   font-size: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mode-icon-quick {
+  color: #ffc800;
+}
+
+.mode-icon-secure {
+  color: var(--cyber-green);
 }
 
 .mode-badge {
