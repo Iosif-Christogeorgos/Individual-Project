@@ -101,13 +101,19 @@
         </a>
       </div>
 
-      <!-- Encryption Badge -->
+      <!-- Encryption Badges -->
       <div class="encryption-footer">
-        <span class="encryption-badge"><svg class="lucide-icon inline-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> AES-256-GCM</span>
+        <div class="encryption-badge-wrapper" data-tooltip="Military-grade encryption standard. Your files are protected with 256-bit keys that would take billions of years to crack.">
+          <span class="encryption-badge encryption-badge-aes"><svg class="lucide-icon inline-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> AES-256-GCM</span>
+        </div>
         <span class="encryption-separator">•</span>
-        <span class="encryption-badge"><svg class="lucide-icon inline-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg> Zero-Knowledge</span>
+        <div class="encryption-badge-wrapper" data-tooltip="We never see your encryption keys. Files are encrypted before leaving your device, so only you and your recipients can access them.">
+          <span class="encryption-badge encryption-badge-zk"><svg class="lucide-icon inline-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg> Zero-Knowledge</span>
+        </div>
         <span class="encryption-separator">•</span>
-        <span class="encryption-badge"><svg class="lucide-icon inline-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15.5 7.5 2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L19 4"/><path d="m21 2-9.6 9.6"/><circle cx="7.5" cy="15.5" r="5.5"/></svg> Client-Side Encryption</span>
+        <div class="encryption-badge-wrapper" data-tooltip="Every file is digitally signed using elliptic curve cryptography. Recipients can verify the sender's identity and confirm the file hasn't been tampered with.">
+          <span class="encryption-badge encryption-badge-ecdsa"><svg class="lucide-icon inline-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/><path d="m9 12 2 2 4-4"/></svg> ECDSA Signatures</span>
+        </div>
       </div>
     </div>
   </body>
