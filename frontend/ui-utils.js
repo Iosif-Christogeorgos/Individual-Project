@@ -39,14 +39,14 @@ export function showAlert(title, message, type = "error") {
 
   // Update icon based on type
   const icons = {
-    error: "⚠️",
-    success: "✅",
-    info: "ℹ️",
-    warning: "⚡",
+    error: '<svg class="lucide-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>',
+    success: '<svg class="lucide-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>',
+    info: '<svg class="lucide-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>',
+    warning: '<svg class="lucide-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></svg>',
   };
   
   if (alertIcon) {
-    alertIcon.textContent = icons[type] || icons.error;
+    alertIcon.innerHTML = icons[type] || icons.error;
   }
 
   alert.classList.add("show");
@@ -81,7 +81,7 @@ export function showToast(message, duration = 3000) {
   // Create toast element
   const toast = document.createElement("div");
   toast.className = "toast-notification";
-  toast.innerHTML = `<span class="toast-icon">ℹ️</span><span class="toast-message">${escapeHtml(message)}</span>`;
+  toast.innerHTML = `<span class="toast-icon"><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></span><span class="toast-message">${escapeHtml(message)}</span>`;
   document.body.appendChild(toast);
 
   // Trigger animation
@@ -186,9 +186,9 @@ export function updateStep(stepId, status) {
 
   if (icon) {
     if (status === "complete") {
-      icon.textContent = "✓";
+      icon.innerHTML = '<svg class="lucide-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--cyber-green)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
     } else if (status === "error") {
-      icon.textContent = "✗";
+      icon.innerHTML = '<svg class="lucide-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--error)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>';
     } else {
       icon.textContent = "○";
     }

@@ -236,17 +236,17 @@ function showInvalidLinkPage(title, message) {
       <div class="logo-text">Cryp<span>Share</span></div>
     </div>
 
-    <span class="download-icon">❌</span>
+    <span class="download-icon"><svg class="lucide-icon" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg></span>
 
     <h2 class="justify-center">${title}</h2>
     <p>${message}</p>
 
     <a href="/" class="btn btn-primary text-decoration-none d-inline-flex items-center justify-center gap-2">
-      <span>📤</span> Upload a New File
+      <span><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg></span> Upload a New File
     </a>
 
     <div class="security-badge">
-      <span class="security-badge-icon">💡</span>
+      <span class="security-badge-icon"><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg></span>
       <span>Need help? Make sure you have the complete share link</span>
     </div>
   `;
@@ -264,7 +264,7 @@ function showIdentityRequiredPage() {
       <div class="logo-text">Cryp<span>Share</span></div>
     </div>
 
-    <span class="download-icon">🔑</span>
+    <span class="download-icon"><svg class="lucide-icon" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15.5 7.5 2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L19 4"/><path d="m21 2-9.6 9.6"/><circle cx="7.5" cy="15.5" r="5.5"/></svg></span>
 
     <h2 class="justify-center">Identity Required</h2>
     <p>
@@ -275,7 +275,7 @@ function showIdentityRequiredPage() {
       currentIdentity
         ? `
       <div class="identity-info">
-        <span class="identity-badge">🆔</span>
+        <span class="identity-badge"><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 10h2"/><path d="M16 14h2"/><path d="M6.17 15a3 3 0 0 1 5.66 0"/><circle cx="9" cy="11" r="2"/><rect x="2" y="5" width="20" height="14" rx="2"/></svg></span>
         <span>Your identity: <strong>${escapeHtml(
           currentIdentity.displayName
         )}</strong></span>
@@ -288,13 +288,13 @@ function showIdentityRequiredPage() {
         : `
       <p>You need to set up your cryptographic identity to decrypt this file.</p>
       <a href="/" class="btn btn-secondary text-decoration-none d-inline-flex items-center justify-center gap-2 mb-4">
-        <span>🆔</span> Set Up Identity
+        <span><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 10h2"/><path d="M16 14h2"/><path d="M6.17 15a3 3 0 0 1 5.66 0"/><circle cx="9" cy="11" r="2"/><rect x="2" y="5" width="20" height="14" rx="2"/></svg></span> Set Up Identity
       </a>
     `
     }
 
     <a href="/" class="btn btn-primary text-decoration-none d-inline-flex items-center justify-center gap-2">
-      <span>📤</span> Upload a New File
+      <span><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg></span> Upload a New File
     </a>
   `;
 }
@@ -475,7 +475,7 @@ async function startDownload() {
   showStatus();
 
   btn.disabled = true;
-  btn.innerHTML = "<span>⏳</span> Decrypting...";
+  btn.innerHTML = '<span><svg class="lucide-icon animate-spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg></span> Decrypting...';
 
   try {
     if (!window.crypto || !window.crypto.subtle) {
@@ -579,7 +579,7 @@ async function startDownload() {
         (downloadProgress) => {
           // Download progress (step 1)
           if (downloadProgress < 100) {
-            btn.innerHTML = `<span>⬇️</span> Downloading... ${downloadProgress}%`;
+            btn.innerHTML = '<span><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg></span> Downloading... ${downloadProgress}%';
           } else {
             updateStep("step1", "complete");
           }
@@ -587,7 +587,7 @@ async function startDownload() {
         (decryptProgress) => {
           // Decryption progress (step 3)
           if (decryptProgress < 100) {
-            btn.innerHTML = `<span>🔓</span> Decrypting... ${decryptProgress}%`;
+            btn.innerHTML = '<span><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg></span> Decrypting... ${decryptProgress}%';
           }
         }
       );
@@ -682,7 +682,7 @@ async function startDownload() {
 
     // Success state
     btn.disabled = false;
-    btn.innerHTML = "<span>✓</span> Download Complete";
+    btn.innerHTML = '<span><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span> Download Complete';
     btn.classList.add("btn-secondary");
     btn.classList.remove("btn-primary");
   } catch (error) {
@@ -701,7 +701,7 @@ async function startDownload() {
     );
 
     btn.disabled = false;
-    btn.innerHTML = "<span>⬇️</span> Retry Download";
+    btn.innerHTML = '<span><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg></span> Retry Download';
   }
 }
 
@@ -722,7 +722,7 @@ function showSignatureVerified() {
 
   infoEl.innerHTML = `
     <div class="signature-verified">
-      <span class="sig-icon">✅</span>
+      <span class="sig-icon"><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg></span>
       <span>Signature verified - File was signed by the uploader</span>
     </div>
   `;
@@ -735,7 +735,7 @@ function showSignatureWarning() {
 
   infoEl.innerHTML = `
     <div class="signature-warning">
-      <span class="sig-icon">⚠️</span>
+      <span class="sig-icon"><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></span>
       <span>Signature verification failed - File may have been tampered with</span>
     </div>
   `;

@@ -176,22 +176,22 @@ function copyLink() {
     .writeText(input.value)
     .then(() => {
       btn.classList.add("copied");
-      btn.innerHTML = "<span>✓</span> Copied!";
+      btn.innerHTML = '<span><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span> Copied!';
       linkCopied = true;
 
       setTimeout(() => {
         btn.classList.remove("copied");
-        btn.innerHTML = "<span>📋</span> Copy";
+        btn.innerHTML = '<span><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg></span> Copy';
       }, 2000);
     })
     .catch(() => {
       // Clipboard API failed (e.g., insecure context) - select text for manual copy
       input.select();
       input.setSelectionRange(0, 99999); // For mobile
-      btn.innerHTML = "<span>⚠️</span> Select & Copy";
+      btn.innerHTML = '<span><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></span> Select & Copy';
 
       setTimeout(() => {
-        btn.innerHTML = "<span>📋</span> Copy";
+        btn.innerHTML = '<span><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg></span> Copy';
       }, 3000);
     });
 }
@@ -220,7 +220,7 @@ function resetToUpload() {
   const copyBtn = document.getElementById("copyBtn");
   if (copyBtn) {
     copyBtn.classList.remove("copied");
-    copyBtn.innerHTML = "<span>📋</span> Copy";
+    copyBtn.innerHTML = '<span><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg></span> Copy';
   }
 }
 
@@ -321,7 +321,7 @@ async function createIdentity() {
   }
 
   createBtn.disabled = true;
-  createBtn.innerHTML = "<span>⏳</span> Creating...";
+  createBtn.innerHTML = '<span><svg class="lucide-icon animate-spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg></span> Creating...';
 
   try {
     // 1. Generate Identity (using @username as display name)
@@ -329,7 +329,7 @@ async function createIdentity() {
     currentIdentity = await IdentityManager.generateIdentity(displayName);
 
     // 2. Publish Immediately
-    createBtn.innerHTML = "<span>🌐</span> Publishing...";
+    createBtn.innerHTML = '<span><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg></span> Publishing...';
 
     const publicIdentity =
       IdentityManager.exportPublicIdentity(currentIdentity);
@@ -363,7 +363,7 @@ async function createIdentity() {
   } finally {
     if (createBtn) {
       createBtn.disabled = false;
-      createBtn.innerHTML = "<span>🚀</span> Create & Publish";
+      createBtn.innerHTML = '<span><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg></span> Create & Publish';
     }
   }
 }
@@ -430,7 +430,7 @@ async function searchUserByUsername() {
           <div class="search-result-fingerprint" title="${escapeHtml(
             userData.fingerprint
           )}">
-            🔑 ${escapeHtml(
+            <svg class="lucide-icon inline-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15.5 7.5 2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L19 4"/><path d="m21 2-9.6 9.6"/><circle cx="7.5" cy="15.5" r="5.5"/></svg> ${escapeHtml(
               userData.fingerprint.substring(0, 8)
             )}...${escapeHtml(userData.fingerprint.substring(56))}
           </div>
@@ -737,7 +737,7 @@ window.cancelUpload = function () {
     // Reset UI
     if (uploadBtn) {
       uploadBtn.disabled = false;
-      uploadBtn.innerHTML = "<span>🔒</span> Encrypt & Upload";
+      uploadBtn.innerHTML = '<span><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span> Encrypt & Upload';
     }
 
     // Hide progress and reset animation
@@ -825,7 +825,7 @@ function cancelUpload() {
   const uploadBtn = document.getElementById("uploadBtn");
   if (uploadBtn) {
     uploadBtn.disabled = false;
-    uploadBtn.innerHTML = "<span>🔒</span> Encrypt & Upload";
+    uploadBtn.innerHTML = '<span><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span> Encrypt & Upload';
   }
 
   // Hide progress and reset animation
@@ -867,7 +867,7 @@ async function executeUpload() {
   }
 
   uploadBtn.disabled = true;
-  uploadBtn.innerHTML = "<span>⏳</span> Processing...";
+  uploadBtn.innerHTML = '<span><svg class="lucide-icon animate-spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg></span> Processing...';
   isUploading = true; // Lock button during upload
 
   // Create AbortController for cancellation support
@@ -925,7 +925,7 @@ async function executeUpload() {
     isUploading = false; // Unlock button state
     uploadAbortController = null; // Clean up controller
     uploadBtn.disabled = false;
-    uploadBtn.innerHTML = "<span>🔒</span> Encrypt & Upload";
+    uploadBtn.innerHTML = '<span><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span> Encrypt & Upload';
   }
 }
 
@@ -1224,16 +1224,16 @@ function showShareModeInfo(hasLinkKey, recipientCount) {
   let icon = "";
 
   if (hasLinkKey && recipientCount > 0) {
-    icon = "🔐";
+    icon = '<svg class="lucide-icon inline-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/></svg>';
     message = `Hybrid access: Anyone with link can decrypt + ${recipientCount} identity recipient(s)`;
   } else if (hasLinkKey) {
-    icon = "🔗";
+    icon = '<svg class="lucide-icon inline-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>';
     message = "Link-based access: Anyone with this link can decrypt the file";
   } else if (recipientCount > 0) {
-    icon = "👤";
+    icon = '<svg class="lucide-icon inline-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>';
     message = `Identity-only access: Only ${recipientCount} selected recipient(s) can decrypt`;
   } else {
-    icon = "⚠️";
+    icon = '<svg class="lucide-icon inline-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>';
     message = "Warning: No access method selected. File cannot be decrypted!";
   }
 
@@ -1248,17 +1248,17 @@ function showUploadStatusBadges(hasLinkKey, recipientCount, isSigned) {
   let badges = [];
 
   badges.push(
-    `<span class="status-badge badge-encrypted">🔒 AES-256-GCM Encrypted</span>`
+    `<span class="status-badge badge-encrypted"><svg class="lucide-icon inline-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> AES-256-GCM Encrypted</span>`
   );
 
   if (recipientCount > 0) {
     badges.push(
-      `<span class="status-badge badge-identity">👤 ${recipientCount} Recipient(s)</span>`
+      `<span class="status-badge badge-identity"><svg class="lucide-icon inline-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> ${recipientCount} Recipient(s)</span>`
     );
   }
 
   if (isSigned) {
-    badges.push(`<span class="status-badge badge-signed">✍️ Signed</span>`);
+    badges.push(`<span class="status-badge badge-signed"><svg class="lucide-icon inline-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.854z"/></svg> Signed</span>`);
   }
 
   container.innerHTML = badges.join("");
@@ -1325,7 +1325,7 @@ function updateSecurityWarning(hasLinkKey) {
         This link includes the encryption key. Anyone with the link can decrypt and download the file.
       </p>
       <div class="spw-critical-box">
-        <span class="spw-warning-icon">⚠️</span>
+        <span class="spw-warning-icon"><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></span>
         <span class="spw-warning-text">
           <strong>SECURITY NOTE:</strong> Share only via trusted, secure channels. 
           Avoid public forums or group chats.
@@ -1342,7 +1342,7 @@ function updateSecurityWarning(hasLinkKey) {
         This link does not contain the decryption key. Only selected recipients with matching identities can decrypt.
       </p>
       <div class="spw-success-box">
-        <span class="spw-success-icon">🛡️</span>
+        <span class="spw-success-icon"><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg></span>
         <span class="spw-success-text">
           <strong>ENHANCED SECURITY:</strong> Even if the link is intercepted, 
           the file cannot be decrypted without the recipient's private key.

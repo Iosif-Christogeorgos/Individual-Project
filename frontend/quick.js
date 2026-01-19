@@ -66,20 +66,20 @@ function copyLink() {
     .writeText(input.value)
     .then(() => {
       btn.classList.add("copied");
-      btn.innerHTML = "<span>✓</span> Copied!";
+      btn.innerHTML = '<span><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span> Copied!';
 
       setTimeout(() => {
         btn.classList.remove("copied");
-        btn.innerHTML = "<span>📋</span> Copy";
+        btn.innerHTML = '<span><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg></span> Copy';
       }, 2000);
     })
     .catch(() => {
       input.select();
       input.setSelectionRange(0, 99999);
-      btn.innerHTML = "<span>⚠️</span> Select & Copy";
+      btn.innerHTML = '<span><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></span> Select & Copy';
 
       setTimeout(() => {
-        btn.innerHTML = "<span>📋</span> Copy";
+        btn.innerHTML = '<span><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg></span> Copy';
       }, 3000);
     });
 }
@@ -93,7 +93,7 @@ function resetToUpload() {
   const copyBtn = document.getElementById("copyBtn");
   if (copyBtn) {
     copyBtn.classList.remove("copied");
-    copyBtn.innerHTML = "<span>📋</span> Copy";
+    copyBtn.innerHTML = '<span><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg></span> Copy';
   }
 }
 
@@ -162,7 +162,7 @@ window.cancelUpload = function () {
   const uploadBtn = document.getElementById("uploadBtn");
   if (uploadBtn) {
     uploadBtn.disabled = false;
-    uploadBtn.innerHTML = "<span>🔒</span> Encrypt & Upload";
+    uploadBtn.innerHTML = '<span><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span> Encrypt & Upload';
   }
 
   hideProgress();
@@ -215,7 +215,7 @@ function cancelUpload() {
   const uploadBtn = document.getElementById("uploadBtn");
   if (uploadBtn) {
     uploadBtn.disabled = false;
-    uploadBtn.innerHTML = "<span>🔒</span> Encrypt & Upload";
+    uploadBtn.innerHTML = '<span><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span> Encrypt & Upload';
   }
 
   hideProgress();
@@ -233,7 +233,7 @@ async function executeUpload() {
   const expiryHours = getSelectedExpiryHours();
 
   uploadBtn.disabled = true;
-  uploadBtn.innerHTML = "<span>⏳</span> Processing...";
+  uploadBtn.innerHTML = '<span><svg class="lucide-icon animate-spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg></span> Processing...';
   isUploading = true;
 
   uploadAbortController = new AbortController();
@@ -273,7 +273,7 @@ async function executeUpload() {
     isUploading = false;
     uploadAbortController = null;
     uploadBtn.disabled = false;
-    uploadBtn.innerHTML = "<span>🔒</span> Encrypt & Upload";
+    uploadBtn.innerHTML = '<span><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span> Encrypt & Upload';
   }
 }
 
