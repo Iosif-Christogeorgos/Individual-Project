@@ -129,43 +129,26 @@
                 </button>
               </div>
 
-              <!-- Expiry Selector -->
-              <div class="access-options">
-                <div class="option-group expiry-selector">
-                  <div class="custom-dropdown" id="expiryDropdown">
-                    <button
-                      type="button"
-                      class="dropdown-trigger"
-                      id="dropdownTrigger"
-                    >
-                      <span class="dropdown-label"><svg class="lucide-icon inline-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> File expires in</span>
-                      <span class="dropdown-value" id="dropdownValue">24 hours</span>
-                      <svg
-                        class="dropdown-arrow"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                      >
-                        <polyline points="6 9 12 15 18 9"></polyline>
-                      </svg>
-                    </button>
-                    <div class="dropdown-menu" id="dropdownMenu">
-                      <div class="dropdown-option" data-value="1">1 hour</div>
-                      <div class="dropdown-option" data-value="6">6 hours</div>
-                      <div class="dropdown-option selected" data-value="24">24 hours</div>
-                      <div class="dropdown-option" data-value="72">3 days</div>
-                      <div class="dropdown-option" data-value="168">7 days</div>
-                    </div>
-                  </div>
-                  <select id="expirySelect" class="sr-only" aria-hidden="true">
-                    <option value="1">1 hour</option>
-                    <option value="6">6 hours</option>
-                    <option value="24" selected>24 hours</option>
-                    <option value="72">3 days</option>
-                    <option value="168">7 days</option>
-                  </select>
+              <!-- Expiry Pills -->
+              <div class="expiry-pills-container">
+                <span class="expiry-pills-label">
+                  <svg class="lucide-icon inline-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                  Expires in
+                </span>
+                <div class="expiry-pills" id="expiryPills">
+                  <button type="button" class="expiry-pill" data-value="1">1h</button>
+                  <button type="button" class="expiry-pill" data-value="6">6h</button>
+                  <button type="button" class="expiry-pill selected" data-value="24">24h</button>
+                  <button type="button" class="expiry-pill" data-value="72">3d</button>
+                  <button type="button" class="expiry-pill" data-value="168">7d</button>
                 </div>
+                <select id="expirySelect" class="sr-only" aria-hidden="true">
+                  <option value="1">1 hour</option>
+                  <option value="6">6 hours</option>
+                  <option value="24" selected>24 hours</option>
+                  <option value="72">3 days</option>
+                  <option value="168">7 days</option>
+                </select>
               </div>
 
               <!-- Upload Button -->

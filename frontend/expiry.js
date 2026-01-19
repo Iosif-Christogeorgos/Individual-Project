@@ -17,6 +17,17 @@ let countdownInterval = null;
  * Sets up event listeners for toggle, selection, and keyboard navigation.
  */
 export function initializeExpiryDropdown() {
+  // Initialize dropdown (if present)
+  initializeDropdown();
+  
+  // Initialize pills (if present)
+  initializePills();
+}
+
+/**
+ * Initialize the dropdown UI (legacy/fallback).
+ */
+function initializeDropdown() {
   const dropdown = document.getElementById("expiryDropdown");
   const trigger = document.getElementById("dropdownTrigger");
   const menu = document.getElementById("dropdownMenu");
@@ -93,6 +104,39 @@ export function initializeExpiryDropdown() {
     if (e.key === "Escape") {
       closeDropdown(dropdown);
     }
+  });
+}
+
+/**
+ * Initialize the pills UI (modern single-click selection).
+ */
+function initializePills() {
+  const pillsContainer = document.getElementById("expiryPills");
+  const hiddenSelect = document.getElementById("expirySelect");
+
+  if (!pillsContainer) return;
+
+  const pills = pillsContainer.querySelectorAll(".expiry-pill");
+
+  pills.forEach((pill) => {
+    pill.addEventListener("click", (e) => {
+      e.preventDefault();
+
+      const value = pill.dataset.value;
+
+      // Update visual state - remove selected from all, add to clicked
+      pills.forEach((p) => p.classList.remove("selected"));
+      pill.classList.add("selected");
+
+      // Sync with hidden native select
+      if (hiddenSelect) {
+        hiddenSelect.value = value;
+        hiddenSelect.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+
+      // Update expiry notice (if present)
+      updateExpiryNotice();
+    });
   });
 }
 
