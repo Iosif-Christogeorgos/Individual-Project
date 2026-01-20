@@ -52,15 +52,13 @@ let uploadAbortController = null; // AbortController for cancelling in-progress 
 // =============================================================================
 
 /**
- * Validate access configuration (recipients selected, signing requirements, etc.)
+ * Validate access configuration (recipients selected)
  * @param {Object} options - Configuration options
  * @param {boolean} options.showWarning - Whether to show the warning UI (default: true)
  * @returns {{ valid: boolean, canUpload: boolean }}
  */
 function validateAccessConfig(options = {}) {
   const { showWarning = true } = options;
-  const enableSigning =
-    document.getElementById("enableSigning")?.checked || false;
   const uploadBtn = document.getElementById("uploadBtn");
   const warningEl = document.getElementById("accessWarning");
   const warningTitle = document.getElementById("accessWarningTitle");
@@ -73,7 +71,6 @@ function validateAccessConfig(options = {}) {
 
   let isValid = true;
   let canUpload = true;
-  let warningType = "error";
 
   if (selectedRecipients.length === 0) {
     isValid = false;
@@ -81,23 +78,14 @@ function validateAccessConfig(options = {}) {
     warningTitle.textContent = "No Recipients Selected";
     warningMessage.textContent =
       "Select at least one recipient to encrypt the file for.";
-    warningType = "error";
-  } else if (enableSigning && !currentIdentity) {
-    isValid = false;
-    canUpload = false; // Block upload - user must create identity or disable signing
-    warningTitle.textContent = "Cannot Sign File";
-    warningMessage.textContent =
-      "You enabled signing but have no identity. Create an identity first, or disable signing to continue.";
-    warningType = "error";
   }
 
   // Only show/hide warning UI if showWarning is true
   if (showWarning) {
     if (!isValid) {
       warningEl.classList.add("show");
-      warningEl.classList.toggle("warning", warningType === "warning");
     } else {
-      warningEl.classList.remove("show", "warning");
+      warningEl.classList.remove("show");
     }
   }
 
@@ -880,9 +868,7 @@ function cancelUpload() {
 
 async function executeUpload() {
   const uploadBtn = document.getElementById("uploadBtn");
-  const enableSigning =
-    document.getElementById("enableSigning")?.checked || false;
-  // Secure Share never includes key in link - that's what makes it "secure"
+  // Secure Share always signs files and never includes key in link
   const includeLinkKey = false;
 
   const container = document.querySelector(".container[data-state]");
@@ -932,7 +918,7 @@ async function executeUpload() {
 
     if (useStreaming) {
       try {
-        await executeStreamingUpload(file, enableSigning, includeLinkKey);
+        await executeStreamingUpload(file, includeLinkKey);
       } catch (streamError) {
         // Don't fallback if user cancelled
         if (streamError.name === "AbortError") {
@@ -942,10 +928,10 @@ async function executeUpload() {
           "⚠️ Streaming upload failed, falling back to buffered:",
           streamError.message
         );
-        await executeBufferedUpload(file, enableSigning, includeLinkKey);
+        await executeBufferedUpload(file, includeLinkKey);
       }
     } else {
-      await executeBufferedUpload(file, enableSigning, includeLinkKey);
+      await executeBufferedUpload(file, includeLinkKey);
     }
   } catch (error) {
     // Don't show error alert if user cancelled
@@ -966,41 +952,32 @@ async function executeUpload() {
   }
 }
 
-async function executeStreamingUpload(file, enableSigning, includeLinkKey) {
+async function executeStreamingUpload(file, includeLinkKey) {
   updateProgress(5, "Generating encryption key...");
   const aesKey = await CryptoModule.generateAESKey();
   const exportedKey = await CryptoModule.exportAESKey(aesKey);
 
-  // Only compute hash if signing is enabled (saves a full file read!)
-  let originalFileHash = null;
-  if (enableSigning) {
-    updateProgress(10, "Computing file hash for signature...");
-    originalFileHash = await CryptoModule.hashFile(file, (hashProgress) => {
-      const overallProgress = 10 + Math.round(hashProgress * 0.15);
-      updateProgress(overallProgress, `Hashing... ${hashProgress}%`);
-    });
-  }
+  // Always compute hash for signing (secure page always signs)
+  updateProgress(10, "Computing file hash for signature...");
+  const originalFileHash = await CryptoModule.hashFile(file, (hashProgress) => {
+    const overallProgress = 10 + Math.round(hashProgress * 0.15);
+    updateProgress(overallProgress, `Hashing... ${hashProgress}%`);
+  });
 
-  const encryptStartProgress = enableSigning ? 25 : 10;
-  updateProgress(encryptStartProgress, "Preparing metadata...");
+  updateProgress(25, "Preparing metadata...");
   const metadata = await prepareMetadata(
     file,
     originalFileHash,
     aesKey,
-    enableSigning,
     includeLinkKey
   );
 
-  updateProgress(encryptStartProgress + 5, "Starting streaming upload...");
+  updateProgress(30, "Starting streaming upload...");
   const { stream: encryptedStream } = await CryptoModule.createEncryptedStream(
     file,
     aesKey,
     (encryptProgress) => {
-      const progressRange = enableSigning ? 60 : 80;
-      const overallProgress =
-        encryptStartProgress +
-        5 +
-        Math.round(encryptProgress * (progressRange / 100));
+      const overallProgress = 30 + Math.round(encryptProgress * 0.6);
       updateProgress(
         overallProgress,
         `Encrypting & uploading... ${encryptProgress}%`
@@ -1040,12 +1017,11 @@ async function executeStreamingUpload(file, enableSigning, includeLinkKey) {
   showUploadSuccess(
     shareLink,
     includeLinkKey,
-    enableSigning,
     metadata.expiresAt
   );
 }
 
-async function executeBufferedUpload(file, enableSigning, includeLinkKey) {
+async function executeBufferedUpload(file, includeLinkKey) {
   updateProgress(5, "Generating encryption key...");
   const aesKey = await CryptoModule.generateAESKey();
   const exportedKey = await CryptoModule.exportAESKey(aesKey);
@@ -1055,27 +1031,20 @@ async function executeBufferedUpload(file, enableSigning, includeLinkKey) {
     file,
     aesKey,
     (chunkProgress) => {
-      const progressRange = enableSigning ? 40 : 55;
-      const overallProgress =
-        10 + Math.round(chunkProgress * (progressRange / 100));
+      const overallProgress = 10 + Math.round(chunkProgress * 0.4);
       updateProgress(overallProgress, `Encrypting... ${chunkProgress}%`);
     }
   );
 
-  // Only compute hash if signing is enabled (saves a full file read!)
-  let originalFileHash = null;
-  if (enableSigning) {
-    updateProgress(55, "Computing file hash for signature...");
-    originalFileHash = await CryptoModule.hashFile(file);
-  }
+  // Always compute hash for signing (secure page always signs)
+  updateProgress(50, "Computing file hash for signature...");
+  const originalFileHash = await CryptoModule.hashFile(file);
 
-  const metadataProgress = enableSigning ? 60 : 65;
-  updateProgress(metadataProgress, "Preparing metadata...");
+  updateProgress(55, "Preparing metadata...");
   const metadata = await prepareMetadata(
     file,
     originalFileHash,
     aesKey,
-    enableSigning,
     includeLinkKey
   );
 
@@ -1111,7 +1080,6 @@ async function executeBufferedUpload(file, enableSigning, includeLinkKey) {
   showUploadSuccess(
     shareLink,
     includeLinkKey,
-    enableSigning,
     metadata.expiresAt
   );
 }
@@ -1120,7 +1088,6 @@ async function prepareMetadata(
   file,
   contentHash,
   aesKey,
-  enableSigning,
   includeLinkKey
 ) {
   const expiryHours = getSelectedExpiryHours();
@@ -1168,7 +1135,8 @@ async function prepareMetadata(
     metadata.accessModes.push("link");
   }
 
-  if (enableSigning && currentIdentity) {
+  // Always sign on secure page when user has identity
+  if (currentIdentity) {
     const loadedIdentity = await IdentityManager.loadIdentityKeys(
       currentIdentity
     );
