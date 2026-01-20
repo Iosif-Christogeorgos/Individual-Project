@@ -6216,3 +6216,16 @@ input[type="checkbox"]:checked {
     font-size: 0.85rem;
   }
 }
+
+/* Quick Share - Gold/Yellow themed pills (speed theme) */
+#quickSharePanel .expiry-pill.selected {
+  background: rgba(255, 200, 0, 0.15);
+  border-color: #ffc800;
+  color: #ffc800;
+  box-shadow: 0 0 12px -3px rgba(255, 200, 0, 0.5);
+}
+
+#quickSharePanel .expiry-pill.selected:hover {
+  background: rgba(255, 200, 0, 0.22);
+  box-shadow: 0 0 16px -2px rgba(255, 200, 0, 0.6);
+}
