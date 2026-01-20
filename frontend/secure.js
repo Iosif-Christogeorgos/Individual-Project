@@ -51,7 +51,14 @@ let uploadAbortController = null; // AbortController for cancelling in-progress 
 // Access Configuration Validation
 // =============================================================================
 
-function validateAccessConfig() {
+/**
+ * Validate access configuration (recipients selected, signing requirements, etc.)
+ * @param {Object} options - Configuration options
+ * @param {boolean} options.showWarning - Whether to show the warning UI (default: true)
+ * @returns {{ valid: boolean, canUpload: boolean }}
+ */
+function validateAccessConfig(options = {}) {
+  const { showWarning = true } = options;
   const enableSigning =
     document.getElementById("enableSigning")?.checked || false;
   const uploadBtn = document.getElementById("uploadBtn");
@@ -84,11 +91,14 @@ function validateAccessConfig() {
     warningType = "error";
   }
 
-  if (!isValid) {
-    warningEl.classList.add("show");
-    warningEl.classList.toggle("warning", warningType === "warning");
-  } else {
-    warningEl.classList.remove("show", "warning");
+  // Only show/hide warning UI if showWarning is true
+  if (showWarning) {
+    if (!isValid) {
+      warningEl.classList.add("show");
+      warningEl.classList.toggle("warning", warningType === "warning");
+    } else {
+      warningEl.classList.remove("show", "warning");
+    }
   }
 
   // Don't change button state if upload is in progress
@@ -305,8 +315,8 @@ function updateIdentityUI() {
     identityFingerprint?.classList.add("hidden");
   }
 
-  // Re-validate access config after identity state change
-  validateAccessConfig();
+  // Re-validate access config after identity state change (silent - no warning shown)
+  validateAccessConfig({ showWarning: false });
 }
 
 async function createIdentity() {
@@ -529,8 +539,35 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
-  // Initial validation check
-  setTimeout(validateAccessConfig, 100);
+  // Add dropzone click handler to validate recipients before allowing file selection
+  const dropZone = document.getElementById("dropZone");
+  const fileInput = document.getElementById("fileInput");
+  
+  dropZone?.addEventListener("click", (e) => {
+    // Check if user has selected any recipients
+    const selectedRecipients = getSelectedRecipients();
+    if (selectedRecipients.length === 0) {
+      e.preventDefault();
+      e.stopPropagation();
+      // Show the warning
+      validateAccessConfig();
+      return false;
+    }
+  });
+
+  // Also block drag-and-drop if no recipients selected
+  dropZone?.addEventListener("drop", (e) => {
+    const selectedRecipients = getSelectedRecipients();
+    if (selectedRecipients.length === 0) {
+      e.preventDefault();
+      e.stopPropagation();
+      // Clear any dragged files
+      if (fileInput) fileInput.value = "";
+      // Show the warning
+      validateAccessConfig();
+      return false;
+    }
+  }, true); // Use capture phase to intercept before file-handler.js
 
   // Expiry selector change listener (for the hidden native select, synced by custom dropdown)
   const expirySelect = document.getElementById("expirySelect");
