@@ -14,11 +14,11 @@ const MAX_FILE_SIZE = 750 * 1024 * 1024; // 750MB
 // =============================================================================
 // Longer expiration periods = smaller max file size to manage storage
 export const EXPIRY_SIZE_LIMITS = {
-  1: 750 * 1024 * 1024,           // 1 hour: 750 MB
-  6: 500 * 1024 * 1024,           // 6 hours: 500 MB
-  24: 250 * 1024 * 1024,          // 24 hours: 250 MB
-  72: 100 * 1024 * 1024,          // 3 days: 100 MB
-  168: 50 * 1024 * 1024,          // 7 days: 50 MB
+  1: 375 * 1024 * 1024,           // 1 hour: 375 MB
+  6: 250 * 1024 * 1024,           // 6 hours: 250 MB
+  24: 125 * 1024 * 1024,          // 24 hours: 125 MB
+  72: 50 * 1024 * 1024,          // 3 days: 50 MB
+  168: 25 * 1024 * 1024,          // 7 days: 25 MB
 };
 
 /**
