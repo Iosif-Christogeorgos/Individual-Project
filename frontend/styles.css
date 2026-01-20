@@ -6324,10 +6324,11 @@ input[type="checkbox"]:checked {
   animation-delay: 0.5s;
 }
 
-/* Ensure content stays above pulse effects */
+/* Ensure content stays above pulse effects but allows clicks through */
 #quickSharePanel .drop-zone-content {
   position: relative;
   z-index: 1;
+  pointer-events: none;
 }
 
 /* Subtle electric flicker on the border */
