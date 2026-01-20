@@ -71,15 +71,20 @@ export function validateFileForExpiry(file, expiryHours) {
 /**
  * Initialize file input and drag & drop handlers.
  * @param {Function} onFileSelected - Callback when a valid file is selected
+ * @param {Object} options - Configuration options
+ * @param {boolean} options.enableBinaryRain - Whether to enable the Matrix binary rain effect (default: true)
  */
-export function initializeFileHandler(onFileSelected) {
+export function initializeFileHandler(onFileSelected, options = {}) {
+  const { enableBinaryRain = true } = options;
   const dropZone = document.getElementById("dropZone");
   const fileInput = document.getElementById("fileInput");
 
   if (!dropZone || !fileInput) return;
 
-  // Initialize the Matrix binary rain effect
-  initializeBinaryRain(dropZone);
+  // Initialize the Matrix binary rain effect (only if enabled)
+  if (enableBinaryRain) {
+    initializeBinaryRain(dropZone);
+  }
 
   // Drag events
   ["dragenter", "dragover"].forEach((event) => {

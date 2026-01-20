@@ -6229,3 +6229,135 @@ input[type="checkbox"]:checked {
   background: rgba(255, 200, 0, 0.22);
   box-shadow: 0 0 16px -2px rgba(255, 200, 0, 0.6);
 }
+
+/* =============================================================================
+   Quick Share - Voltage Pulse Effect (Drop Zone Animation)
+   ============================================================================= */
+
+/* Quick Share drop zone - prepare for voltage effect */
+#quickSharePanel .drop-zone {
+  position: relative;
+  overflow: visible;
+}
+
+/* Voltage glow border on hover */
+#quickSharePanel .drop-zone:hover,
+#quickSharePanel .drop-zone.drag-over {
+  border-color: #ffc800;
+  border-style: solid;
+  background: rgba(255, 200, 0, 0.03);
+  box-shadow: 
+    0 0 0 1px rgba(255, 200, 0, 0.3),
+    0 0 20px -5px rgba(255, 200, 0, 0.4),
+    inset 0 0 30px -15px rgba(255, 200, 0, 0.2);
+  transition: all 0.3s ease;
+}
+
+/* Icon turns golden on hover */
+#quickSharePanel .drop-zone:hover .drop-zone-icon .lucide-icon,
+#quickSharePanel .drop-zone.drag-over .drop-zone-icon .lucide-icon {
+  color: #ffc800;
+  filter: drop-shadow(0 0 8px rgba(255, 200, 0, 0.6));
+  transform: translateY(-2px);
+}
+
+/* Pulse ripple container */
+#quickSharePanel .drop-zone::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 60px;
+  height: 60px;
+  transform: translate(-50%, -50%) scale(0);
+  border-radius: 50%;
+  background: transparent;
+  border: 2px solid rgba(255, 200, 0, 0.6);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Pulse ripple animation on hover */
+#quickSharePanel .drop-zone:hover::before,
+#quickSharePanel .drop-zone.drag-over::before {
+  animation: voltagePulse 1.5s ease-out infinite;
+}
+
+@keyframes voltagePulse {
+  0% {
+    transform: translate(-50%, -50%) scale(0.5);
+    opacity: 0.8;
+    border-width: 3px;
+  }
+  50% {
+    opacity: 0.4;
+    border-width: 2px;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(3);
+    opacity: 0;
+    border-width: 1px;
+  }
+}
+
+/* Second pulse ripple for layered effect */
+#quickSharePanel .drop-zone::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 60px;
+  height: 60px;
+  transform: translate(-50%, -50%) scale(0);
+  border-radius: 50%;
+  background: transparent;
+  border: 2px solid rgba(255, 200, 0, 0.4);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+#quickSharePanel .drop-zone:hover::after,
+#quickSharePanel .drop-zone.drag-over::after {
+  animation: voltagePulse 1.5s ease-out infinite;
+  animation-delay: 0.5s;
+}
+
+/* Ensure content stays above pulse effects */
+#quickSharePanel .drop-zone-content {
+  position: relative;
+  z-index: 1;
+}
+
+/* Subtle electric flicker on the border */
+#quickSharePanel .drop-zone:hover {
+  animation: voltageFlicker 3s ease-in-out infinite;
+}
+
+@keyframes voltageFlicker {
+  0%, 100% {
+    box-shadow: 
+      0 0 0 1px rgba(255, 200, 0, 0.3),
+      0 0 20px -5px rgba(255, 200, 0, 0.4),
+      inset 0 0 30px -15px rgba(255, 200, 0, 0.2);
+  }
+  25% {
+    box-shadow: 
+      0 0 0 1px rgba(255, 200, 0, 0.5),
+      0 0 25px -3px rgba(255, 200, 0, 0.5),
+      inset 0 0 35px -12px rgba(255, 200, 0, 0.25);
+  }
+  50% {
+    box-shadow: 
+      0 0 0 1px rgba(255, 200, 0, 0.35),
+      0 0 22px -4px rgba(255, 200, 0, 0.45),
+      inset 0 0 32px -14px rgba(255, 200, 0, 0.22);
+  }
+  75% {
+    box-shadow: 
+      0 0 0 1px rgba(255, 200, 0, 0.45),
+      0 0 28px -2px rgba(255, 200, 0, 0.55),
+      inset 0 0 38px -10px rgba(255, 200, 0, 0.28);
+  }
+}

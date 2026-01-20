@@ -108,14 +108,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Initialize expiry dropdown
   initializeExpiryDropdown();
 
-  // Initialize file handler
+  // Initialize file handler (disable binary rain - using voltage pulse instead)
   initializeFileHandler((file) => {
     const expiryHours = getSelectedExpiryHours();
     const validation = validateFileForExpiry(file, expiryHours);
     if (!validation.valid) {
       showAlert("File Exceeds Size Limit", validation.message, "error");
     }
-  });
+  }, { enableBinaryRain: false });
 
   // Expiry change listener
   const expirySelect = document.getElementById("expirySelect");
