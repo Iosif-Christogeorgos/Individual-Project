@@ -6364,3 +6364,137 @@ input[type="checkbox"]:checked {
       inset 0 0 38px -10px rgba(255, 200, 0, 0.28);
   }
 }
+
+/* =============================================================================
+   Download Page - Security Badge & Expiry Notice
+   ============================================================================= */
+
+/* Download Hero Icon */
+.download-hero-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 1.5rem;
+  background: rgba(0, 255, 65, 0.1);
+  border: 1px solid rgba(0, 255, 65, 0.3);
+  border-radius: var(--radius);
+  color: var(--cyber-green);
+}
+
+.download-hero-icon svg {
+  width: 32px;
+  height: 32px;
+  filter: drop-shadow(0 0 8px var(--cyber-green-glow));
+}
+
+/* Expiry Notice */
+.expiry-notice {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  margin-top: 1.5rem;
+  background: rgba(255, 149, 0, 0.08);
+  border: 1px solid rgba(255, 149, 0, 0.25);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--warning);
+  text-align: center;
+}
+
+.expiry-notice-icon {
+  display: flex;
+  align-items: center;
+  color: var(--warning);
+}
+
+.expiry-notice-icon .lucide-icon {
+  filter: drop-shadow(0 0 6px rgba(255, 149, 0, 0.4));
+}
+
+#expiryNoticeText .expiry-time {
+  font-weight: 600;
+  color: var(--cyber-green);
+  text-shadow: 0 0 8px var(--cyber-green-glow);
+}
+
+/* Security Badge - Zero Knowledge Label */
+.download-page .security-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 0.85rem 1.25rem;
+  margin-top: 1rem;
+  background: rgba(0, 212, 255, 0.05);
+  border: 1px solid rgba(0, 212, 255, 0.2);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.download-page .security-badge-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  color: var(--accent-blue);
+}
+
+.download-page .security-badge-icon .lucide-icon {
+  width: 18px;
+  height: 18px;
+  filter: drop-shadow(0 0 6px var(--accent-blue-glow));
+}
+
+/* Download Page Card Adjustments */
+.download-page .card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  box-shadow: 0 0 0 1px var(--glass-highlight) inset,
+    0 25px 50px -12px rgba(0, 0, 0, 0.5),
+    0 0 80px -20px var(--cyber-green-glow);
+  width: 100%;
+  max-width: 520px;
+  padding: 2rem;
+  position: relative;
+}
+
+.download-page .card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 10%,
+    var(--cyber-green) 30%,
+    var(--accent-blue) 70%,
+    transparent 90%
+  );
+  opacity: 0.6;
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+
+.download-page h2.justify-center::before {
+  display: none;
+}
+
+.download-page h2.justify-center {
+  justify-content: center;
+}
