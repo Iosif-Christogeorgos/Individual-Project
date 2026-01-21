@@ -1197,7 +1197,6 @@ function generateShareLink(fileId, keyString, includeLinkKey) {
 function showUploadSuccess(
   shareLink,
   includeLinkKey,
-  enableSigning,
   expiresAt
 ) {
   // Wait for lock animation to complete before showing success view
@@ -1209,6 +1208,9 @@ function showUploadSuccess(
     if (expiresAt) {
       startCountdownTimer(expiresAt);
     }
+
+    // Signing is always enabled on secure page when user has identity
+    const enableSigning = !!currentIdentity;
 
     showUploadStatusBadges(
       includeLinkKey,
