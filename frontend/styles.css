@@ -6161,17 +6161,23 @@ input[type="checkbox"]:checked {
   }
 
   .encryption-footer {
-    flex-direction: row;
-    flex-wrap: wrap;
-    gap: 0.4rem;
-    justify-content: center;
-    align-items: center;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+    justify-items: center;
+    max-width: 320px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  /* First badge spans full width (top of triangle) */
+  .encryption-badge-wrapper:first-child {
+    grid-column: 1 / -1;
   }
 
   .encryption-badge {
-    flex-shrink: 0;
-    font-size: 0.6rem;
-    padding: 0.35rem 0.5rem;
+    font-size: 0.7rem;
+    padding: 0.5rem 0.75rem;
   }
 
   .encryption-separator {
@@ -6307,13 +6313,23 @@ input[type="checkbox"]:checked {
 @media (max-width: 480px) {
   .expiry-pills-container {
     flex-direction: column;
-    align-items: flex-start;
+    align-items: stretch;
     gap: 8px;
+  }
+
+  .expiry-pills {
+    display: flex;
+    width: 100%;
+    gap: 6px;
   }
   
   .expiry-pill {
-    padding: 8px 16px;
-    font-size: 0.85rem;
+    flex: 1;
+    padding: 10px 8px;
+    font-size: 0.8rem;
+    min-width: 0;
+    /* Remove square tap highlight on mobile */
+    -webkit-tap-highlight-color: transparent;
   }
 }
 
@@ -6626,19 +6642,19 @@ input[type="checkbox"]:checked {
    Fluid Typography with Clamp
    ----------------------------------------------------------------------------- */
 .hero-title {
-  font-size: clamp(1.5rem, 5vw, 2.75rem);
+  font-size: clamp(1.75rem, 5vw, 2.75rem);
 }
 
 .hero-title-primary {
-  font-size: clamp(1.5rem, 6vw, 2.75rem);
+  font-size: clamp(1.75rem, 6vw, 2.75rem);
 }
 
 .hero-title-accent {
-  font-size: clamp(1.25rem, 4.5vw, 2rem);
+  font-size: clamp(1.5rem, 4.5vw, 2rem);
 }
 
 .hero-tagline {
-  font-size: clamp(0.8rem, 2.5vw, 1rem);
+  font-size: clamp(0.85rem, 2.5vw, 1rem);
 }
 
 /* -----------------------------------------------------------------------------
