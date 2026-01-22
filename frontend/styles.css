@@ -6188,6 +6188,25 @@ input[type="checkbox"]:checked {
     white-space: nowrap;
   }
 
+  /* Fix tooltip positioning in mobile drawer */
+  .fingerprint-tooltip {
+    left: -10px;
+    transform: translateY(5px);
+    width: 200px;
+    text-align: left;
+  }
+
+  .fingerprint-tooltip::after {
+    left: 24px;
+    transform: none;
+  }
+
+  .fingerprint-tooltip-trigger:hover .fingerprint-tooltip,
+  .fingerprint-tooltip-trigger.tooltip-active .fingerprint-tooltip {
+    transform: translateY(0);
+  }
+
+  /* Hero spacing */
   .encryption-separator {
     display: none;
   }
