@@ -2694,6 +2694,28 @@ input[type="checkbox"] {
   opacity: 0.6;
 }
 
+/* Recipient Count Badge */
+.recipient-count {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 0.75rem;
+  padding: 0.6rem 1rem;
+  background: rgba(0, 255, 65, 0.06);
+  border: 1px solid rgba(0, 255, 65, 0.2);
+  border-radius: 8px;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--cyber-green);
+  text-align: center;
+}
+
+.recipient-count:empty {
+  display: none;
+}
+
 /* -----------------------------------------------------------------------------
    Professional Identity Panel Enhancements (Clean Version)
    ----------------------------------------------------------------------------- */
