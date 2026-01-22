@@ -6161,8 +6161,17 @@ input[type="checkbox"]:checked {
   }
 
   .encryption-footer {
-    flex-direction: column;
-    gap: 0.5rem;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .encryption-badge {
+    flex-shrink: 0;
+    font-size: 0.6rem;
+    padding: 0.35rem 0.5rem;
   }
 
   .encryption-separator {
@@ -6586,4 +6595,498 @@ input[type="checkbox"]:checked {
 
 .download-page h2.justify-center {
   justify-content: center;
+}
+
+/* =============================================================================
+   PREMIUM MOBILE DESIGN OVERHAUL
+   Next-level mobile experience with native-app feel
+   ============================================================================= */
+
+/* -----------------------------------------------------------------------------
+   Safe Area Insets (iPhone X+, Dynamic Island, etc.)
+   ----------------------------------------------------------------------------- */
+@supports (padding: env(safe-area-inset-top)) {
+  .app-layout {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+
+  .back-button {
+    left: calc(1.5rem + env(safe-area-inset-left));
+    top: calc(1.5rem + env(safe-area-inset-top));
+  }
+
+  .btn-primary,
+  .btn-ghost {
+    margin-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* -----------------------------------------------------------------------------
+   Fluid Typography with Clamp
+   ----------------------------------------------------------------------------- */
+.hero-title {
+  font-size: clamp(1.5rem, 5vw, 2.75rem);
+}
+
+.hero-title-primary {
+  font-size: clamp(1.5rem, 6vw, 2.75rem);
+}
+
+.hero-title-accent {
+  font-size: clamp(1.25rem, 4.5vw, 2rem);
+}
+
+.hero-tagline {
+  font-size: clamp(0.8rem, 2.5vw, 1rem);
+}
+
+/* -----------------------------------------------------------------------------
+   Touch Target Improvements (44px minimum)
+   ----------------------------------------------------------------------------- */
+.btn,
+.btn-primary,
+.btn-secondary,
+.btn-ghost {
+  min-height: 44px;
+  padding: 0.75rem 1.5rem;
+}
+
+.expiry-pill {
+  min-height: 44px;
+  padding: 10px 16px;
+}
+
+.contact-item {
+  min-height: 52px;
+}
+
+.contact-checkbox {
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+}
+
+.fingerprint-copy-btn {
+  min-width: 36px;
+  min-height: 36px;
+}
+
+.search-submit {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+/* Larger hit areas via pseudo-element */
+.fingerprint-tooltip-trigger::before {
+  content: "";
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  bottom: -8px;
+  left: -8px;
+}
+
+/* -----------------------------------------------------------------------------
+   Tablet Breakpoint (768px - 1024px)
+   ----------------------------------------------------------------------------- */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .panels-row {
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    max-width: 900px;
+  }
+
+  .panel-card {
+    min-width: 0;
+  }
+
+  .hero-header {
+    padding: 1.5rem 1rem;
+  }
+
+  .hero-title {
+    font-size: 2rem;
+  }
+
+  .panel-card-header {
+    padding: 0.75rem 1rem;
+  }
+
+  .panel-card .container {
+    padding: 1rem;
+  }
+
+  .drop-zone {
+    padding: 2rem 1.5rem;
+  }
+
+  .contacts-list {
+    max-height: 200px;
+  }
+
+  /* Identity vault stays visible on tablet */
+  #identityVaultPanel {
+    position: static;
+    transform: none;
+    width: auto;
+  }
+
+  .mobile-identity-toggle {
+    display: none;
+  }
+}
+
+/* -----------------------------------------------------------------------------
+   Enhanced Mobile Drawer UX (Under 480px)
+   ----------------------------------------------------------------------------- */
+@media (max-width: 480px) {
+  /* Drawer handle indicator */
+  #identityVaultPanel::before {
+    content: "";
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 36px;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 2px;
+    z-index: 10;
+  }
+
+  /* Smoother spring animation */
+  #identityVaultPanel {
+    transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+  }
+
+  #identityVaultPanel.mobile-open {
+    transform: translateX(0);
+  }
+
+  /* Backdrop blur on overlay */
+  .mobile-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+    z-index: 999;
+  }
+
+  .mobile-overlay.show {
+    display: block;
+    opacity: 1;
+    visibility: visible;
+  }
+
+  /* Staggered content fade-in */
+  #identityVaultPanel.mobile-open .fingerprint-card {
+    animation: slideUp 0.4s ease 0.1s both;
+  }
+
+  #identityVaultPanel.mobile-open .contacts-tabs {
+    animation: slideUp 0.4s ease 0.15s both;
+  }
+
+  #identityVaultPanel.mobile-open .tab-content {
+    animation: slideUp 0.4s ease 0.2s both;
+  }
+
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Mobile toggle button improvements */
+  .mobile-identity-toggle {
+    position: fixed;
+    bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
+    right: 1rem;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--cyber-green) 0%, var(--cyber-green-dim) 100%);
+    border: none;
+    color: var(--text-on-primary);
+    box-shadow: 0 4px 20px rgba(0, 255, 65, 0.4);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+
+  .mobile-identity-toggle:hover,
+  .mobile-identity-toggle:active {
+    transform: scale(1.05);
+    box-shadow: 0 6px 24px rgba(0, 255, 65, 0.5);
+  }
+
+  .mobile-identity-toggle.active {
+    background: var(--error);
+    box-shadow: 0 4px 20px rgba(255, 59, 59, 0.4);
+  }
+
+  .mobile-identity-toggle .toggle-icon {
+    width: 24px;
+    height: 24px;
+  }
+
+  .mobile-identity-toggle .toggle-text {
+    display: none;
+  }
+
+  /* Fingerprint hex truncation */
+  .fingerprint-full-key {
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Hero spacing */
+  .hero-header {
+    padding: 3.5rem 1rem 1rem;
+    text-align: center;
+  }
+
+  /* Back button safe positioning */
+  .back-button {
+    top: calc(0.75rem + env(safe-area-inset-top, 0px));
+    left: calc(0.75rem + env(safe-area-inset-left, 0px));
+    padding: 0.5rem 0.75rem;
+    font-size: 0.75rem;
+  }
+
+  /* Panel card full-width */
+  .panel-card {
+    border-radius: var(--radius) var(--radius) 0 0;
+    border-left: none;
+    border-right: none;
+  }
+
+  /* Expiry pills horizontal scroll */
+  .expiry-pills-container {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .expiry-pills {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+  }
+
+  .expiry-pills::-webkit-scrollbar {
+    display: none;
+  }
+
+  .expiry-pill {
+    flex: 0 0 auto;
+    scroll-snap-align: start;
+    min-width: 56px;
+  }
+
+  /* Share link full-width */
+  .share-link-wrapper {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .share-link-input {
+    font-size: 0.75rem;
+    padding: 0.875rem 1rem;
+  }
+
+  .btn-copy {
+    width: 100%;
+    min-height: 48px;
+  }
+
+  /* Larger drop zone for thumb */
+  .drop-zone {
+    padding: 2.5rem 1.5rem;
+    min-height: 160px;
+  }
+
+  /* Progress container spacing */
+  .progress-container {
+    margin-top: 1.5rem;
+  }
+
+  /* Access warning full-width */
+  .access-warning {
+    border-radius: var(--radius-sm);
+    margin: 1rem 0;
+  }
+}
+
+/* -----------------------------------------------------------------------------
+   Ultra-Small Screens (Under 360px)
+   ----------------------------------------------------------------------------- */
+@media (max-width: 360px) {
+  .hero-title {
+    font-size: 1.25rem;
+  }
+
+  .hero-title-accent {
+    font-size: 1rem;
+  }
+
+  .panel-card-title {
+    font-size: 0.85rem;
+  }
+
+  .panel-card-title span:last-child {
+    display: none; /* Hide "Identity Vault" text, keep icon */
+  }
+
+  .crypto-badge {
+    font-size: 0.6rem;
+    padding: 3px 6px;
+  }
+
+  .expiry-pill {
+    font-size: 0.75rem;
+    padding: 8px 12px;
+    min-width: 48px;
+  }
+
+  .btn-primary,
+  .btn-ghost {
+    font-size: 0.85rem;
+    padding: 0.75rem 1rem;
+  }
+
+  .fingerprint-full-key {
+    max-width: 100px;
+    font-size: 0.65rem;
+  }
+}
+
+/* -----------------------------------------------------------------------------
+   Micro-Animations & Polish
+   ----------------------------------------------------------------------------- */
+/* Button press effect */
+.btn:active,
+.btn-primary:active,
+.expiry-pill:active,
+.contact-item:active {
+  transform: scale(0.97);
+}
+
+/* Success pulse */
+@keyframes successPulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(0, 255, 65, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(0, 255, 65, 0);
+  }
+}
+
+.btn-copy.copied {
+  animation: successPulse 0.6s ease;
+}
+
+/* Smooth focus states for accessibility */
+.btn:focus-visible,
+.expiry-pill:focus-visible,
+.contact-checkbox:focus-visible {
+  outline: 2px solid var(--cyber-green);
+  outline-offset: 2px;
+}
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* -----------------------------------------------------------------------------
+   Keyboard-Aware Adjustments
+   ----------------------------------------------------------------------------- */
+/* When keyboard is likely open, adjust fixed elements */
+@media (max-height: 500px) and (max-width: 768px) {
+  .mobile-identity-toggle {
+    bottom: 0.5rem;
+    width: 48px;
+    height: 48px;
+  }
+
+  .hero-header {
+    padding-top: 2rem;
+    padding-bottom: 0.5rem;
+  }
+
+  .hero-tagline {
+    display: none;
+  }
+}
+
+/* -----------------------------------------------------------------------------
+   Landscape Phone Optimization
+   ----------------------------------------------------------------------------- */
+@media (max-height: 450px) and (orientation: landscape) {
+  .hero-header {
+    padding: 1rem;
+  }
+
+  .hero-title {
+    font-size: 1.5rem;
+  }
+
+  .hero-tagline {
+    display: none;
+  }
+
+  .panel-card .container {
+    padding: 0.75rem;
+  }
+
+  .drop-zone {
+    padding: 1.5rem;
+    min-height: 120px;
+  }
+
+  .contacts-list {
+    max-height: 120px;
+  }
+}
+
+/* -----------------------------------------------------------------------------
+   Print Styles (just in case)
+   ----------------------------------------------------------------------------- */
+@media print {
+  .mobile-identity-toggle,
+  .back-button,
+  .encryption-overlay {
+    display: none !important;
+  }
+
+  .panel-card {
+    box-shadow: none;
+    border: 1px solid #ccc;
+  }
 }

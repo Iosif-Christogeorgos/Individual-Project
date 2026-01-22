@@ -757,6 +757,72 @@ document.addEventListener("DOMContentLoaded", async () => {
       closeIdentityPanel();
     }
   });
+
+  // ==========================================================================
+  // Swipe-to-Close Gesture (Mobile)
+  // ==========================================================================
+  if (identityVaultPanel) {
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let touchCurrentX = 0;
+    let isDragging = false;
+    const SWIPE_THRESHOLD = 80; // Minimum swipe distance to trigger close
+    const SWIPE_VELOCITY_THRESHOLD = 0.3; // Minimum velocity for quick swipes
+    let touchStartTime = 0;
+
+    identityVaultPanel.addEventListener("touchstart", (e) => {
+      if (!identityVaultPanel.classList.contains("mobile-open")) return;
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+      touchStartTime = Date.now();
+      isDragging = false;
+    }, { passive: true });
+
+    identityVaultPanel.addEventListener("touchmove", (e) => {
+      if (!identityVaultPanel.classList.contains("mobile-open")) return;
+      
+      touchCurrentX = e.touches[0].clientX;
+      const deltaX = touchCurrentX - touchStartX;
+      const deltaY = e.touches[0].clientY - touchStartY;
+
+      // Only start dragging if horizontal movement > vertical
+      if (!isDragging && Math.abs(deltaX) > 10 && Math.abs(deltaX) > Math.abs(deltaY)) {
+        isDragging = true;
+        identityVaultPanel.style.transition = "none";
+      }
+
+      // Only allow swiping to the right (positive deltaX)
+      if (isDragging && deltaX > 0) {
+        identityVaultPanel.style.transform = `translateX(${deltaX}px)`;
+        // Fade overlay based on swipe progress
+        const progress = Math.min(deltaX / SWIPE_THRESHOLD, 1);
+        if (mobileOverlay) {
+          mobileOverlay.style.opacity = 1 - progress * 0.5;
+        }
+      }
+    }, { passive: true });
+
+    identityVaultPanel.addEventListener("touchend", (e) => {
+      if (!isDragging) return;
+      isDragging = false;
+
+      const deltaX = touchCurrentX - touchStartX;
+      const elapsed = Date.now() - touchStartTime;
+      const velocity = deltaX / elapsed;
+
+      // Restore transition
+      identityVaultPanel.style.transition = "";
+      identityVaultPanel.style.transform = "";
+      if (mobileOverlay) {
+        mobileOverlay.style.opacity = "";
+      }
+
+      // Close if swiped far enough or fast enough
+      if (deltaX > SWIPE_THRESHOLD || velocity > SWIPE_VELOCITY_THRESHOLD) {
+        closeIdentityPanel();
+      }
+    }, { passive: true });
+  }
 });
 
 // Expose cancelUpload globally for fullscreen overlay cancel button
