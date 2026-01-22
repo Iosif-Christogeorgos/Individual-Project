@@ -22,7 +22,14 @@ class EncryptionAnimator {
     this.isFullscreenMode = false;
     this.isCompleting = false;
     this.currentProgress = 0;
-    this.megaParticleInterval = null;
+    this.animationFrameId = null;
+    this.lastParticleTime = 0;
+    this.particleInterval = 150; // ms between particles
+    
+    // Particle pool for object reuse (reduces GC pressure)
+    this.particlePoolSize = 25;
+    this.particlePool = [];
+    this.activeParticles = [];
     
     // Scramble characters for particle effect
     this.dataChars = '0123456789ABCDEF';
@@ -37,6 +44,7 @@ class EncryptionAnimator {
     this.openShacklePath = 'M16 36 L16 16 C16 5 24 -2 32 -2 C40 -2 48 5 48 16 L48 36';
     this.closedShacklePath = 'M16 36 L16 24 C16 13 24 6 32 6 C40 6 48 13 48 24 L48 36';
     
+    this.initParticlePool();
     this.init();
   }
   
@@ -92,10 +100,8 @@ class EncryptionAnimator {
       gsap.set(this.megaShackle, { attr: { d: this.openShacklePath } });
     }
     
-    // Clear any existing particles
-    if (this.megaParticles) {
-      this.megaParticles.innerHTML = '';
-    }
+    // Reset particle pool (don't destroy - reuse!)
+    this.resetParticlePool();
     
     // Show overlay
     this.overlay.classList.add('active');
@@ -123,9 +129,7 @@ class EncryptionAnimator {
       if (this.megaLock) {
         this.megaLock.classList.remove('success', 'locking');
       }
-      if (this.megaParticles) {
-        this.megaParticles.innerHTML = '';
-      }
+      // Particles already returned to pool by stopMegaParticles
     }, 500);
   }
   
@@ -169,47 +173,118 @@ class EncryptionAnimator {
   
   /**
    * Start spawning data particles that stream toward the lock
+   * Uses requestAnimationFrame for smooth, frame-synced animation
    */
   startMegaParticles() {
     if (!this.megaParticles) return;
     
-    this.megaParticleInterval = setInterval(() => {
-      this.createMegaParticle();
-    }, 150);
+    this.lastParticleTime = performance.now();
+    
+    const animateParticles = (currentTime) => {
+      if (!this.isFullscreenMode || this.isCompleting) return;
+      
+      // Spawn new particle at interval
+      if (currentTime - this.lastParticleTime >= this.particleInterval) {
+        this.spawnParticleFromPool();
+        this.lastParticleTime = currentTime;
+      }
+      
+      // Check for particles to recycle
+      this.recycleCompletedParticles();
+      
+      this.animationFrameId = requestAnimationFrame(animateParticles);
+    };
+    
+    this.animationFrameId = requestAnimationFrame(animateParticles);
   }
   
   /**
-   * Stop particle spawning
+   * Stop particle spawning and recycle all active particles
    */
   stopMegaParticles() {
-    if (this.megaParticleInterval) {
-      clearInterval(this.megaParticleInterval);
-      this.megaParticleInterval = null;
+    if (this.animationFrameId) {
+      cancelAnimationFrame(this.animationFrameId);
+      this.animationFrameId = null;
+    }
+    
+    // Return all active particles to pool
+    this.activeParticles.forEach(p => {
+      p.element.classList.remove('mega-data-particle-active');
+      this.particleDirections.forEach(dir => p.element.classList.remove(dir));
+      this.particlePool.push(p);
+    });
+    this.activeParticles = [];
+  }
+  
+  /**
+   * Initialize the particle pool with reusable elements
+   */
+  initParticlePool() {
+    if (!this.megaParticles) return;
+    
+    for (let i = 0; i < this.particlePoolSize; i++) {
+      const particle = document.createElement('span');
+      particle.classList.add('mega-data-particle');
+      this.megaParticles.appendChild(particle);
+      this.particlePool.push({
+        element: particle,
+        startTime: 0
+      });
     }
   }
   
   /**
-   * Create a single data particle with CSS-class-based animation (CSP safe)
+   * Spawn a particle from the pool (no DOM creation)
    */
-  createMegaParticle() {
-    if (!this.megaParticles) return;
+  spawnParticleFromPool() {
+    if (this.particlePool.length === 0) return;
     
-    const particle = document.createElement('span');
-    particle.classList.add('mega-data-particle');
+    const particleObj = this.particlePool.pop();
+    const particle = particleObj.element;
     
-    // Random hex character
+    // Reset and configure particle
     particle.textContent = this.dataChars[Math.floor(Math.random() * this.dataChars.length)];
     
-    // Random direction class (CSP-compliant - no inline styles)
+    // Remove old direction class and add new one
+    this.particleDirections.forEach(dir => particle.classList.remove(dir));
     const direction = this.particleDirections[Math.floor(Math.random() * this.particleDirections.length)];
     particle.classList.add(direction);
+    particle.classList.add('mega-data-particle-active');
     
-    this.megaParticles.appendChild(particle);
+    particleObj.startTime = performance.now();
+    this.activeParticles.push(particleObj);
+  }
+  
+  /**
+   * Recycle particles that have completed their animation
+   */
+  recycleCompletedParticles() {
+    const now = performance.now();
+    const animationDuration = 2100; // matches CSS animation duration
     
-    // Remove after animation completes
-    setTimeout(() => {
-      particle.remove();
-    }, 2100);
+    for (let i = this.activeParticles.length - 1; i >= 0; i--) {
+      const p = this.activeParticles[i];
+      if (now - p.startTime >= animationDuration) {
+        // Animation complete, return to pool
+        p.element.classList.remove('mega-data-particle-active');
+        this.particleDirections.forEach(dir => p.element.classList.remove(dir));
+        this.particlePool.push(p);
+        this.activeParticles.splice(i, 1);
+      }
+    }
+  }
+  
+  /**
+   * Reset all particles back to pool (for overlay show/hide)
+   */
+  resetParticlePool() {
+    // Return all active particles to pool
+    this.activeParticles.forEach(p => {
+      p.element.classList.remove('mega-data-particle-active');
+      this.particleDirections.forEach(dir => p.element.classList.remove(dir));
+      this.particlePool.push(p);
+    });
+    this.activeParticles = [];
   }
   
   /**
