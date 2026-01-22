@@ -618,6 +618,22 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
     });
 
+  // Fingerprint tooltip tap-to-toggle (for mobile devices)
+  const fingerprintTrigger = document.querySelector(".fingerprint-tooltip-trigger");
+  if (fingerprintTrigger) {
+    fingerprintTrigger.addEventListener("click", (e) => {
+      e.stopPropagation();
+      fingerprintTrigger.classList.toggle("tooltip-active");
+    });
+
+    // Close tooltip when tapping outside
+    document.addEventListener("click", (e) => {
+      if (!fingerprintTrigger.contains(e.target)) {
+        fingerprintTrigger.classList.remove("tooltip-active");
+      }
+    });
+  }
+
   // User directory search
   document
     .getElementById("searchUserBtn")

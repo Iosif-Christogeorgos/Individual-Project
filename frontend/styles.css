@@ -5488,6 +5488,73 @@ input[type="checkbox"]:checked {
   height: 12px;
 }
 
+/* Fingerprint Tooltip Icon */
+.fingerprint-tooltip-trigger {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  cursor: help;
+}
+
+.fingerprint-icon {
+  color: var(--cyber-green);
+  opacity: 0.6;
+  transition: all 0.3s ease;
+  filter: drop-shadow(0 0 0 transparent);
+}
+
+.fingerprint-tooltip-trigger:hover .fingerprint-icon {
+  opacity: 1;
+  filter: drop-shadow(0 0 6px rgba(0, 255, 65, 0.6));
+}
+
+.fingerprint-tooltip {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%) translateY(5px);
+  width: 220px;
+  padding: 10px 12px;
+  background: rgba(10, 15, 20, 0.95);
+  border: 1px solid rgba(0, 255, 65, 0.3);
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-family: var(--font-sans);
+  color: var(--text-secondary);
+  line-height: 1.5;
+  text-align: center;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.25s ease;
+  z-index: 100;
+  box-shadow: 
+    0 0 20px rgba(0, 255, 65, 0.15),
+    0 4px 12px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+}
+
+.fingerprint-tooltip::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: rgba(0, 255, 65, 0.3);
+}
+
+.fingerprint-tooltip-trigger:hover .fingerprint-tooltip,
+.fingerprint-tooltip-trigger.tooltip-active .fingerprint-tooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+}
+
+.fingerprint-tooltip-trigger.tooltip-active .fingerprint-icon {
+  opacity: 1;
+  filter: drop-shadow(0 0 6px rgba(0, 255, 65, 0.6));
+}
+
 /* -----------------------------------------------------------------------------
    Contacts Tabs
    ----------------------------------------------------------------------------- */
