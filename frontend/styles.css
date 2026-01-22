@@ -102,6 +102,11 @@
   padding: 0;
 }
 
+html,
+body {
+  overflow-x: hidden;
+}
+
 /* -----------------------------------------------------------------------------
    Lucide Icon Styles
    ----------------------------------------------------------------------------- */
@@ -6165,9 +6170,11 @@ input[type="checkbox"]:checked {
     grid-template-columns: 1fr 1fr;
     gap: 0.5rem;
     justify-items: center;
-    max-width: 320px;
+    max-width: 100%;
     margin-left: auto;
     margin-right: auto;
+    padding: 0 0.5rem;
+    overflow-x: hidden;
   }
 
   /* First badge spans full width (top of triangle) */
@@ -6176,8 +6183,9 @@ input[type="checkbox"]:checked {
   }
 
   .encryption-badge {
-    font-size: 0.7rem;
-    padding: 0.5rem 0.75rem;
+    font-size: 0.6rem;
+    padding: 0.4rem 0.5rem;
+    white-space: nowrap;
   }
 
   .encryption-separator {
@@ -6892,7 +6900,7 @@ input[type="checkbox"]:checked {
     border-right: none;
   }
 
-  /* Expiry pills horizontal scroll */
+  /* Expiry pills - full width spread */
   .expiry-pills-container {
     flex-direction: column;
     align-items: stretch;
@@ -6901,22 +6909,16 @@ input[type="checkbox"]:checked {
 
   .expiry-pills {
     display: flex;
-    gap: 8px;
-    overflow-x: auto;
-    scroll-snap-type: x mandatory;
-    -webkit-overflow-scrolling: touch;
-    padding-bottom: 4px;
-    scrollbar-width: none;
-  }
-
-  .expiry-pills::-webkit-scrollbar {
-    display: none;
+    width: 100%;
+    gap: 6px;
   }
 
   .expiry-pill {
-    flex: 0 0 auto;
-    scroll-snap-align: start;
-    min-width: 56px;
+    flex: 1;
+    min-width: 0;
+    padding: 10px 4px;
+    font-size: 0.75rem;
+    -webkit-tap-highlight-color: transparent;
   }
 
   /* Share link full-width */
