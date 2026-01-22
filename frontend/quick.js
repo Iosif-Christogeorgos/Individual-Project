@@ -405,7 +405,7 @@ function showUploadSuccess(shareLink, expiresAt) {
     }
 
     if (window.encryptionAnimator) {
-      window.encryptionAnimator.showSuccess();
+      window.encryptionAnimator.completeMegaEncryption();
     }
   }, 2000);
 }
