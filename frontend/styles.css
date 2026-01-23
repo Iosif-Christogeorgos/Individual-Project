@@ -3330,11 +3330,11 @@ input[type="checkbox"] {
   background: rgba(17, 24, 39, 0.95);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(0, 255, 65, 0.3);
+  border: 1px solid rgba(0, 212, 255, 0.3);
   border-radius: var(--radius-sm);
   box-shadow:
     0 0 30px rgba(0, 0, 0, 0.5),
-    0 0 20px var(--cyber-green-glow);
+    0 0 20px rgba(0, 212, 255, 0.15);
   font-family: var(--font-mono);
   font-size: 0.85rem;
   color: var(--text-primary);
@@ -3356,7 +3356,7 @@ input[type="checkbox"] {
 }
 
 .toast-notification.success {
-  border-color: var(--cyber-green);
+  border-color: var(--accent-blue);
 }
 
 .toast-notification.error {
