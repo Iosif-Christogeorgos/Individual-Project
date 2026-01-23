@@ -38,6 +38,7 @@ import {
   getMaxFileSizeForExpiry,
 } from "./file-handler.js";
 import { formatFileSize } from "./ui-utils.js";
+import { hapticSuccess, hapticMedium, hapticSelection, hapticHeavy } from "./haptics.js";
 
 // State tracking
 let hasActiveLink = false;
@@ -103,6 +104,7 @@ function validateAccessConfig(options = {}) {
 // =============================================================================
 
 function onRecipientChange() {
+  hapticSelection(); // Light feedback for recipient selection change
   validateAccessConfig();
 }
 
@@ -156,6 +158,7 @@ function updateMaxSizeHint(expiryHours) {
 }
 
 function showShareLink(link) {
+  hapticHeavy(); // Strong feedback for successful upload
   const container = document.querySelector(".container[data-state]");
   const input = document.getElementById("shareLink");
 
@@ -173,6 +176,7 @@ function copyLink() {
   navigator.clipboard
     .writeText(input.value)
     .then(() => {
+      hapticSuccess(); // Provide tactile feedback on successful copy
       btn.classList.add("copied");
       btn.innerHTML = '<span><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span> Copied!';
       linkCopied = true;
@@ -609,6 +613,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         try {
           // Copy the full fingerprint
           await navigator.clipboard.writeText(currentIdentity.fingerprint);
+          hapticSuccess(); // Feedback for successful copy
           copyBtn.classList.add("copied");
           showToast("Fingerprint copied ✓");
           setTimeout(() => copyBtn.classList.remove("copied"), 1500);

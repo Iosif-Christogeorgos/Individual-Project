@@ -26,6 +26,7 @@ import {
   validateFileForExpiry,
   getMaxFileSizeForExpiry,
 } from "./file-handler.js";
+import { hapticSuccess, hapticHeavy } from "./haptics.js";
 
 // State
 let hasActiveLink = false;
@@ -50,6 +51,7 @@ function validateFileForCurrentExpiry() {
 }
 
 function showShareLink(link) {
+  hapticHeavy(); // Strong feedback for successful upload
   const container = document.querySelector(".container[data-state]");
   const input = document.getElementById("shareLink");
 
@@ -65,6 +67,7 @@ function copyLink() {
   navigator.clipboard
     .writeText(input.value)
     .then(() => {
+      hapticSuccess(); // Provide tactile feedback on successful copy
       btn.classList.add("copied");
       btn.innerHTML = '<span><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span> Copied!';
 

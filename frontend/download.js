@@ -9,6 +9,7 @@
 import * as CryptoModule from "./crypto.js";
 import * as IdentityManager from "./identity.js";
 import { showAlert, hideAlert, escapeHtml, updateStep } from "./ui-utils.js";
+import { hapticSuccess, hapticHeavy, hapticError } from "./haptics.js";
 
 let currentIdentity = null;
 let fileMetadata = null;
@@ -410,6 +411,7 @@ function showDownloadReady(accessMode) {
     copyBtn?.addEventListener("click", async () => {
       try {
         await navigator.clipboard.writeText(signerFingerprint || "");
+        hapticSuccess(); // Feedback for successful copy
         copyBtn.classList.add("copied");
         setTimeout(() => copyBtn.classList.remove("copied"), 1500);
       } catch (e) {
@@ -681,6 +683,7 @@ async function startDownload() {
     URL.revokeObjectURL(blobUrl);
 
     // Success state
+    hapticHeavy(); // Strong feedback for successful download
     btn.disabled = false;
     btn.innerHTML = '<span><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span> Download Complete';
     btn.classList.add("btn-secondary");
@@ -717,6 +720,7 @@ function showStatus() {
 // =============================================================================
 
 function showSignatureVerified() {
+  hapticSuccess(); // Positive feedback for verified signature
   const infoEl = document.getElementById("signatureVerification");
   if (!infoEl) return;
 
@@ -730,6 +734,7 @@ function showSignatureVerified() {
 }
 
 function showSignatureWarning() {
+  hapticError(); // Warning feedback for failed signature
   const infoEl = document.getElementById("signatureVerification");
   if (!infoEl) return;
 
@@ -741,3 +746,4 @@ function showSignatureWarning() {
   `;
   infoEl.classList.add("show", "warning");
 }
+

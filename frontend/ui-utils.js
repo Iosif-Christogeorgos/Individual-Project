@@ -4,6 +4,8 @@
 // Common UI helper functions shared between upload.js and download.js
 // =============================================================================
 
+import { hapticError, hapticSuccess, hapticNotification } from "./haptics.js";
+
 // ===========================================================================
 // Alert Functions
 // ===========================================================================
@@ -15,6 +17,14 @@
  * @param {string} type - Alert type: 'error', 'success', 'info', or 'warning'
  */
 export function showAlert(title, message, type = "error") {
+  // Trigger appropriate haptic feedback based on alert type
+  if (type === "error" || type === "warning") {
+    hapticError();
+  } else if (type === "success") {
+    hapticSuccess();
+  } else {
+    hapticNotification();
+  }
   const alert = document.getElementById("alert");
   const alertTitle = document.getElementById("alert-title");
   const alertMessage = document.getElementById("alert-message");
@@ -72,6 +82,9 @@ export function hideAlert() {
  * @param {number} duration - Duration in milliseconds (default: 3000)
  */
 export function showToast(message, duration = 3000) {
+  // Trigger notification haptic feedback
+  hapticNotification();
+
   // Remove existing toast if any
   const existingToast = document.querySelector(".toast-notification");
   if (existingToast) {

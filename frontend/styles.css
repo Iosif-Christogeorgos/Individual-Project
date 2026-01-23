@@ -2044,9 +2044,18 @@ input[type="checkbox"] {
   color: var(--cyber-green);
 }
 
-/* Back Button */
+/* Back Button - Solid non-transparent style */
 .btn-back {
   margin-top: 1.5rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--glass-border);
+  color: var(--text-secondary);
+}
+
+.btn-back:hover {
+  background: rgba(17, 24, 39, 0.95);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: var(--text-primary);
 }
 
 /* -----------------------------------------------------------------------------
@@ -6062,7 +6071,7 @@ input[type="checkbox"]:checked {
   font-size: 0.5rem;
 }
 
-/* Back Button */
+/* Back Button - Solid non-transparent style */
 .back-button {
   position: absolute;
   top: 1.5rem;
@@ -6071,7 +6080,7 @@ input[type="checkbox"]:checked {
   align-items: center;
   gap: 0.5rem;
   padding: 0.5rem 1rem;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--bg-secondary);
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-sm);
   color: var(--text-secondary);
@@ -6083,9 +6092,9 @@ input[type="checkbox"]:checked {
 }
 
 .back-button:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(17, 24, 39, 0.95);
   color: var(--text-primary);
-  border-color: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.2);
 }
 
 .back-arrow {
