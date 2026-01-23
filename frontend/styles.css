@@ -6124,8 +6124,20 @@ input[type="checkbox"]:checked {
 
 @media (max-width: 600px) {
   .app-layout {
-    padding: 1rem;
+    padding: 1rem 1rem;
     gap: 1.5rem;
+  }
+
+  .panels-row {
+    padding: 0 0.5rem;
+  }
+
+  .mode-selector {
+    padding: 0 0.5rem;
+  }
+
+  .single-panel-layout {
+    padding: 0 0.5rem;
   }
 
   .hero-title {
@@ -6950,11 +6962,9 @@ input[type="checkbox"]:checked {
     font-size: 0.75rem;
   }
 
-  /* Panel card full-width */
+  /* Panel card with spacing */
   .panel-card {
-    border-radius: var(--radius) var(--radius) 0 0;
-    border-left: none;
-    border-right: none;
+    border-radius: var(--radius);
   }
 
   /* Expiry pills - full width spread */
