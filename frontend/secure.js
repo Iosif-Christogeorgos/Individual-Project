@@ -38,7 +38,12 @@ import {
   getMaxFileSizeForExpiry,
 } from "./file-handler.js";
 import { formatFileSize } from "./ui-utils.js";
-import { hapticSuccess, hapticMedium, hapticSelection, hapticHeavy } from "./haptics.js";
+import {
+  hapticSuccess,
+  hapticMedium,
+  hapticSelection,
+  hapticHeavy,
+} from "./haptics.js";
 
 // State tracking
 let hasActiveLink = false;
@@ -65,8 +70,7 @@ function validateAccessConfig(options = {}) {
   const warningTitle = document.getElementById("accessWarningTitle");
   const warningMessage = document.getElementById("accessWarningMessage");
 
-  if (!warningEl || !uploadBtn)
-    return { valid: true, canUpload: true };
+  if (!warningEl || !uploadBtn) return { valid: true, canUpload: true };
 
   const selectedRecipients = getSelectedRecipients();
 
@@ -165,6 +169,16 @@ function showShareLink(link) {
   input.value = link;
   container.setAttribute("data-state", "success");
 
+  // Hide identity panel and center the upload panel during success view
+  const identityPanel = document.getElementById("identityVaultPanel");
+  const panelsRow = document.querySelector(".panels-row");
+  if (identityPanel) {
+    identityPanel.classList.add("hidden");
+  }
+  if (panelsRow) {
+    panelsRow.classList.add("single-panel-mode");
+  }
+
   hasActiveLink = true;
   linkCopied = false;
 }
@@ -178,22 +192,26 @@ function copyLink() {
     .then(() => {
       hapticSuccess(); // Provide tactile feedback on successful copy
       btn.classList.add("copied");
-      btn.innerHTML = '<span><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span> Copied!';
+      btn.innerHTML =
+        '<span><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span> Copied!';
       linkCopied = true;
 
       setTimeout(() => {
         btn.classList.remove("copied");
-        btn.innerHTML = '<span><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg></span> Copy';
+        btn.innerHTML =
+          '<span><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg></span> Copy';
       }, 2000);
     })
     .catch(() => {
       // Clipboard API failed (e.g., insecure context) - select text for manual copy
       input.select();
       input.setSelectionRange(0, 99999); // For mobile
-      btn.innerHTML = '<span><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></span> Select & Copy';
+      btn.innerHTML =
+        '<span><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></span> Select & Copy';
 
       setTimeout(() => {
-        btn.innerHTML = '<span><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg></span> Copy';
+        btn.innerHTML =
+          '<span><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg></span> Copy';
       }, 3000);
     });
 }
@@ -203,6 +221,16 @@ function resetToUpload() {
 
   container.setAttribute("data-state", "upload");
   clearFile();
+
+  // Show identity panel and restore two-column layout
+  const identityPanel = document.getElementById("identityVaultPanel");
+  const panelsRow = document.querySelector(".panels-row");
+  if (identityPanel) {
+    identityPanel.classList.remove("hidden");
+  }
+  if (panelsRow) {
+    panelsRow.classList.remove("single-panel-mode");
+  }
 
   hasActiveLink = false;
   overwriteWarningShown = false;
@@ -222,7 +250,8 @@ function resetToUpload() {
   const copyBtn = document.getElementById("copyBtn");
   if (copyBtn) {
     copyBtn.classList.remove("copied");
-    copyBtn.innerHTML = '<span><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg></span> Copy';
+    copyBtn.innerHTML =
+      '<span><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg></span> Copy';
   }
 }
 
@@ -319,7 +348,8 @@ async function createIdentity() {
   }
 
   createBtn.disabled = true;
-  createBtn.innerHTML = '<span><svg class="lucide-icon animate-spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg></span> Creating...';
+  createBtn.innerHTML =
+    '<span><svg class="lucide-icon animate-spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg></span> Creating...';
 
   try {
     // 1. Generate Identity (using @username as display name)
@@ -327,7 +357,8 @@ async function createIdentity() {
     currentIdentity = await IdentityManager.generateIdentity(displayName);
 
     // 2. Publish Immediately
-    createBtn.innerHTML = '<span><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg></span> Publishing...';
+    createBtn.innerHTML =
+      '<span><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg></span> Publishing...';
 
     const publicIdentity =
       IdentityManager.exportPublicIdentity(currentIdentity);
@@ -361,7 +392,8 @@ async function createIdentity() {
   } finally {
     if (createBtn) {
       createBtn.disabled = false;
-      createBtn.innerHTML = '<span><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg></span> Create & Publish';
+      createBtn.innerHTML =
+        '<span><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg></span> Create & Publish';
     }
   }
 }
@@ -396,7 +428,7 @@ async function searchUserByUsername() {
 
   try {
     const response = await fetch(
-      `/pubkey/username/${encodeURIComponent(username)}`
+      `/pubkey/username/${encodeURIComponent(username)}`,
     );
 
     // Reset storm-off animation
@@ -423,13 +455,13 @@ async function searchUserByUsername() {
       <div class="search-result-card">
         <div class="search-result-info">
           <div class="search-result-name">@${escapeHtml(
-            userData.username
+            userData.username,
           )}</div>
           <div class="search-result-fingerprint" title="${escapeHtml(
-            userData.fingerprint
+            userData.fingerprint,
           )}">
             <svg class="lucide-icon inline-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15.5 7.5 2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L19 4"/><path d="m21 2-9.6 9.6"/><circle cx="7.5" cy="15.5" r="5.5"/></svg> ${escapeHtml(
-              userData.fingerprint.substring(0, 8)
+              userData.fingerprint.substring(0, 8),
             )}...${escapeHtml(userData.fingerprint.substring(56))}
           </div>
         </div>
@@ -530,7 +562,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Add dropzone click handler to validate recipients before allowing file selection
   const dropZone = document.getElementById("dropZone");
   const fileInput = document.getElementById("fileInput");
-  
+
   dropZone?.addEventListener("click", (e) => {
     // Check if user has selected any recipients
     const selectedRecipients = getSelectedRecipients();
@@ -544,18 +576,22 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   // Also block drag-and-drop if no recipients selected
-  dropZone?.addEventListener("drop", (e) => {
-    const selectedRecipients = getSelectedRecipients();
-    if (selectedRecipients.length === 0) {
-      e.preventDefault();
-      e.stopPropagation();
-      // Clear any dragged files
-      if (fileInput) fileInput.value = "";
-      // Show the warning
-      validateAccessConfig();
-      return false;
-    }
-  }, true); // Use capture phase to intercept before file-handler.js
+  dropZone?.addEventListener(
+    "drop",
+    (e) => {
+      const selectedRecipients = getSelectedRecipients();
+      if (selectedRecipients.length === 0) {
+        e.preventDefault();
+        e.stopPropagation();
+        // Clear any dragged files
+        if (fileInput) fileInput.value = "";
+        // Show the warning
+        validateAccessConfig();
+        return false;
+      }
+    },
+    true,
+  ); // Use capture phase to intercept before file-handler.js
 
   // Expiry selector change listener (for the hidden native select, synced by custom dropdown)
   const expirySelect = document.getElementById("expirySelect");
@@ -620,7 +656,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
 
   // Fingerprint tooltip tap-to-toggle (for mobile devices)
-  const fingerprintTrigger = document.querySelector(".fingerprint-tooltip-trigger");
+  const fingerprintTrigger = document.querySelector(
+    ".fingerprint-tooltip-trigger",
+  );
   if (fingerprintTrigger) {
     fingerprintTrigger.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -660,7 +698,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   filterContactsInput?.addEventListener("input", (e) => {
     const filterValue = e.target.value.toLowerCase().trim();
     const contactItems = document.querySelectorAll(
-      "#contactsList .contact-item"
+      "#contactsList .contact-item",
     );
 
     contactItems.forEach((item) => {
@@ -678,7 +716,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Update "no contacts" message visibility
     const noContacts = document.querySelector("#contactsList .no-contacts");
     const visibleContacts = document.querySelectorAll(
-      "#contactsList .contact-item:not([style*='display: none'])"
+      "#contactsList .contact-item:not([style*='display: none'])",
     );
     if (noContacts) {
       noContacts.textContent =
@@ -771,58 +809,74 @@ document.addEventListener("DOMContentLoaded", async () => {
     const SWIPE_VELOCITY_THRESHOLD = 0.3; // Minimum velocity for quick swipes
     let touchStartTime = 0;
 
-    identityVaultPanel.addEventListener("touchstart", (e) => {
-      if (!identityVaultPanel.classList.contains("mobile-open")) return;
-      touchStartX = e.touches[0].clientX;
-      touchStartY = e.touches[0].clientY;
-      touchStartTime = Date.now();
-      isDragging = false;
-    }, { passive: true });
+    identityVaultPanel.addEventListener(
+      "touchstart",
+      (e) => {
+        if (!identityVaultPanel.classList.contains("mobile-open")) return;
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+        touchStartTime = Date.now();
+        isDragging = false;
+      },
+      { passive: true },
+    );
 
-    identityVaultPanel.addEventListener("touchmove", (e) => {
-      if (!identityVaultPanel.classList.contains("mobile-open")) return;
-      
-      touchCurrentX = e.touches[0].clientX;
-      const deltaX = touchCurrentX - touchStartX;
-      const deltaY = e.touches[0].clientY - touchStartY;
+    identityVaultPanel.addEventListener(
+      "touchmove",
+      (e) => {
+        if (!identityVaultPanel.classList.contains("mobile-open")) return;
 
-      // Only start dragging if horizontal movement > vertical
-      if (!isDragging && Math.abs(deltaX) > 10 && Math.abs(deltaX) > Math.abs(deltaY)) {
-        isDragging = true;
-        identityVaultPanel.style.transition = "none";
-      }
+        touchCurrentX = e.touches[0].clientX;
+        const deltaX = touchCurrentX - touchStartX;
+        const deltaY = e.touches[0].clientY - touchStartY;
 
-      // Only allow swiping to the right (positive deltaX)
-      if (isDragging && deltaX > 0) {
-        identityVaultPanel.style.transform = `translateX(${deltaX}px)`;
-        // Fade overlay based on swipe progress
-        const progress = Math.min(deltaX / SWIPE_THRESHOLD, 1);
-        if (mobileOverlay) {
-          mobileOverlay.style.opacity = 1 - progress * 0.5;
+        // Only start dragging if horizontal movement > vertical
+        if (
+          !isDragging &&
+          Math.abs(deltaX) > 10 &&
+          Math.abs(deltaX) > Math.abs(deltaY)
+        ) {
+          isDragging = true;
+          identityVaultPanel.style.transition = "none";
         }
-      }
-    }, { passive: true });
 
-    identityVaultPanel.addEventListener("touchend", (e) => {
-      if (!isDragging) return;
-      isDragging = false;
+        // Only allow swiping to the right (positive deltaX)
+        if (isDragging && deltaX > 0) {
+          identityVaultPanel.style.transform = `translateX(${deltaX}px)`;
+          // Fade overlay based on swipe progress
+          const progress = Math.min(deltaX / SWIPE_THRESHOLD, 1);
+          if (mobileOverlay) {
+            mobileOverlay.style.opacity = 1 - progress * 0.5;
+          }
+        }
+      },
+      { passive: true },
+    );
 
-      const deltaX = touchCurrentX - touchStartX;
-      const elapsed = Date.now() - touchStartTime;
-      const velocity = deltaX / elapsed;
+    identityVaultPanel.addEventListener(
+      "touchend",
+      (e) => {
+        if (!isDragging) return;
+        isDragging = false;
 
-      // Restore transition
-      identityVaultPanel.style.transition = "";
-      identityVaultPanel.style.transform = "";
-      if (mobileOverlay) {
-        mobileOverlay.style.opacity = "";
-      }
+        const deltaX = touchCurrentX - touchStartX;
+        const elapsed = Date.now() - touchStartTime;
+        const velocity = deltaX / elapsed;
 
-      // Close if swiped far enough or fast enough
-      if (deltaX > SWIPE_THRESHOLD || velocity > SWIPE_VELOCITY_THRESHOLD) {
-        closeIdentityPanel();
-      }
-    }, { passive: true });
+        // Restore transition
+        identityVaultPanel.style.transition = "";
+        identityVaultPanel.style.transform = "";
+        if (mobileOverlay) {
+          mobileOverlay.style.opacity = "";
+        }
+
+        // Close if swiped far enough or fast enough
+        if (deltaX > SWIPE_THRESHOLD || velocity > SWIPE_VELOCITY_THRESHOLD) {
+          closeIdentityPanel();
+        }
+      },
+      { passive: true },
+    );
   }
 });
 
@@ -844,7 +898,7 @@ async function processFile() {
     showAlert(
       "Invalid Configuration",
       "Please fix the access configuration issues before uploading.",
-      "warning"
+      "warning",
     );
     return;
   }
@@ -853,7 +907,7 @@ async function processFile() {
     showAlert(
       "No File Selected",
       "Please select a file to encrypt and upload.",
-      "warning"
+      "warning",
     );
     return;
   }
@@ -865,7 +919,7 @@ async function processFile() {
     showAlert(
       "File Too Large for Selected Expiry",
       sizeValidation.message,
-      "error"
+      "error",
     );
     return;
   }
@@ -900,7 +954,8 @@ function cancelUpload() {
   const uploadBtn = document.getElementById("uploadBtn");
   if (uploadBtn) {
     uploadBtn.disabled = false;
-    uploadBtn.innerHTML = '<span><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span> Encrypt & Upload';
+    uploadBtn.innerHTML =
+      '<span><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span> Encrypt & Upload';
   }
 
   // Hide progress and reset animation
@@ -937,13 +992,14 @@ async function executeUpload() {
     showAlert(
       "File Too Large for Selected Expiry",
       sizeValidation.message,
-      "error"
+      "error",
     );
     return;
   }
 
   uploadBtn.disabled = true;
-  uploadBtn.innerHTML = '<span><svg class="lucide-icon animate-spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg></span> Processing...';
+  uploadBtn.innerHTML =
+    '<span><svg class="lucide-icon animate-spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg></span> Processing...';
   isUploading = true; // Lock button during upload
 
   // Create AbortController for cancellation support
@@ -957,7 +1013,7 @@ async function executeUpload() {
   try {
     if (!window.crypto || !window.crypto.subtle) {
       throw new Error(
-        "Web Crypto API not available. Please use HTTPS or localhost."
+        "Web Crypto API not available. Please use HTTPS or localhost.",
       );
     }
 
@@ -979,7 +1035,7 @@ async function executeUpload() {
         }
         console.warn(
           "⚠️ Streaming upload failed, falling back to buffered:",
-          streamError.message
+          streamError.message,
         );
         await executeBufferedUpload(file, includeLinkKey);
       }
@@ -995,13 +1051,14 @@ async function executeUpload() {
     showAlert(
       "Encryption Failed",
       error.message || "An unexpected error occurred.",
-      "error"
+      "error",
     );
   } finally {
     isUploading = false; // Unlock button state
     uploadAbortController = null; // Clean up controller
     uploadBtn.disabled = false;
-    uploadBtn.innerHTML = '<span><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span> Encrypt & Upload';
+    uploadBtn.innerHTML =
+      '<span><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span> Encrypt & Upload';
   }
 }
 
@@ -1022,7 +1079,7 @@ async function executeStreamingUpload(file, includeLinkKey) {
     file,
     originalFileHash,
     aesKey,
-    includeLinkKey
+    includeLinkKey,
   );
 
   updateProgress(30, "Starting streaming upload...");
@@ -1033,9 +1090,9 @@ async function executeStreamingUpload(file, includeLinkKey) {
       const overallProgress = 30 + Math.round(encryptProgress * 0.65);
       updateProgress(
         overallProgress,
-        `Encrypting & uploading... ${encryptProgress}%`
+        `Encrypting & uploading... ${encryptProgress}%`,
       );
-    }
+    },
   );
 
   const uploadResponse = await fetch("/upload-stream", {
@@ -1066,13 +1123,9 @@ async function executeStreamingUpload(file, includeLinkKey) {
   const shareLink = generateShareLink(
     serverData.fileId,
     exportedKey.k,
-    includeLinkKey
-  );
-  showUploadSuccess(
-    shareLink,
     includeLinkKey,
-    metadata.expiresAt
   );
+  showUploadSuccess(shareLink, includeLinkKey, metadata.expiresAt);
 }
 
 async function executeBufferedUpload(file, includeLinkKey) {
@@ -1088,7 +1141,7 @@ async function executeBufferedUpload(file, includeLinkKey) {
       // Encryption takes 10-45% of the total progress
       const overallProgress = 10 + Math.round(chunkProgress * 0.35);
       updateProgress(overallProgress, `Encrypting... ${chunkProgress}%`);
-    }
+    },
   );
 
   // Always compute hash for signing (secure page always signs)
@@ -1100,7 +1153,7 @@ async function executeBufferedUpload(file, includeLinkKey) {
     file,
     originalFileHash,
     aesKey,
-    includeLinkKey
+    includeLinkKey,
   );
 
   updateProgress(50, "Uploading encrypted file...");
@@ -1111,7 +1164,7 @@ async function executeBufferedUpload(file, includeLinkKey) {
   const serverData = await new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open("POST", "/upload", true);
-    
+
     // Add auth headers if needed (Supabase/R2 might need special headers but here we use our backend proxy)
     // xhr.setRequestHeader("Content-Type", "multipart/form-data"); // Browser sets this automatically with boundary
 
@@ -1121,7 +1174,10 @@ async function executeBufferedUpload(file, includeLinkKey) {
         const percentComplete = event.loaded / event.total;
         // Upload phase is 50% -> 85% of total progress
         const overallProgress = 50 + Math.round(percentComplete * 35);
-        updateProgress(overallProgress, `Uploading... ${Math.round(percentComplete * 100)}%`);
+        updateProgress(
+          overallProgress,
+          `Uploading... ${Math.round(percentComplete * 100)}%`,
+        );
       }
     };
 
@@ -1135,10 +1191,10 @@ async function executeBufferedUpload(file, includeLinkKey) {
         }
       } else {
         try {
-            const error = JSON.parse(xhr.responseText);
-            reject(new Error(error.error || `Upload failed: ${xhr.status}`));
+          const error = JSON.parse(xhr.responseText);
+          reject(new Error(error.error || `Upload failed: ${xhr.status}`));
         } catch (e) {
-            reject(new Error(`Upload failed: ${xhr.status}`));
+          reject(new Error(`Upload failed: ${xhr.status}`));
         }
       }
     };
@@ -1148,7 +1204,7 @@ async function executeBufferedUpload(file, includeLinkKey) {
 
     // Link abort controller
     if (uploadAbortController) {
-      uploadAbortController.signal.addEventListener('abort', () => xhr.abort());
+      uploadAbortController.signal.addEventListener("abort", () => xhr.abort());
     }
 
     xhr.send(formData);
@@ -1165,21 +1221,12 @@ async function executeBufferedUpload(file, includeLinkKey) {
   const shareLink = generateShareLink(
     serverData.fileId,
     exportedKey.k,
-    includeLinkKey
-  );
-  showUploadSuccess(
-    shareLink,
     includeLinkKey,
-    metadata.expiresAt
   );
+  showUploadSuccess(shareLink, includeLinkKey, metadata.expiresAt);
 }
 
-async function prepareMetadata(
-  file,
-  contentHash,
-  aesKey,
-  includeLinkKey
-) {
+async function prepareMetadata(file, contentHash, aesKey, includeLinkKey) {
   const expiryHours = getSelectedExpiryHours();
   const expiresAt = Date.now() + expiryHours * 60 * 60 * 1000;
   const selectedRecipients = getSelectedRecipients();
@@ -1205,11 +1252,11 @@ async function prepareMetadata(
       const contact = await IdentityManager.getContact(recipientId);
       if (contact) {
         const recipientPublicKey = await CryptoModule.importECDHPublicKey(
-          contact.encryptionPublicKey
+          contact.encryptionPublicKey,
         );
         const encryptedKeyBundle = await CryptoModule.encryptKeyForRecipient(
           aesKey,
-          recipientPublicKey
+          recipientPublicKey,
         );
 
         metadata.encryptedKeys.push({
@@ -1227,13 +1274,12 @@ async function prepareMetadata(
 
   // Always sign on secure page when user has identity
   if (currentIdentity) {
-    const loadedIdentity = await IdentityManager.loadIdentityKeys(
-      currentIdentity
-    );
+    const loadedIdentity =
+      await IdentityManager.loadIdentityKeys(currentIdentity);
 
     const signatureBundle = await CryptoModule.signFileMetadata(
       { filename: file.name, size: file.size, contentHash: contentHash },
-      loadedIdentity.signing.privateKey
+      loadedIdentity.signing.privateKey,
     );
 
     metadata.signature = {
@@ -1264,7 +1310,7 @@ async function uploadMetadata(fileId, metadata) {
 
     if (!metadataResponse.ok) {
       console.warn(
-        "Failed to upload metadata, link-based access will still work"
+        "Failed to upload metadata, link-based access will still work",
       );
     }
   }
@@ -1275,20 +1321,16 @@ async function uploadMetadata(fileId, metadata) {
 function generateShareLink(fileId, keyString, includeLinkKey) {
   if (includeLinkKey) {
     return `${window.location.origin}/download?id=${encodeURIComponent(
-      fileId
+      fileId,
     )}#${keyString}`;
   } else {
     return `${window.location.origin}/download?id=${encodeURIComponent(
-      fileId
+      fileId,
     )}`;
   }
 }
 
-async function showUploadSuccess(
-  shareLink,
-  includeLinkKey,
-  expiresAt
-) {
+async function showUploadSuccess(shareLink, includeLinkKey, expiresAt) {
   // Trigger the lock closing animation and wait for it to complete
   // This ensures the overlay hides at exactly the right moment
   if (window.encryptionAnimator) {
@@ -1309,7 +1351,7 @@ async function showUploadSuccess(
   showUploadStatusBadges(
     includeLinkKey,
     getSelectedRecipients().length,
-    enableSigning && currentIdentity
+    enableSigning && currentIdentity,
   );
   showShareModeInfo(includeLinkKey, getSelectedRecipients().length);
   showSignatureStatusInfo(enableSigning, currentIdentity);
@@ -1324,16 +1366,20 @@ function showShareModeInfo(hasLinkKey, recipientCount) {
   let icon = "";
 
   if (hasLinkKey && recipientCount > 0) {
-    icon = '<svg class="lucide-icon inline-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/></svg>';
+    icon =
+      '<svg class="lucide-icon inline-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/></svg>';
     message = `Hybrid access: Anyone with link can decrypt + ${recipientCount} identity recipient(s)`;
   } else if (hasLinkKey) {
-    icon = '<svg class="lucide-icon inline-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>';
+    icon =
+      '<svg class="lucide-icon inline-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>';
     message = "Link-based access: Anyone with this link can decrypt the file";
   } else if (recipientCount > 0) {
-    icon = '<svg class="lucide-icon inline-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>';
+    icon =
+      '<svg class="lucide-icon inline-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>';
     message = `Identity-only access: Only ${recipientCount} selected recipient(s) can decrypt`;
   } else {
-    icon = '<svg class="lucide-icon inline-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>';
+    icon =
+      '<svg class="lucide-icon inline-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>';
     message = "Warning: No access method selected. File cannot be decrypted!";
   }
 
@@ -1345,24 +1391,24 @@ function showUploadStatusBadges(hasLinkKey, recipientCount, isSigned) {
   const container = document.getElementById("uploadStatusBadges");
   if (!container) return;
 
-  let badges = [];
-
-  badges.push(
-    `<span class="status-badge badge-encrypted"><svg class="lucide-icon inline-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> AES-256-GCM Encrypted</span>`
-  );
+  const badges = [];
 
   if (recipientCount > 0) {
     badges.push(
-      `<span class="status-badge badge-identity"><svg class="lucide-icon inline-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> ${recipientCount} Recipient(s)</span>`
+      `<span class="status-badge badge-identity"><span class="badge-icon"><svg class="lucide-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>${recipientCount} Recipient${recipientCount > 1 ? "s" : ""}</span>`,
     );
   }
 
   if (isSigned) {
-    badges.push(`<span class="status-badge badge-signed"><svg class="lucide-icon inline-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.854z"/></svg> Signed</span>`);
+    badges.push(
+      `<span class="status-badge badge-signed"><span class="badge-icon"><svg class="lucide-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span>Signed</span>`,
+    );
   }
 
-  container.innerHTML = badges.join("");
-  container.classList.add("show");
+  if (badges.length > 0) {
+    container.innerHTML = badges.join("");
+    container.classList.add("show");
+  }
 }
 
 function showSignatureStatusInfo(enableSigning, identity) {
@@ -1382,7 +1428,7 @@ function showSignatureStatusInfo(enableSigning, identity) {
         </div>
         <div class="sig-content">
           <span class="sig-detail">Signed by: ${escapeHtml(
-            identity.displayName
+            identity.displayName,
           )} (${shortFingerprint})</span>
           <span class="sig-note">Recipients can verify this file came from you.</span>
         </div>
