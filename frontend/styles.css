@@ -73,7 +73,7 @@
   /* Text Colors */
   --text-primary: #e6edf3;
   --text-secondary: #96a1ac;
-  --text-muted: #484f58;
+  --text-muted: #76818f;
   --text-code: #00ff41;
   --text-on-primary: #000000;
 
@@ -2786,22 +2786,13 @@ input[type="checkbox"] {
   opacity: 0.6;
 }
 
-/* Recipient Count Badge */
+/* Recipient Count */
 .recipient-count {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
   margin-top: 0.75rem;
-  padding: 0.6rem 1rem;
-  background: rgba(0, 255, 65, 0.06);
-  border: 1px solid rgba(0, 255, 65, 0.2);
-  border-radius: 8px;
+  padding: 0 0.25rem;
   font-family: var(--font-mono);
-  font-size: 0.8rem;
-  font-weight: 500;
-  color: var(--cyber-green);
-  text-align: center;
+  font-size: 0.75rem;
+  color: var(--text-muted);
 }
 
 .recipient-count:empty {
