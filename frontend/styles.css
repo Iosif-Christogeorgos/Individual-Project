@@ -5954,43 +5954,43 @@ input[type="checkbox"]:checked {
   flex-shrink: 0;
 }
 
-/* AES Badge - Golden/Amber theme */
+/* AES Badge - Subtle gray theme */
 .encryption-badge-aes {
-  background: rgba(255, 200, 0, 0.08);
-  border: 1px solid rgba(255, 200, 0, 0.25);
-  color: #ffc800;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-secondary);
 }
 
 .encryption-badge-wrapper:hover .encryption-badge-aes {
-  background: rgba(255, 200, 0, 0.15);
-  border-color: rgba(255, 200, 0, 0.5);
-  box-shadow: 0 0 20px rgba(255, 200, 0, 0.2);
+  background: rgba(255, 200, 0, 0.08);
+  border-color: rgba(255, 200, 0, 0.3);
+  color: #ffc800;
 }
 
-/* Zero-Knowledge Badge - Cyan/Blue theme */
+/* Zero-Knowledge Badge - Subtle gray theme */
 .encryption-badge-zk {
-  background: rgba(0, 212, 255, 0.08);
-  border: 1px solid rgba(0, 212, 255, 0.25);
-  color: #00d4ff;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-secondary);
 }
 
 .encryption-badge-wrapper:hover .encryption-badge-zk {
-  background: rgba(0, 212, 255, 0.15);
-  border-color: rgba(0, 212, 255, 0.5);
-  box-shadow: 0 0 20px rgba(0, 212, 255, 0.2);
+  background: rgba(0, 212, 255, 0.08);
+  border-color: rgba(0, 212, 255, 0.3);
+  color: #00d4ff;
 }
 
-/* ECDSA Signatures Badge - Green theme */
+/* ECDSA Signatures Badge - Subtle gray theme */
 .encryption-badge-ecdsa {
-  background: rgba(0, 255, 65, 0.08);
-  border: 1px solid rgba(0, 255, 65, 0.25);
-  color: var(--cyber-green);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-secondary);
 }
 
 .encryption-badge-wrapper:hover .encryption-badge-ecdsa {
-  background: rgba(0, 255, 65, 0.15);
-  border-color: rgba(0, 255, 65, 0.5);
-  box-shadow: 0 0 20px rgba(0, 255, 65, 0.2);
+  background: rgba(0, 255, 65, 0.08);
+  border-color: rgba(0, 255, 65, 0.3);
+  color: var(--cyber-green);
 }
 
 /* Tooltip Styles */
