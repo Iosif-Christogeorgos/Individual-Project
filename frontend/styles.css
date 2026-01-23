@@ -5704,6 +5704,26 @@ input[type="checkbox"]:checked {
   background: rgba(0, 0, 0, 0.2);
   border-radius: 8px;
   padding: 4px;
+  position: relative;
+}
+
+/* Sliding indicator background */
+.contacts-tabs::before {
+  content: '';
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: calc(50% - 4px);
+  height: calc(100% - 8px);
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+}
+
+/* Slide indicator to right when second tab is active */
+.contacts-tabs.tab-right::before {
+  transform: translateX(100%);
 }
 
 .contacts-tab {
@@ -5717,7 +5737,9 @@ input[type="checkbox"]:checked {
   font-weight: 500;
   color: var(--text-muted);
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: color 0.3s ease;
+  position: relative;
+  z-index: 1;
 }
 
 .contacts-tab:hover {
@@ -5725,18 +5747,34 @@ input[type="checkbox"]:checked {
 }
 
 .contacts-tab.active {
-  background: rgba(255, 255, 255, 0.08);
   color: var(--text-primary);
 }
 
-/* Tab Content */
+/* Tab Content with fade transition */
 .tab-content {
   display: none;
   padding: 0 1.5rem 1.5rem;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.25s ease, transform 0.25s ease;
 }
 
 .tab-content.active {
   display: block;
+  opacity: 1;
+  transform: translateY(0);
+  animation: tabFadeIn 0.25s ease forwards;
+}
+
+@keyframes tabFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .tab-desc {

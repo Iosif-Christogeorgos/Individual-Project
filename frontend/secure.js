@@ -291,6 +291,17 @@ function initializeContactsTabs() {
       // Activate clicked tab
       tab.classList.add("active");
       const tabName = tab.dataset.tab;
+
+      // Update sliding indicator position
+      const tabsContainer = document.querySelector(".contacts-tabs");
+      if (tabsContainer) {
+        if (tabName === "add-new") {
+          tabsContainer.classList.add("tab-right");
+        } else {
+          tabsContainer.classList.remove("tab-right");
+        }
+      }
+
       if (tabContents[tabName]) {
         tabContents[tabName].classList.add("active");
       }
