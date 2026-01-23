@@ -1965,7 +1965,6 @@ input[type="checkbox"] {
 
 /* Security Protocol Warning */
 .security-protocol-warning {
-  margin-top: 1rem;
   padding: 1rem;
   background: rgba(0, 0, 0, 0.3);
   border: 1px solid var(--glass-border);
