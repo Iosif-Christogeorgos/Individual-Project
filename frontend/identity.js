@@ -180,8 +180,6 @@ export async function getIdentity() {
   return await retrieveIdentity();
 }
 
-
-
 /**
  * Import identity from CryptoKey objects.
  * @param {Object} identity - Stored identity with JWK keys
@@ -270,8 +268,6 @@ export function exportPublicIdentity(identity) {
     fingerprint: identity.fingerprint,
   };
 }
-
-
 
 // ===========================================================================
 // Contact Management (Known Recipients)

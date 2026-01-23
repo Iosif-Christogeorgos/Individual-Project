@@ -230,10 +230,6 @@ function resetToUpload() {
 // Identity Panel Functions
 // =============================================================================
 
-// =============================================================================
-// Identity Panel Functions
-// =============================================================================
-
 async function initializeIdentityPanel() {
   const identityPanel = document.getElementById("identityVaultPanel");
   if (!identityPanel) return;
@@ -831,40 +827,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 
 // Expose cancelUpload globally for fullscreen overlay cancel button
-window.cancelUpload = function () {
-  // Forward to the module's cancelUpload function
-  if (typeof cancelUpload === "function") {
-    // This will be called from the global scope - need to check isUploading
-    const uploadBtn = document.getElementById("uploadBtn");
-
-    // Abort any in-progress fetch request
-    if (uploadAbortController) {
-      uploadAbortController.abort();
-      uploadAbortController = null;
-    }
-
-    // Reset upload state
-    isUploading = false;
-
-    // Reset UI
-    if (uploadBtn) {
-      uploadBtn.disabled = false;
-      uploadBtn.innerHTML = '<span><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span> Encrypt & Upload';
-    }
-
-    // Hide progress and reset animation
-    hideProgress();
-    if (window.encryptionAnimator) {
-      window.encryptionAnimator.reset();
-    }
-
-    // Clear the file selection
-    clearFile();
-
-    // Show feedback to user
-    showToast("Upload cancelled ✓");
-  }
-};
+// (assigned to local cancelUpload function after it's defined below)
 
 // =============================================================================
 // Main Upload Process
@@ -952,6 +915,9 @@ function cancelUpload() {
   // Show feedback to user
   showToast("Upload cancelled ✓");
 }
+
+// Assign to window for global access from overlay cancel button
+window.cancelUpload = cancelUpload;
 
 async function executeUpload() {
   const uploadBtn = document.getElementById("uploadBtn");

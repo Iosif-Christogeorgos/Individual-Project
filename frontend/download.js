@@ -8,7 +8,7 @@
 
 import * as CryptoModule from "./crypto.js";
 import * as IdentityManager from "./identity.js";
-import { showAlert, hideAlert, escapeHtml, updateStep } from "./ui-utils.js";
+import { showAlert, hideAlert, escapeHtml, updateStep, formatExpiryDuration } from "./ui-utils.js";
 import { hapticSuccess, hapticHeavy, hapticError } from "./haptics.js";
 
 let currentIdentity = null;
@@ -17,23 +17,6 @@ let fileMetadata = null;
 // Threshold for streaming download (100MB)
 const STREAMING_DOWNLOAD_THRESHOLD = 100 * 1024 * 1024;
 
-// =============================================================================
-// Expiry Formatting Helpers
-// =============================================================================
-
-/**
- * Format expiry hours into a human-readable string.
- * @param {number} hours - Expiry duration in hours
- * @returns {string} Human-readable duration (e.g., "24 hours" or "3 days")
- */
-function formatExpiryDuration(hours) {
-  if (hours < 24) {
-    return hours === 1 ? "1 hour" : `${hours} hours`;
-  } else {
-    const days = Math.floor(hours / 24);
-    return days === 1 ? "1 day" : `${days} days`;
-  }
-}
 
 /**
  * Update the expiry notice on the download page based on metadata.

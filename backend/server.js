@@ -44,8 +44,7 @@ const __dirname = path.dirname(__filename);
 // Configuration
 // =============================================================================
 const PORT = process.env.PORT || 3000;
-const FILE_EXPIRY_HOURS = 24;
-const DEFAULT_EXPIRY_MS = FILE_EXPIRY_HOURS * 60 * 60 * 1000;
+const DEFAULT_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24 hours
 const CLEANUP_INTERVAL_MS = 15 * 60 * 1000;
 
 // Allowed expiry options (in hours) - validated on upload
@@ -92,7 +91,7 @@ const s3Client = new S3Client({
 // File Cleanup / Garbage Collection (Database-driven)
 // =============================================================================
 
-const FILE_ID_PATTERN = /^file-(\d+)-[a-f0-9]+\.bin$/;
+const FILE_ID_PATTERN = /^file-\d+-[a-f0-9]+\.bin$/;
 
 async function cleanupExpiredFiles() {
   const now = new Date().toISOString();

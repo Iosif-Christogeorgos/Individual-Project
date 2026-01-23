@@ -4,7 +4,7 @@
 // Handles file selection, validation, and drag & drop functionality.
 // =============================================================================
 
-import { showAlert, hideAlert, formatFileSize } from './ui-utils.js';
+import { showAlert, hideAlert, formatFileSize, formatExpiryDuration } from './ui-utils.js';
 
 // Absolute maximum file size (used for initial file selection validation)
 const MAX_FILE_SIZE = 750 * 1024 * 1024; // 750MB
@@ -28,19 +28,6 @@ export const EXPIRY_SIZE_LIMITS = {
  */
 export function getMaxFileSizeForExpiry(expiryHours) {
   return EXPIRY_SIZE_LIMITS[expiryHours] || EXPIRY_SIZE_LIMITS[24]; // Default to 24h limit
-}
-
-/**
- * Format expiry hours into a human-readable string.
- * @param {number} hours - Expiry duration in hours
- * @returns {string} Human-readable duration (e.g., "24 hours" or "3 days")
- */
-function formatExpiryDuration(hours) {
-  if (hours < 24) {
-    return `${hours} hour${hours > 1 ? 's' : ''}`;
-  }
-  const days = hours / 24;
-  return `${days} day${days > 1 ? 's' : ''}`;
 }
 
 /**

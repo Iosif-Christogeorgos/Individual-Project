@@ -127,6 +127,19 @@ export function formatFileSize(bytes) {
 }
 
 /**
+ * Format expiry hours into a human-readable string.
+ * @param {number} hours - Expiry duration in hours
+ * @returns {string} Human-readable duration (e.g., "24 hours" or "3 days")
+ */
+export function formatExpiryDuration(hours) {
+  if (hours < 24) {
+    return hours === 1 ? "1 hour" : `${hours} hours`;
+  }
+  const days = Math.floor(hours / 24);
+  return days === 1 ? "1 day" : `${days} days`;
+}
+
+/**
  * Escape HTML special characters to prevent XSS.
  * @param {string} text - Text to escape
  * @returns {string} Escaped text
@@ -142,11 +155,6 @@ export function escapeHtml(text) {
 // Progress Display
 // ===========================================================================
 
-/**
- * Update progress display.
- * @param {number} percent - Progress percentage (0-100)
- * @param {string} status - Status message
- */
 /**
  * Update progress display.
  * @param {number} percent - Progress percentage (0-100)
@@ -217,6 +225,7 @@ const UIUtils = {
   hideAlert,
   showToast,
   formatFileSize,
+  formatExpiryDuration,
   escapeHtml,
   updateProgress,
   hideProgress,
