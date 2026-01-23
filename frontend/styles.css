@@ -4838,10 +4838,18 @@ input[type="checkbox"]:checked {
   /* -------------------------------------------------------------------------
      Layout: Fullscreen Container
      ------------------------------------------------------------------------- */
+  body {
+    display: block;
+    align-items: initial;
+    justify-content: initial;
+  }
+
   .app-layout {
     padding-left: 0;
     display: flex;
     flex-direction: column;
+    min-height: 100vh;
+    min-height: 100dvh;
   }
 
   .main-row {
@@ -4855,8 +4863,7 @@ input[type="checkbox"]:checked {
   .container {
     max-width: 100%;
     width: 100%;
-    min-height: 100vh;
-    min-height: 100dvh;
+    min-height: auto;
     border-radius: 0;
     border: none;
     box-shadow: none;
