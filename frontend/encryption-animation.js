@@ -22,6 +22,8 @@ class EncryptionAnimator {
     this.isFullscreenMode = false;
     this.isCompleting = false;
     this.currentProgress = 0;
+    this.targetProgress = 0;
+    this.currentVisProgress = 0;
     this.animationFrameId = null;
     this.lastParticleTime = 0;
     this.particleInterval = 150; // ms between particles
@@ -75,7 +77,9 @@ class EncryptionAnimator {
     
     this.isFullscreenMode = true;
     this.isCompleting = false;
-    this.currentProgress = 0;
+    this.currentProgress = 0; // Logical progress
+    this.targetProgress = 0;
+    this.currentVisProgress = 0; // Visual progress (animated)
     
     // Reset mega lock state
     if (this.megaLock) {
@@ -118,7 +122,8 @@ class EncryptionAnimator {
     
     this.isFullscreenMode = false;
     this.isCompleting = false;
-    this.currentProgress = 0;
+    this.targetProgress = 0;
+    this.currentVisProgress = 0;
     this.stopMegaParticles();
     
     // Fade out
@@ -139,35 +144,51 @@ class EncryptionAnimator {
   updateMegaProgress(percent, status) {
     // Ignore updates if not in fullscreen mode or if completion has started
     if (!this.isFullscreenMode || this.isCompleting) return;
-    
-    // Prevent backwards progress (except for explicit reset)
-    if (percent < this.currentProgress && percent > 0) {
+
+    // Prevent backwards progress
+    if (percent < this.targetProgress && percent > 0) {
       return;
     }
-    this.currentProgress = percent;
+    this.targetProgress = percent;
     
-    // Update progress ring (circumference = 2 * PI * 45 = 283)
-    if (this.megaRingFill) {
-      const offset = 283 - (283 * percent / 100);
-      this.megaRingFill.setAttribute('stroke-dashoffset', offset.toString());
-    }
-    
-    // Update percentage
-    if (this.megaProgressPercent) {
-      this.megaProgressPercent.textContent = `${Math.round(percent)}%`;
-    }
-    
-    // Update status with scramble effect
+    // Update status text immediately (optional, or could be in loop)
     if (this.megaStatusText && status) {
       const hexPart = Array(4).fill(0).map(() => 
         this.dataChars[Math.floor(Math.random() * this.dataChars.length)]
       ).join('');
-      this.megaStatusText.textContent = `[${hexPart}] ENCRYPTING`;
+      this.megaStatusText.textContent = `[${hexPart}] ${status.toUpperCase()}`;
+    }
+  }
+
+  /**
+   * Update visual progress with smoothing (LERP)
+   * Called every frame
+   */
+  updateVisualProgress() {
+    if (!this.isFullscreenMode) return;
+
+    // LERP: Move current towards target
+    // The factor 0.1 provides smooth easing. Adjust for speed.
+    const diff = this.targetProgress - this.currentVisProgress;
+    
+    // If difference is very small and we are essentially there, just snap
+    if (Math.abs(diff) < 0.1) {
+      this.currentVisProgress = this.targetProgress;
+    } else {
+      // Dynamic speed: accelerate if far behind
+      const speed = Math.max(0.05, Math.min(0.2, Math.abs(diff) * 0.05));
+      this.currentVisProgress += diff * speed;
+    }
+
+    // Update progress ring (circumference = 283)
+    if (this.megaRingFill) {
+      const offset = 283 - (283 * this.currentVisProgress / 100);
+      this.megaRingFill.setAttribute('stroke-dashoffset', offset.toString());
     }
     
-    // Complete animation if 100%
-    if (percent >= 100) {
-      this.completeMegaEncryption();
+    // Update percentage text
+    if (this.megaProgressPercent) {
+      this.megaProgressPercent.textContent = `${Math.round(this.currentVisProgress)}%`;
     }
   }
   
@@ -191,6 +212,9 @@ class EncryptionAnimator {
       
       // Check for particles to recycle
       this.recycleCompletedParticles();
+      
+      // Update smooth progress
+      this.updateVisualProgress();
       
       this.animationFrameId = requestAnimationFrame(animateParticles);
     };
@@ -288,12 +312,34 @@ class EncryptionAnimator {
   }
   
   /**
-   * Complete mega encryption with dramatic lock close
+   * Trigger lock closing animation and complete.
+   * Called by showUploadSuccess() when the success view is ready.
+   * Returns a Promise that resolves when animation is complete and overlay is hidden.
    */
-  async completeMegaEncryption() {
-    // Guard against multiple calls during async completion
-    if (!this.isFullscreenMode || this.isCompleting) return;
+  async triggerLockAndComplete() {
+    // Guard against calls when not in fullscreen mode or already completing
+    if (!this.isFullscreenMode || this.isCompleting) {
+      return Promise.resolve();
+    }
     this.isCompleting = true;
+    
+    // Ensure target is 100%
+    this.targetProgress = 100;
+    
+    // Wait for visual progress to catch up (smooth finish)
+    while (Math.abs(this.currentVisProgress - 100) > 0.5) {
+       this.updateVisualProgress(); // Force update
+       await new Promise(r => requestAnimationFrame(r));
+    }
+    
+    // Snap to exact 100 for clean finish
+    this.currentVisProgress = 100;
+    if (this.megaRingFill) {
+      this.megaRingFill.setAttribute('stroke-dashoffset', '0');
+    }
+    if (this.megaProgressPercent) {
+      this.megaProgressPercent.textContent = '100%';
+    }
     
     // Stop particles
     this.stopMegaParticles();
@@ -334,11 +380,19 @@ class EncryptionAnimator {
     // Create energy burst
     this.createMegaEnergyBurst();
     
-    // Wait then hide overlay
-    await new Promise(r => setTimeout(r, 1200));
+    // Brief pause to appreciate the locked state, then hide
+    await new Promise(r => setTimeout(r, 600));
     this.hideFullscreenOverlay();
     
     this.isAnimating = false;
+  }
+  
+  /**
+   * @deprecated Use triggerLockAndComplete() instead
+   * Kept for backwards compatibility
+   */
+  async completeMegaEncryption() {
+    return this.triggerLockAndComplete();
   }
   
   /**
@@ -388,7 +442,8 @@ class EncryptionAnimator {
     this.isAnimating = false;
     this.isFullscreenMode = false;
     this.isCompleting = false;
-    this.currentProgress = 0;
+    this.targetProgress = 0;
+    this.currentVisProgress = 0;
   }
 }
 

@@ -290,12 +290,13 @@ async function executeStreamingUpload(file, expiryHours) {
     file,
     aesKey,
     (percent) => {
-      // Pass raw percent (0-100) so animation syncs with actual encryption
-      updateProgress(percent, `Encrypting... ${percent}%`);
+      // Scale progress to 10-90% to leave room for metadata
+      const overallProgress = 10 + Math.round(percent * 0.8);
+      updateProgress(overallProgress, `Encrypting & Uploading... ${percent}%`);
     }
   );
 
-  updateProgress(80, "Uploading to server...");
+  updateProgress(90, "Processing response...");
 
   const uploadResponse = await fetch("/upload-stream", {
     method: "POST",
@@ -315,7 +316,8 @@ async function executeStreamingUpload(file, expiryHours) {
 
   await uploadMetadata(serverData.fileId, file, expiryHours);
 
-  updateProgress(100, "Complete!");
+  // Don't set 100% here - triggerLockAndComplete() will handle that
+  updateProgress(98, "Finalizing...");
   const shareLink = `${window.location.origin}/download?id=${encodeURIComponent(
     serverData.fileId
   )}#${exportedKey.k}`;
@@ -333,12 +335,13 @@ async function executeBufferedUpload(file, expiryHours) {
     file,
     aesKey,
     (percent) => {
-      // Pass raw percent (0-100) so animation syncs with actual encryption
-      updateProgress(percent, `Encrypting... ${percent}%`);
+      // Encryption takes 10-50%
+      const overallProgress = 10 + Math.round(percent * 0.4);
+      updateProgress(overallProgress, `Encrypting... ${percent}%`);
     }
   );
 
-  updateProgress(75, "Uploading...");
+  updateProgress(50, "Uploading encrypted file...");
 
   const formData = new FormData();
   formData.append(
@@ -347,23 +350,56 @@ async function executeBufferedUpload(file, expiryHours) {
     `${file.name}.enc`
   );
 
-  const uploadResponse = await fetch("/upload", {
-    method: "POST",
-    body: formData,
-    signal: uploadAbortController.signal,
+  // Use XMLHttpRequest for upload progress tracking
+  const serverData = await new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", "/upload", true);
+    
+    // Upload progress handler
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable) {
+        const percentComplete = event.loaded / event.total;
+        // Upload phase is 50% -> 85% of total progress
+        const overallProgress = 50 + Math.round(percentComplete * 35);
+        updateProgress(overallProgress, `Uploading... ${Math.round(percentComplete * 100)}%`);
+      }
+    };
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          const response = JSON.parse(xhr.responseText);
+          resolve(response);
+        } catch (e) {
+          reject(new Error("Invalid server response"));
+        }
+      } else {
+        try {
+            const error = JSON.parse(xhr.responseText);
+            reject(new Error(error.error || `Upload failed: ${xhr.status}`));
+        } catch (e) {
+            reject(new Error(`Upload failed: ${xhr.status}`));
+        }
+      }
+    };
+
+    xhr.onerror = () => reject(new Error("Network error during upload"));
+    xhr.onabort = () => reject(new DOMException("Aborted", "AbortError"));
+
+    // Link abort controller
+    if (uploadAbortController) {
+      uploadAbortController.signal.addEventListener('abort', () => xhr.abort());
+    }
+
+    xhr.send(formData);
   });
 
-  if (!uploadResponse.ok) {
-    const errorData = await uploadResponse.json();
-    throw new Error(errorData.error || "Upload failed");
-  }
-
-  const serverData = await uploadResponse.json();
   if (!serverData.fileId) throw new Error("Server did not return file ID");
 
   await uploadMetadata(serverData.fileId, file, expiryHours);
 
-  updateProgress(100, "Complete!");
+  // Don't set 100% here - triggerLockAndComplete() will handle that
+  updateProgress(98, "Finalizing...");
   const shareLink = `${window.location.origin}/download?id=${encodeURIComponent(
     serverData.fileId
   )}#${exportedKey.k}`;
@@ -398,17 +434,18 @@ async function uploadMetadata(fileId, file, expiryHours) {
   }
 }
 
-function showUploadSuccess(shareLink, expiresAt) {
-  setTimeout(() => {
-    hideProgress();
-    showShareLink(shareLink);
+async function showUploadSuccess(shareLink, expiresAt) {
+  // Trigger the lock closing animation and wait for it to complete
+  // This ensures the overlay hides at exactly the right moment
+  if (window.encryptionAnimator) {
+    await window.encryptionAnimator.triggerLockAndComplete();
+  }
 
-    if (expiresAt) {
-      startCountdownTimer(expiresAt);
-    }
+  // Now show the success view immediately (animation just finished)
+  hideProgress();
+  showShareLink(shareLink);
 
-    if (window.encryptionAnimator) {
-      window.encryptionAnimator.completeMegaEncryption();
-    }
-  }, 2000);
+  if (expiresAt) {
+    startCountdownTimer(expiresAt);
+  }
 }

@@ -1013,7 +1013,7 @@ async function executeStreamingUpload(file, includeLinkKey) {
   // Always compute hash for signing (secure page always signs)
   updateProgress(10, "Computing file hash for signature...");
   const originalFileHash = await CryptoModule.hashFile(file, (hashProgress) => {
-    const overallProgress = 10 + Math.round(hashProgress * 0.15);
+    const overallProgress = 10 + Math.round(hashProgress * 0.1);
     updateProgress(overallProgress, `Hashing... ${hashProgress}%`);
   });
 
@@ -1030,7 +1030,7 @@ async function executeStreamingUpload(file, includeLinkKey) {
     file,
     aesKey,
     (encryptProgress) => {
-      const overallProgress = 30 + Math.round(encryptProgress * 0.6);
+      const overallProgress = 30 + Math.round(encryptProgress * 0.65);
       updateProgress(
         overallProgress,
         `Encrypting & uploading... ${encryptProgress}%`
@@ -1061,7 +1061,8 @@ async function executeStreamingUpload(file, includeLinkKey) {
 
   await uploadMetadata(serverData.fileId, metadata);
 
-  updateProgress(100, "Encryption complete!");
+  // Don't set 100% here - triggerLockAndComplete() will handle that
+  updateProgress(98, "Finalizing...");
   const shareLink = generateShareLink(
     serverData.fileId,
     exportedKey.k,
@@ -1084,16 +1085,17 @@ async function executeBufferedUpload(file, includeLinkKey) {
     file,
     aesKey,
     (chunkProgress) => {
-      const overallProgress = 10 + Math.round(chunkProgress * 0.4);
+      // Encryption takes 10-45% of the total progress
+      const overallProgress = 10 + Math.round(chunkProgress * 0.35);
       updateProgress(overallProgress, `Encrypting... ${chunkProgress}%`);
     }
   );
 
   // Always compute hash for signing (secure page always signs)
-  updateProgress(50, "Computing file hash for signature...");
+  updateProgress(45, "Computing file hash for signature...");
   const originalFileHash = await CryptoModule.hashFile(file);
 
-  updateProgress(55, "Preparing metadata...");
+  updateProgress(48, "Preparing metadata...");
   const metadata = await prepareMetadata(
     file,
     originalFileHash,
@@ -1101,22 +1103,56 @@ async function executeBufferedUpload(file, includeLinkKey) {
     includeLinkKey
   );
 
-  updateProgress(70, "Uploading encrypted file...");
+  updateProgress(50, "Uploading encrypted file...");
   const formData = new FormData();
   formData.append("encryptedFile", encryptedBlob, "encrypted.bin");
 
-  const uploadResponse = await fetch("/upload", {
-    method: "POST",
-    body: formData,
-    signal: uploadAbortController?.signal,
+  // Use XMLHttpRequest for upload progress tracking
+  const serverData = await new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", "/upload", true);
+    
+    // Add auth headers if needed (Supabase/R2 might need special headers but here we use our backend proxy)
+    // xhr.setRequestHeader("Content-Type", "multipart/form-data"); // Browser sets this automatically with boundary
+
+    // Upload progress handler
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable) {
+        const percentComplete = event.loaded / event.total;
+        // Upload phase is 50% -> 85% of total progress
+        const overallProgress = 50 + Math.round(percentComplete * 35);
+        updateProgress(overallProgress, `Uploading... ${Math.round(percentComplete * 100)}%`);
+      }
+    };
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          const response = JSON.parse(xhr.responseText);
+          resolve(response);
+        } catch (e) {
+          reject(new Error("Invalid server response"));
+        }
+      } else {
+        try {
+            const error = JSON.parse(xhr.responseText);
+            reject(new Error(error.error || `Upload failed: ${xhr.status}`));
+        } catch (e) {
+            reject(new Error(`Upload failed: ${xhr.status}`));
+        }
+      }
+    };
+
+    xhr.onerror = () => reject(new Error("Network error during upload"));
+    xhr.onabort = () => reject(new DOMException("Aborted", "AbortError"));
+
+    // Link abort controller
+    if (uploadAbortController) {
+      uploadAbortController.signal.addEventListener('abort', () => xhr.abort());
+    }
+
+    xhr.send(formData);
   });
-
-  if (!uploadResponse.ok) {
-    throw new Error(`Upload failed: ${uploadResponse.status}`);
-  }
-
-  updateProgress(85, "Upload complete...");
-  const serverData = await uploadResponse.json();
 
   if (!serverData.fileId) {
     throw new Error("Server did not return a file ID.");
@@ -1124,7 +1160,8 @@ async function executeBufferedUpload(file, includeLinkKey) {
 
   await uploadMetadata(serverData.fileId, metadata);
 
-  updateProgress(100, "Encryption complete!");
+  // Don't set 100% here - triggerLockAndComplete() will handle that
+  updateProgress(98, "Finalizing...");
   const shareLink = generateShareLink(
     serverData.fileId,
     exportedKey.k,
@@ -1247,33 +1284,36 @@ function generateShareLink(fileId, keyString, includeLinkKey) {
   }
 }
 
-function showUploadSuccess(
+async function showUploadSuccess(
   shareLink,
   includeLinkKey,
   expiresAt
 ) {
-  // Wait for lock animation to complete before showing success view
-  // The lock closing animation takes about 1.5 seconds
-  setTimeout(() => {
-    hideProgress();
-    showShareLink(shareLink);
+  // Trigger the lock closing animation and wait for it to complete
+  // This ensures the overlay hides at exactly the right moment
+  if (window.encryptionAnimator) {
+    await window.encryptionAnimator.triggerLockAndComplete();
+  }
 
-    if (expiresAt) {
-      startCountdownTimer(expiresAt);
-    }
+  // Now show the success view immediately (animation just finished)
+  hideProgress();
+  showShareLink(shareLink);
 
-    // Signing is always enabled on secure page when user has identity
-    const enableSigning = !!currentIdentity;
+  if (expiresAt) {
+    startCountdownTimer(expiresAt);
+  }
 
-    showUploadStatusBadges(
-      includeLinkKey,
-      getSelectedRecipients().length,
-      enableSigning && currentIdentity
-    );
-    showShareModeInfo(includeLinkKey, getSelectedRecipients().length);
-    showSignatureStatusInfo(enableSigning, currentIdentity);
-    updateSecurityWarning(includeLinkKey);
-  }, 2000);
+  // Signing is always enabled on secure page when user has identity
+  const enableSigning = !!currentIdentity;
+
+  showUploadStatusBadges(
+    includeLinkKey,
+    getSelectedRecipients().length,
+    enableSigning && currentIdentity
+  );
+  showShareModeInfo(includeLinkKey, getSelectedRecipients().length);
+  showSignatureStatusInfo(enableSigning, currentIdentity);
+  updateSecurityWarning(includeLinkKey);
 }
 
 function showShareModeInfo(hasLinkKey, recipientCount) {
