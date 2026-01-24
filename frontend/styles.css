@@ -327,11 +327,19 @@ body {
   margin-bottom: 1rem;
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.5rem;
 }
 
 .hero-title-primary {
   color: var(--text-primary);
+}
+
+.hero-title-accent-row {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 1.2em;
 }
 
 .hero-title-accent {
@@ -339,6 +347,25 @@ body {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+}
+
+/* Typewriter Cursor */
+.typewriter-cursor {
+  display: inline-block;
+  color: var(--accent-blue);
+  font-weight: 300;
+  margin-left: 2px;
+  animation: cursorBlink 1s infinite;
+  -webkit-text-fill-color: var(--accent-blue);
+  font-size: 0.75em;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+@keyframes cursorBlink {
+  0%, 45% { opacity: 1; }
+  50%, 95% { opacity: 0; }
+  100% { opacity: 1; }
 }
 
 .hero-tagline {
