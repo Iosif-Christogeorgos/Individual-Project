@@ -5797,8 +5797,8 @@ input[type="checkbox"]:checked {
 }
 
 .create-identity-card {
-  background: rgba(0, 212, 255, 0.04);
-  border: 1px solid rgba(0, 212, 255, 0.15);
+  background: rgba(0, 141, 7, 0.116);
+  border: 1px solid rgba(5, 179, 28, 0.24);
   border-radius: var(--radius-sm);
   padding: 1.25rem;
 }
