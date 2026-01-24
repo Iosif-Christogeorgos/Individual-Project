@@ -267,6 +267,11 @@ async function initializeIdentityPanel() {
     currentIdentity = await IdentityManager.getIdentity();
     updateIdentityUI();
     initializeContactsTabs();
+
+    // Show onboarding modal for first-time users (no identity)
+    if (!currentIdentity) {
+      showIdentityOnboarding();
+    }
   } catch (error) {
     console.error("Failed to load identity:", error);
   }
@@ -310,15 +315,12 @@ function initializeContactsTabs() {
 }
 
 function updateIdentityUI() {
-  const noIdentitySection = document.getElementById("noIdentitySection");
   const identityFingerprint = document.getElementById("identityFingerprint");
   const fingerprintValue = document.getElementById("fingerprintValue");
   const identityUsername = document.getElementById("identityUsername");
+  const identityPanel = document.getElementById("identityVaultPanel");
 
   if (currentIdentity) {
-    // Hide create identity section
-    noIdentitySection?.classList.add("hidden");
-
     // Show fingerprint card
     identityFingerprint?.classList.remove("hidden");
 
@@ -335,21 +337,76 @@ function updateIdentityUI() {
       fingerprintValue.textContent =
         IdentityManager.getShortFingerprint(currentIdentity);
     }
-  } else {
-    // Show create identity section
-    noIdentitySection?.classList.remove("hidden");
 
+    // Remove no-identity-mode to show contacts section
+    identityPanel?.classList.remove("no-identity-mode");
+
+    // Hide onboarding modal with animation
+    hideIdentityOnboarding();
+  } else {
     // Hide fingerprint card
     identityFingerprint?.classList.add("hidden");
+
+    // Add no-identity-mode to hide contacts section
+    identityPanel?.classList.add("no-identity-mode");
   }
 
   // Re-validate access config after identity state change (silent - no warning shown)
   validateAccessConfig({ showWarning: false });
 }
 
-async function createIdentity() {
-  const usernameInput = document.getElementById("usernameInput");
-  const createBtn = document.getElementById("createIdentityBtn");
+// =============================================================================
+// Identity Onboarding Modal (First-Time User Experience)
+// =============================================================================
+
+/**
+ * Show the identity onboarding modal for first-time users
+ */
+function showIdentityOnboarding() {
+  const backdrop = document.getElementById("identityOnboardingBackdrop");
+  const modal = document.getElementById("identityOnboardingModal");
+
+  if (!backdrop || !modal) return;
+
+  // Small delay to ensure DOM is ready and enable smooth entrance animation
+  requestAnimationFrame(() => {
+    backdrop.classList.add("active");
+    modal.classList.add("active");
+
+    // Focus the username input
+    const usernameInput = document.getElementById("onboardingUsernameInput");
+    if (usernameInput) {
+      setTimeout(() => usernameInput.focus(), 400);
+    }
+  });
+}
+
+/**
+ * Hide the identity onboarding modal with smooth exit animation
+ */
+function hideIdentityOnboarding() {
+  const backdrop = document.getElementById("identityOnboardingBackdrop");
+  const modal = document.getElementById("identityOnboardingModal");
+
+  if (!backdrop || !modal) return;
+
+  // Add closing class for exit animation
+  backdrop.classList.add("closing");
+  modal.classList.add("closing");
+
+  // Remove classes after animation completes
+  setTimeout(() => {
+    backdrop.classList.remove("active", "closing");
+    modal.classList.remove("active", "closing");
+  }, 500);
+}
+
+/**
+ * Create identity from the onboarding modal
+ */
+async function createIdentityFromOnboarding() {
+  const usernameInput = document.getElementById("onboardingUsernameInput");
+  const createBtn = document.getElementById("onboardingCreateBtn");
 
   const username = usernameInput?.value.toLowerCase().trim();
 
@@ -390,16 +447,15 @@ async function createIdentity() {
       throw new Error(result.error || "Failed to publish");
     }
 
-    // Success
+    // Success - update UI and load contacts
     updateIdentityUI();
+    loadContacts(onRecipientChange);
     validateAccessConfig();
-    showToast(`Identity created & published as @${username} 🚀`);
+    hapticSuccess();
+    showToast(`Welcome! Identity created as @${username} 🚀`);
   } catch (error) {
     console.error("Creation error:", error);
     showToast(error.message || "Failed to create identity ✗");
-    // If publishing failed, we might want to delete the local identity to reset state?
-    // For now, let's keep it simple. User is likely locally created but not published if that step fails.
-    // Ideally we would rollback, but IndexDB rollback is complex here.
   } finally {
     if (createBtn) {
       createBtn.disabled = false;
@@ -642,10 +698,20 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("copyBtn")?.addEventListener("click", copyLink);
   document.getElementById("backBtn")?.addEventListener("click", resetToUpload);
 
-  // Identity management
+  // Onboarding modal identity creation
   document
-    .getElementById("createIdentityBtn")
-    ?.addEventListener("click", createIdentity);
+    .getElementById("onboardingCreateBtn")
+    ?.addEventListener("click", createIdentityFromOnboarding);
+
+  // Onboarding modal - Enter key to submit
+  document
+    .getElementById("onboardingUsernameInput")
+    ?.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        createIdentityFromOnboarding();
+      }
+    });
 
   // Fingerprint copy button
   document

@@ -5840,6 +5840,292 @@ input[type="checkbox"]:checked {
   display: none;
 }
 
+/* -----------------------------------------------------------------------------
+   Identity Onboarding Modal (First-Time User Experience)
+   ----------------------------------------------------------------------------- */
+
+/* Backdrop overlay that dims and blurs the page */
+.identity-onboarding-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 8, 16, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 1000;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+              visibility 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.identity-onboarding-backdrop.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Modal container for centering */
+.identity-onboarding-modal {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1001;
+  padding: 2rem;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+              visibility 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.identity-onboarding-modal.active {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+/* The actual modal card */
+.identity-onboarding-card {
+  width: 100%;
+  max-width: 420px;
+  background: linear-gradient(135deg, 
+    rgba(17, 24, 39, 0.95) 0%,
+    rgba(10, 15, 26, 0.98) 100%);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(0, 255, 65, 0.2);
+  border-radius: var(--radius);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.05) inset,
+    0 0 60px rgba(0, 255, 65, 0.1),
+    0 25px 80px -12px rgba(0, 0, 0, 0.8);
+  overflow: hidden;
+  transform: scale(0.9) translateY(20px);
+  transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1),
+              opacity 0.5s ease,
+              box-shadow 0.5s ease;
+}
+
+.identity-onboarding-modal.active .identity-onboarding-card {
+  transform: scale(1) translateY(0);
+}
+
+/* Closing animation */
+.identity-onboarding-modal.closing .identity-onboarding-card {
+  transform: scale(0.95) translateY(-10px);
+  opacity: 0;
+}
+
+.identity-onboarding-backdrop.closing {
+  opacity: 0;
+}
+
+/* Modal header */
+.identity-onboarding-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 1.5rem 1.75rem;
+  background: rgba(0, 0, 0, 0.3);
+  border-bottom: 1px solid rgba(0, 255, 65, 0.15);
+}
+
+.identity-onboarding-header-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.identity-onboarding-header-icon svg {
+  width: 32px;
+  height: 32px;
+  color: var(--cyber-green);
+  filter: drop-shadow(0 0 8px var(--cyber-green-glow));
+}
+
+.identity-onboarding-title {
+  font-family: var(--font-sans);
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.identity-onboarding-subtitle {
+  position: absolute;
+  bottom: 0.5rem;
+  right: 0.75rem;
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.35;
+  margin: 0;
+  padding: 0;
+}
+
+/* Modal body */
+.identity-onboarding-body {
+  padding: 1.75rem;
+}
+
+.identity-onboarding-desc {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-bottom: 1.5rem;
+}
+
+.identity-onboarding-desc strong {
+  color: var(--cyber-green);
+  font-weight: 500;
+}
+
+.identity-onboarding-body .input-group {
+  margin-bottom: 1.25rem;
+}
+
+.identity-onboarding-body .username-input-wrapper {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.identity-onboarding-body .username-input-wrapper:focus-within {
+  border-color: var(--cyber-green);
+  box-shadow: 0 0 0 3px rgba(0, 255, 65, 0.1);
+}
+
+.identity-onboarding-body .panel-input {
+  font-size: 1rem;
+  padding: 0.875rem 0.75rem;
+}
+
+.identity-onboarding-body .input-hint {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  margin-top: 0.5rem;
+}
+
+.identity-onboarding-body .btn-primary {
+  width: 100%;
+  padding: 0.875rem 1.5rem;
+  font-size: 0.95rem;
+}
+
+/* Security note at bottom */
+.identity-onboarding-footer {
+  padding: 1rem 1.75rem 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  background: rgba(0, 0, 0, 0.15);
+  position: relative;
+}
+
+.identity-onboarding-footer-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.identity-onboarding-footer-icon {
+  color: var(--accent-blue);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.identity-onboarding-footer-text {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+/* Hide contacts section when no identity exists */
+.no-identity-mode .contacts-tabs,
+.no-identity-mode #myContactsTab,
+.no-identity-mode #addNewTab,
+.no-identity-mode .recipient-count {
+  display: none !important;
+}
+
+/* Subtle pulse animation on the modal border */
+@keyframes identityModalPulse {
+  0%, 100% {
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.05) inset,
+      0 0 60px rgba(0, 255, 65, 0.1),
+      0 25px 80px -12px rgba(0, 0, 0, 0.8);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.05) inset,
+      0 0 80px rgba(0, 255, 65, 0.15),
+      0 25px 80px -12px rgba(0, 0, 0, 0.8);
+  }
+}
+
+.identity-onboarding-modal.active .identity-onboarding-card {
+  animation: identityModalPulse 4s ease-in-out infinite;
+  animation-delay: 0.6s;
+}
+
+/* Mobile responsive for onboarding modal */
+@media (max-width: 480px) {
+  .identity-onboarding-modal {
+    padding: 1rem;
+    align-items: flex-end;
+    padding-bottom: 0;
+  }
+  
+  .identity-onboarding-card {
+    max-width: 100%;
+    border-radius: var(--radius) var(--radius) 0 0;
+    transform: translateY(100%);
+  }
+  
+  .identity-onboarding-modal.active .identity-onboarding-card {
+    transform: translateY(0);
+  }
+  
+  .identity-onboarding-modal.closing .identity-onboarding-card {
+    transform: translateY(100%);
+  }
+  
+  .identity-onboarding-header {
+    padding: 1.25rem 1.25rem;
+  }
+  
+  .identity-onboarding-header-icon {
+    width: 40px;
+    height: 40px;
+  }
+  
+  .identity-onboarding-header-icon svg {
+    width: 20px;
+    height: 20px;
+  }
+  
+  .identity-onboarding-title {
+    font-size: 1.05rem;
+  }
+  
+  .identity-onboarding-body {
+    padding: 1.25rem;
+  }
+  
+  .identity-onboarding-desc {
+    font-size: 0.85rem;
+    margin-bottom: 1.25rem;
+  }
+  
+  .identity-onboarding-footer {
+    padding: 1rem 1.25rem 1.5rem;
+    /* Add safe area padding for devices with home indicators */
+    padding-bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
+  }
+}
+
 /* Ensure drop zone text updates */
 .drop-zone-text strong {
   color: var(--text-primary);
@@ -6237,7 +6523,7 @@ input[type="checkbox"]:checked {
   font-size: 0.875rem;
   text-decoration: none;
   transition: all 0.3s ease;
-  z-index: 100;
+  z-index: 1002;
 }
 
 .back-button:hover {
