@@ -5026,6 +5026,7 @@ input[type="checkbox"]:checked {
   #identityVaultPanel.mobile-open {
     transform: translateX(0);
     box-shadow: -10px 0 40px rgba(0, 0, 0, 0.5);
+    z-index: 1010; /* Higher than back-button (1002) when open */
   }
 
   /* Add a close button inside the panel header on mobile */
