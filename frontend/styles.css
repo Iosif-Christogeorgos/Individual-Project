@@ -3386,38 +3386,46 @@ input[type="checkbox"] {
    Download Page Custom Icons
    ----------------------------------------------------------------------------- */
 
-/* Hero Download Icon */
+/* Hero Download Icon - Clean, Modern Design */
 .download-hero-icon {
-  width: 56px;
-  height: 56px;
-  margin: 0 auto 1rem;
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 1.25rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(
-    135deg,
-    rgba(0, 212, 255, 0.15),
-    rgba(0, 255, 65, 0.15)
-  );
-  border: 2px solid rgba(0, 212, 255, 0.4);
-  border-radius: 12px;
   position: relative;
 }
 
+/* Subtle glow behind the icon */
 .download-hero-icon::before {
   content: "";
   position: absolute;
-  inset: -4px;
-  border: 1px solid rgba(0, 212, 255, 0.2);
-  border-radius: 16px;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(
+    circle,
+    rgba(0, 255, 65, 0.2) 0%,
+    rgba(0, 212, 255, 0.1) 40%,
+    transparent 70%
+  );
+  border-radius: 50%;
+  filter: blur(8px);
+  animation: iconPulse 3s ease-in-out infinite;
+}
+
+@keyframes iconPulse {
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.1); }
 }
 
 .download-hero-icon svg {
-  width: 28px;
-  height: 28px;
-  color: var(--accent-blue);
-  stroke-linecap: round;
-  stroke-linejoin: round;
+  width: 42px;
+  height: 42px;
+  color: var(--cyber-green);
+  filter: drop-shadow(0 0 8px rgba(0, 255, 65, 0.4));
+  position: relative;
+  z-index: 1;
 }
 
 /* Button Icon */
@@ -6975,24 +6983,25 @@ input[type="checkbox"]:checked {
    Download Page - Security Badge & Expiry Notice
    ============================================================================= */
 
-/* Download Hero Icon */
+/* Download Hero Icon - Override for consistency */
 .download-hero-icon {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 1.25rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 64px;
-  height: 64px;
-  margin: 0 auto 1.5rem;
-  background: rgba(0, 255, 65, 0.1);
-  border: 1px solid rgba(0, 255, 65, 0.3);
-  border-radius: var(--radius);
-  color: var(--cyber-green);
+  position: relative;
+  background: transparent;
+  border: none;
+  border-radius: 0;
 }
 
 .download-hero-icon svg {
-  width: 32px;
-  height: 32px;
-  filter: drop-shadow(0 0 8px var(--cyber-green-glow));
+  width: 42px;
+  height: 42px;
+  color: var(--cyber-green);
+  filter: drop-shadow(0 0 10px rgba(0, 255, 65, 0.5));
 }
 
 /* Expiry Notice */
