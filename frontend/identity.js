@@ -366,6 +366,9 @@ export async function getContacts() {
 
 /**
  * Add a contact (known recipient).
+ * SECURITY: Computes fingerprint client-side from public key.
+ * Never trusts the fingerprint string sent by the server (MITM protection).
+ * 
  * @param {Object} publicIdentity - Public identity of the contact
  * @returns {Promise<void>}
  */
@@ -391,11 +394,21 @@ export async function addContact(publicIdentity) {
     );
   }
 
-  if (
-    !publicIdentity.fingerprint ||
-    typeof publicIdentity.fingerprint !== "string"
-  ) {
-    throw new Error("Invalid or missing fingerprint.");
+  // SECURITY: Compute fingerprint client-side from the public key
+  // Never trust the fingerprint string sent by the server (MITM protection)
+  const computedFingerprint = await CryptoModule.generateKeyFingerprint(
+    publicIdentity.encryptionPublicKey
+  );
+
+  // Log if server's fingerprint doesn't match (potential MITM attack detection)
+  if (publicIdentity.fingerprint && 
+      publicIdentity.fingerprint.toLowerCase() !== computedFingerprint.toLowerCase()) {
+    console.warn(
+      "⚠️ SECURITY WARNING: Server fingerprint does not match computed fingerprint!",
+      "\n  Server sent:", publicIdentity.fingerprint,
+      "\n  Computed:   ", computedFingerprint
+    );
+    // We still use the computed fingerprint, not the server's
   }
 
   // Try to import the keys to validate they work
@@ -406,15 +419,21 @@ export async function addContact(publicIdentity) {
     throw new Error("Failed to validate public keys: " + importError.message);
   }
 
+  // Store contact with CLIENT-COMPUTED fingerprint (not server's)
+  const verifiedContact = {
+    ...publicIdentity,
+    fingerprint: computedFingerprint,  // Override with computed value
+  };
+
   const contacts = await getContacts();
 
   // Check if contact already exists
-  const existingIndex = contacts.findIndex((c) => c.id === publicIdentity.id);
+  const existingIndex = contacts.findIndex((c) => c.id === verifiedContact.id);
   if (existingIndex >= 0) {
     // Update existing contact
-    contacts[existingIndex] = publicIdentity;
+    contacts[existingIndex] = verifiedContact;
   } else {
-    contacts.push(publicIdentity);
+    contacts.push(verifiedContact);
   }
 
   const db = await openDatabase();

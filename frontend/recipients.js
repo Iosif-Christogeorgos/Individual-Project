@@ -2,9 +2,11 @@
 // CrypShare - Recipients Management Module
 // =============================================================================
 // Handles contact/recipient selection for identity-based file sharing.
+// SECURITY: All fingerprints displayed are computed client-side from public keys.
 // =============================================================================
 
 import * as IdentityManager from './identity.js';
+import * as CryptoModule from './crypto.js';
 import { showAlert, showToast, escapeHtml } from './ui-utils.js';
 
 // State
@@ -28,6 +30,7 @@ export function clearSelectedRecipients() {
 
 /**
  * Load and display contacts in the contacts list.
+ * SECURITY: Fingerprints are computed client-side from public keys.
  * @param {Function} onChangeCallback - Callback when selection changes
  */
 export async function loadContacts(onChangeCallback) {
@@ -43,17 +46,33 @@ export async function loadContacts(onChangeCallback) {
       return;
     }
 
-    contactsList.innerHTML = contacts
+    // SECURITY: Compute fingerprints client-side for each contact
+    // This ensures we never display a fingerprint that doesn't match the key
+    const contactsWithVerifiedFingerprints = await Promise.all(
+      contacts.map(async (contact) => {
+        const computedFingerprint = await CryptoModule.generateKeyFingerprint(
+          contact.encryptionPublicKey
+        );
+        return {
+          ...contact,
+          verifiedFingerprint: computedFingerprint,
+        };
+      })
+    );
+
+    contactsList.innerHTML = contactsWithVerifiedFingerprints
       .map(
         (contact) => {
           const safeId = escapeHtml(contact.id);
+          // Use the client-computed fingerprint for display
+          const displayFingerprint = contact.verifiedFingerprint || contact.fingerprint;
           return `
       <div class="contact-item" data-id="${safeId}">
         <input type="checkbox" class="contact-checkbox" data-contact-id="${safeId}"
                ${selectedRecipients.includes(contact.id) ? 'checked' : ''}>
         <div class="contact-info">
           <span class="contact-name">${escapeHtml(contact.displayName)}</span>
-          <span class="contact-fingerprint">${escapeHtml(contact.fingerprint
+          <span class="contact-fingerprint">${escapeHtml(displayFingerprint
             .substring(0, 16)
             .toUpperCase())}</span>
         </div>

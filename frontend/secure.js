@@ -548,10 +548,25 @@ async function searchUserByUsername() {
 
     const userData = await response.json();
 
+    // SECURITY: Compute fingerprint client-side - never trust server's fingerprint
+    const computedFingerprint = await CryptoModule.generateKeyFingerprint(
+      userData.encryptionPublicKey
+    );
+
+    // Log mismatch for security monitoring (potential MITM detection)
+    if (userData.fingerprint && 
+        userData.fingerprint.toLowerCase() !== computedFingerprint.toLowerCase()) {
+      console.warn(
+        "⚠️ SECURITY WARNING: Server fingerprint mismatch for @" + userData.username,
+        "\n  Server sent:", userData.fingerprint,
+        "\n  Computed:   ", computedFingerprint
+      );
+    }
+
     // Clear input on success
     searchInput.value = "";
 
-    // Display search result with add button
+    // Display search result with CLIENT-COMPUTED fingerprint (not server's)
     searchResult.innerHTML = `
       <div class="search-result-card">
         <div class="search-result-info">
@@ -559,11 +574,11 @@ async function searchUserByUsername() {
             userData.username,
           )}</div>
           <div class="search-result-fingerprint" title="${escapeHtml(
-            userData.fingerprint,
+            computedFingerprint,
           )}">
             <svg class="lucide-icon inline-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15.5 7.5 2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L19 4"/><path d="m21 2-9.6 9.6"/><circle cx="7.5" cy="15.5" r="5.5"/></svg> ${escapeHtml(
-              userData.fingerprint.substring(0, 8),
-            )}...${escapeHtml(userData.fingerprint.substring(56))}
+              computedFingerprint.substring(0, 8),
+            )}...${escapeHtml(computedFingerprint.substring(56))}
           </div>
         </div>
         <button class="btn btn-small btn-secondary" id="addSearchResultBtn">
@@ -581,7 +596,7 @@ async function searchUserByUsername() {
           displayName: `@${userData.username}`,
           encryptionPublicKey: userData.encryptionPublicKey,
           signingPublicKey: userData.signingPublicKey,
-          fingerprint: userData.fingerprint,
+          fingerprint: computedFingerprint,  // Use computed fingerprint
         };
 
         try {
