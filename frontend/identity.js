@@ -149,9 +149,14 @@ export async function generateIdentity(displayName = "") {
   const fingerprint =
     await CryptoModule.generateKeyFingerprint(ecdhPublicKeyJWK);
 
+  // SECURITY: Derive ID from fingerprint (first 32 chars)
+  // This cryptographically binds the ID to the encryption public key,
+  // preventing ID hijacking attacks where an attacker could claim another user's ID
+  const id = fingerprint.slice(0, 32);
+
   // Create identity object
   const identity = {
-    id: CryptoModule.generateRandomId(16),
+    id: id,
     displayName: displayName || `User-${fingerprint.substring(0, 8)}`,
     createdAt: new Date().toISOString(),
 

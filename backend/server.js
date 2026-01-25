@@ -1053,6 +1053,21 @@ app.post("/pubkey", pubkeyLimiter, async (req, res) => {
       });
     }
 
+    // SECURITY FIX: Derive expected ID from fingerprint to prevent ID hijacking
+    // The ID must be the first 32 chars of the fingerprint, cryptographically binding
+    // the ID to the encryption public key. This prevents attackers from registering
+    // arbitrary IDs and hijacking existing user records.
+    const expectedId = computedFingerprint.slice(0, 32);
+    if (id !== expectedId) {
+      console.warn(
+        `⚠️ ID hijack attempt: provided=${id}, expected=${expectedId}`,
+      );
+      return res.status(400).json({
+        success: false,
+        error: "ID must be derived from encryption public key.",
+      });
+    }
+
     // CRITICAL: Ownership verification is REQUIRED
     // The ownershipProof must be a valid ECDSA signature of (id + username + timestamp)
     if (!signingPublicKey || !ownershipProof) {
