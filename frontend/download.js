@@ -254,8 +254,10 @@ async function fetchEncryptedKeyForRecipient() {
   }
 
   try {
+    // SECURITY: Normalize fingerprint to lowercase for consistent lookup
+    const normalizedFingerprint = currentIdentity.fingerprint.toLowerCase();
     const response = await fetch(
-      `/recipient-key/${encodeURIComponent(fileId)}/${encodeURIComponent(currentIdentity.fingerprint)}`,
+      `/recipient-key/${encodeURIComponent(fileId)}/${encodeURIComponent(normalizedFingerprint)}`,
     );
 
     if (response.ok) {

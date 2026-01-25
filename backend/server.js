@@ -842,7 +842,8 @@ app.post("/metadata/:fileId", metadataLimiter, async (req, res) => {
 
       const recipientRows = encryptedKeys.map((ek) => ({
         file_id: fileId,
-        recipient_fingerprint: ek.recipientFingerprint, // Use fingerprint as identifier
+        // SECURITY: Normalize fingerprint to lowercase to prevent case-mismatch issues
+        recipient_fingerprint: ek.recipientFingerprint.toLowerCase(),
         encrypted_key: {
           ephemeralPublicKey: ek.ephemeralPublicKey,
           encryptedKey: ek.encryptedKey,
