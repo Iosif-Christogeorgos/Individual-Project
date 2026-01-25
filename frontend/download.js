@@ -132,11 +132,12 @@ async function validateDownloadLink() {
     if (keyString) {
       // Link-based access available
       showDownloadReady("link");
-    } else if (fileMetadata && canDecryptWithIdentity()) {
-      // Identity-based access available
+    } else if (fileMetadata && (await canDecryptWithIdentity())) {
+      // Identity-based access available (checked both new table and legacy metadata)
       showDownloadReady("identity");
-    } else if (fileMetadata && fileMetadata.encryptedKeys?.length > 0) {
-      // Identity-based access required but user doesn't have matching identity
+    } else if (fileMetadata && fileMetadata.accessModes?.includes("identity")) {
+      // File has identity-based access but user doesn't have matching identity
+      // This replaces the old check for encryptedKeys.length > 0
       showIdentityRequiredPage();
     } else {
       // No key in URL and no identity access
@@ -202,23 +203,80 @@ async function loadUserIdentity(retryCount = 0) {
   }
 }
 
-function canDecryptWithIdentity() {
-  if (!currentIdentity || !fileMetadata?.encryptedKeys) {
+// Cache for encrypted key fetched from segregated storage
+let cachedEncryptedKey = null;
+
+/**
+ * Check if current identity can decrypt this file.
+ * Checks both: 1) New segregated file_recipients table, 2) Legacy metadata.encryptedKeys
+ * @returns {Promise<boolean>} True if identity can decrypt
+ */
+async function canDecryptWithIdentity() {
+  if (!currentIdentity) {
     return false;
   }
 
-  // Check if any encrypted key matches our identity
-  return fileMetadata.encryptedKeys.some(
-    (ek) => ek.recipientFingerprint === currentIdentity.fingerprint,
-  );
+  // Try to fetch encrypted key from new segregated storage first
+  cachedEncryptedKey = await fetchEncryptedKeyForRecipient();
+  if (cachedEncryptedKey) {
+    return true;
+  }
+
+  // Fallback: Check legacy metadata.encryptedKeys (for files uploaded before migration)
+  if (fileMetadata?.encryptedKeys?.length > 0) {
+    const legacyKey = fileMetadata.encryptedKeys.find(
+      (ek) => ek.recipientFingerprint === currentIdentity.fingerprint,
+    );
+    if (legacyKey) {
+      cachedEncryptedKey = legacyKey;
+      return true;
+    }
+  }
+
+  return false;
 }
 
-function getMatchingEncryptedKey() {
-  if (!currentIdentity || !fileMetadata?.encryptedKeys) return null;
+/**
+ * Fetch encrypted key from segregated file_recipients table.
+ * SECURITY: Uses fingerprint-based lookup - only the private key holder can decrypt.
+ * @returns {Promise<Object|null>} The encrypted key bundle or null
+ */
+async function fetchEncryptedKeyForRecipient() {
+  if (!currentIdentity || !fileMetadata) {
+    return null;
+  }
 
-  return fileMetadata.encryptedKeys.find(
-    (ek) => ek.recipientFingerprint === currentIdentity.fingerprint,
-  );
+  // Extract file ID from URL
+  const urlParams = new URLSearchParams(window.location.search);
+  const fileId = urlParams.get("id");
+  if (!fileId) {
+    return null;
+  }
+
+  try {
+    const response = await fetch(
+      `/recipient-key/${encodeURIComponent(fileId)}/${encodeURIComponent(currentIdentity.fingerprint)}`,
+    );
+
+    if (response.ok) {
+      const data = await response.json();
+      return data; // Returns encrypted_key JSONB or null
+    }
+    return null;
+  } catch (error) {
+    console.debug("Failed to fetch recipient key:", error.message);
+    return null;
+  }
+}
+
+/**
+ * Get the matching encrypted key for current identity.
+ * Uses cached value from canDecryptWithIdentity() check.
+ * @returns {Object|null} The encrypted key bundle or null
+ */
+function getMatchingEncryptedKey() {
+  // Return cached key from canDecryptWithIdentity() check
+  return cachedEncryptedKey;
 }
 
 // =============================================================================
@@ -251,9 +309,9 @@ function showInvalidLinkPage(title, message) {
 
 function showIdentityRequiredPage() {
   const card = document.querySelector(".card");
-  const recipientInfo = fileMetadata?.encryptedKeys?.length
-    ? `This file is encrypted for ${fileMetadata.encryptedKeys.length} specific recipient(s).`
-    : "";
+  // Note: With segregated storage, we can't show recipient count (that's the point - privacy!)
+  // For legacy files with encryptedKeys in metadata, we could show count but choose not to for consistency
+  const recipientInfo = "This file is encrypted for specific recipients.";
 
   card.innerHTML = `
     <div class="logo justify-center">

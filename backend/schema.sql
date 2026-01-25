@@ -309,3 +309,77 @@ CREATE TRIGGER trg_prevent_file_tampering
   BEFORE UPDATE ON files
   FOR EACH ROW
   EXECUTE PROCEDURE prevent_file_tampering();
+
+
+-- 10. SECURITY FIX: METADATA SEGREGATION (Prevents Social Graph Leakage)
+-- ============================================================================
+-- Moves sensitive recipient lists out of public metadata JSONB into a separate
+-- table. This prevents recipients from seeing who else received the file 
+-- (which would enable building social/organizational graphs).
+--
+-- ARCHITECTURE NOTE: This app uses client-side identity (keypairs stored in 
+-- IndexedDB), NOT Supabase Auth. Recipients are identified by their fingerprint
+-- (SHA-256 hash of their public key), not by auth.uid().
+--
+-- Security Model:
+-- 1. The fingerprint is public (like a username) - knowing it doesn't help
+-- 2. The encrypted_key can only be decrypted by the holder of the private key
+-- 3. RPC returns only the key for the requested fingerprint (no enumeration)
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS file_recipients (
+  file_id TEXT REFERENCES files(id) ON DELETE CASCADE,
+  
+  -- Recipient's identity fingerprint (SHA-256 of their public key)
+  -- This is a TEXT field matching public_keys.fingerprint
+  recipient_fingerprint TEXT NOT NULL,
+  
+  -- The AES file key, encrypted with the recipient's ECDH public key
+  -- Contains: ephemeralPublicKey, encryptedKey, iv (all needed to decrypt)
+  encrypted_key JSONB NOT NULL,
+  
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  
+  -- Composite Primary Key: one key per fingerprint per file
+  PRIMARY KEY (file_id, recipient_fingerprint)
+);
+
+-- Performance index for recipient lookups
+CREATE INDEX IF NOT EXISTS idx_file_recipients_fingerprint ON file_recipients(recipient_fingerprint);
+
+-- RLS is NOT used here because:
+-- 1. Users are not authenticated via Supabase Auth (client-side identity)
+-- 2. Security comes from encryption: only private key holder can decrypt
+-- 3. Access is controlled via SECURITY DEFINER RPC (not direct table access)
+-- The table has no RLS policies; access is ONLY via RPC functions.
+
+
+-- 10.1 SECURE RPC: Get encrypted key by fingerprint
+-- ============================================================================
+-- Allows a client to retrieve the encrypted key for a specific fingerprint.
+-- The client must know the file_id and their own fingerprint.
+-- Returns NULL if fingerprint is not a recipient (no information leakage).
+--
+-- SECURITY: The encrypted_key is useless without the matching private key.
+-- Even if an attacker knows a fingerprint, they can't decrypt the key.
+-- ============================================================================
+
+DROP FUNCTION IF EXISTS get_encrypted_key_for_recipient(TEXT, TEXT);
+CREATE OR REPLACE FUNCTION get_encrypted_key_for_recipient(
+  lookup_file_id TEXT,
+  lookup_fingerprint TEXT
+)
+RETURNS JSONB
+LANGUAGE sql 
+SECURITY DEFINER
+SET search_path = public
+SET statement_timeout = '500ms'
+AS $$
+  SELECT encrypted_key 
+  FROM file_recipients 
+  WHERE file_id = lookup_file_id 
+  AND recipient_fingerprint = lookup_fingerprint;
+$$;
+
+GRANT EXECUTE ON FUNCTION get_encrypted_key_for_recipient(TEXT, TEXT) TO anon;
+GRANT EXECUTE ON FUNCTION get_encrypted_key_for_recipient(TEXT, TEXT) TO authenticated;
