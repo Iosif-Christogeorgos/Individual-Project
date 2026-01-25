@@ -730,4 +730,102 @@ export function formatFingerprint(fingerprint) {
     .toUpperCase();
 }
 
+// ===========================================================================
+// Identity Backup Encryption (Password-Based)
+// ===========================================================================
+// These functions enable secure client-side backup of identity keys.
+// The backup file is encrypted with a user-provided password using PBKDF2 + AES-GCM.
+// This maintains zero-knowledge: the server never sees the keys or password.
+// ===========================================================================
+
+/**
+ * Derives a cryptographic key from a user password using PBKDF2.
+ * Uses high iteration count (100,000) to resist brute-force attacks.
+ * 
+ * @param {string} password - User-provided backup password
+ * @param {Uint8Array} salt - Random salt (16 bytes recommended)
+ * @returns {Promise<CryptoKey>} AES-GCM key derived from password
+ */
+async function deriveKeyFromPassword(password, salt) {
+  const encoder = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(password),
+    "PBKDF2",
+    false,
+    ["deriveKey"],
+  );
+
+  return crypto.subtle.deriveKey(
+    {
+      name: "PBKDF2",
+      salt: salt,
+      iterations: 100000, // High iterations for security against brute force
+      hash: "SHA-256",
+    },
+    keyMaterial,
+    { name: "AES-GCM", length: 256 },
+    false, // Not extractable
+    ["encrypt", "decrypt"],
+  );
+}
+
+/**
+ * Encrypts an object (identity data) with a user-provided password.
+ * Returns a portable JSON structure containing salt, IV, and encrypted data.
+ * 
+ * @param {Object} dataObj - The data to encrypt (identity, contacts, etc.)
+ * @param {string} password - User-provided backup password
+ * @returns {Promise<Object>} Encrypted backup package { salt, iv, data }
+ */
+export async function encryptBackup(dataObj, password) {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+
+  const key = await deriveKeyFromPassword(password, salt);
+  const encodedData = new TextEncoder().encode(JSON.stringify(dataObj));
+
+  const encryptedContent = await crypto.subtle.encrypt(
+    { name: "AES-GCM", iv: iv },
+    key,
+    encodedData,
+  );
+
+  // Return portable JSON format (arrays instead of Uint8Arrays for JSON serialization)
+  return {
+    salt: Array.from(salt),
+    iv: Array.from(iv),
+    data: Array.from(new Uint8Array(encryptedContent)),
+  };
+}
+
+/**
+ * Decrypts a backup package using the user's password.
+ * Throws descriptive error if password is wrong or file is corrupted.
+ * 
+ * @param {Object} backupObj - The encrypted backup { salt, iv, data }
+ * @param {string} password - User-provided backup password
+ * @returns {Promise<Object>} The decrypted identity data
+ * @throws {Error} If password is incorrect or backup is corrupted
+ */
+export async function decryptBackup(backupObj, password) {
+  const salt = new Uint8Array(backupObj.salt);
+  const iv = new Uint8Array(backupObj.iv);
+  const data = new Uint8Array(backupObj.data);
+
+  const key = await deriveKeyFromPassword(password, salt);
+
+  try {
+    const decryptedContent = await crypto.subtle.decrypt(
+      { name: "AES-GCM", iv: iv },
+      key,
+      data,
+    );
+    return JSON.parse(new TextDecoder().decode(decryptedContent));
+  } catch (err) {
+    // AES-GCM authentication failure means wrong password or corrupted data
+    throw new Error("Incorrect password or corrupted backup file.");
+  }
+}
+
 // Default export removed in favor of named imports

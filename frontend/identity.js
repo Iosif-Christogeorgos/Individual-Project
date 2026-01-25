@@ -365,6 +365,26 @@ export async function getContacts() {
 }
 
 /**
+ * Store contacts array directly to IndexedDB.
+ * Used for backup restoration. Overwrites existing contacts.
+ * @param {Array} contacts - Array of contact objects
+ * @returns {Promise<void>}
+ */
+async function storeContacts(contacts) {
+  const db = await openDatabase();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORE_NAME, "readwrite");
+    const store = transaction.objectStore(STORE_NAME);
+    const request = store.put(contacts, CONTACTS_KEY);
+
+    request.onerror = () => reject(new Error("Failed to store contacts"));
+    request.onsuccess = () => resolve();
+
+    transaction.oncomplete = () => db.close();
+  });
+}
+
+/**
  * Add a contact (known recipient).
  * SECURITY: Computes fingerprint client-side from public key.
  * Never trusts the fingerprint string sent by the server (MITM protection).
@@ -497,6 +517,184 @@ export async function getContact(contactId) {
  */
 export function getShortFingerprint(identity) {
   return identity.fingerprint.substring(0, 16).toUpperCase();
+}
+
+// ===========================================================================
+// Identity Backup & Recovery (Encrypted Client-Side)
+// ===========================================================================
+// Provides "Safety Deposit Box" functionality for identity recovery.
+// The backup file is encrypted with a user-provided password - the server
+// never sees the keys or password (maintains zero-knowledge architecture).
+//
+// Backup includes: identity keys, profile info, and contacts.
+// ===========================================================================
+
+const BACKUP_VERSION = 1;
+
+/**
+ * Export identity and contacts to an encrypted backup file.
+ * Downloads a JSON file that can be used to restore identity on any device.
+ * 
+ * SECURITY: 
+ * - Backup is encrypted with AES-256-GCM using PBKDF2-derived key
+ * - Password never leaves the client
+ * - File is useless without the password
+ * 
+ * @param {string} password - User-provided backup password (should be strong)
+ * @returns {Promise<void>} Triggers file download
+ * @throws {Error} If no identity exists or encryption fails
+ */
+export async function exportIdentityBackup(password) {
+  if (!password || password.length < 8) {
+    throw new Error("Backup password must be at least 8 characters.");
+  }
+
+  // Retrieve current identity
+  const identity = await retrieveIdentity();
+  if (!identity) {
+    throw new Error("No identity found to backup.");
+  }
+
+  // Retrieve contacts
+  const contacts = await getContacts();
+
+  // Build backup data structure
+  const backupData = {
+    version: BACKUP_VERSION,
+    exportedAt: new Date().toISOString(),
+    identity: {
+      id: identity.id,
+      displayName: identity.displayName,
+      createdAt: identity.createdAt,
+      fingerprint: identity.fingerprint,
+      // Keys are already in JWK format (serializable)
+      encryption: {
+        publicKey: identity.encryption.publicKey,
+        privateKey: identity.encryption.privateKey,
+      },
+      signing: {
+        publicKey: identity.signing.publicKey,
+        privateKey: identity.signing.privateKey,
+      },
+    },
+    contacts: contacts,
+  };
+
+  // Encrypt with user password
+  const encryptedBackup = await CryptoModule.encryptBackup(backupData, password);
+
+  // Create and trigger download
+  const blob = new Blob([JSON.stringify(encryptedBackup, null, 2)], {
+    type: "application/json",
+  });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `crypshare-identity-${identity.displayName.replace(/[^a-z0-9]/gi, "_")}-${new Date().toISOString().split("T")[0]}.json`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+/**
+ * Import identity from an encrypted backup file.
+ * Restores identity and contacts, OVERWRITING any existing identity.
+ * 
+ * WARNING: This will replace the current identity! User should be warned.
+ * 
+ * @param {File} file - The backup file selected by user
+ * @param {string} password - The password used when creating the backup
+ * @returns {Promise<Object>} The restored identity
+ * @throws {Error} If file is invalid, password is wrong, or restore fails
+ */
+export async function importIdentityBackup(file, password) {
+  if (!file) {
+    throw new Error("No backup file provided.");
+  }
+  if (!password) {
+    throw new Error("Backup password is required.");
+  }
+
+  // Read file content
+  const text = await file.text();
+  let encryptedBackup;
+  try {
+    encryptedBackup = JSON.parse(text);
+  } catch (e) {
+    throw new Error("Invalid backup file format. File must be valid JSON.");
+  }
+
+  // Validate structure
+  if (!encryptedBackup.salt || !encryptedBackup.iv || !encryptedBackup.data) {
+    throw new Error("Invalid backup file structure. Missing required fields.");
+  }
+
+  // Decrypt with password
+  const backupData = await CryptoModule.decryptBackup(encryptedBackup, password);
+
+  // Validate backup version
+  if (!backupData.version) {
+    throw new Error("Invalid backup: missing version.");
+  }
+  if (backupData.version > BACKUP_VERSION) {
+    throw new Error(
+      `Backup version ${backupData.version} is newer than supported (${BACKUP_VERSION}). Please update CrypShare.`,
+    );
+  }
+
+  // Validate identity structure
+  if (!backupData.identity || !backupData.identity.encryption || !backupData.identity.signing) {
+    throw new Error("Invalid backup: missing identity keys.");
+  }
+
+  // Verify keys can be imported (validates JWK format and curve)
+  try {
+    // Test import encryption keys (P-256 ECDH)
+    await CryptoModule.importECDHPublicKey(backupData.identity.encryption.publicKey);
+    await CryptoModule.importECDHPrivateKey(backupData.identity.encryption.privateKey);
+    
+    // Test import signing keys (P-256 ECDSA)
+    await CryptoModule.importSigningPublicKey(backupData.identity.signing.publicKey);
+    await CryptoModule.importSigningPrivateKey(backupData.identity.signing.privateKey);
+  } catch (keyError) {
+    throw new Error(`Invalid backup: key import failed - ${keyError.message}`);
+  }
+
+  // Verify fingerprint matches the public key
+  const computedFingerprint = await CryptoModule.generateKeyFingerprint(
+    backupData.identity.encryption.publicKey,
+  );
+  if (computedFingerprint !== backupData.identity.fingerprint) {
+    throw new Error(
+      "Invalid backup: fingerprint does not match public key. File may be corrupted.",
+    );
+  }
+
+  // Restore identity to IndexedDB
+  const restoredIdentity = {
+    id: backupData.identity.id,
+    displayName: backupData.identity.displayName,
+    createdAt: backupData.identity.createdAt,
+    fingerprint: backupData.identity.fingerprint,
+    encryption: {
+      publicKey: backupData.identity.encryption.publicKey,
+      privateKey: backupData.identity.encryption.privateKey,
+    },
+    signing: {
+      publicKey: backupData.identity.signing.publicKey,
+      privateKey: backupData.identity.signing.privateKey,
+    },
+  };
+
+  await storeIdentity(restoredIdentity);
+
+  // Restore contacts if present
+  if (backupData.contacts && Array.isArray(backupData.contacts)) {
+    await storeContacts(backupData.contacts);
+  }
+
+  return restoredIdentity;
 }
 
 // Default export removed in favor of named imports
