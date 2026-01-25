@@ -50,8 +50,15 @@ RETURNS TABLE (
 LANGUAGE plpgsql
 SECURITY DEFINER      -- Runs with admin privileges (bypasses RLS)
 SET search_path = public
+SET statement_timeout = '500ms'  -- DOS PROTECTION: Kill slow queries to prevent connection exhaustion
 AS $$
 BEGIN
+  -- Validate input format early (fail fast before touching indexes)
+  -- File IDs must match: file-<64 hex chars>.bin
+  IF lookup_id IS NULL OR lookup_id !~ '^file-[a-f0-9]{64}\.bin$' THEN
+    RETURN;  -- Return empty result for invalid IDs (no exception = no log spam)
+  END IF;
+
   RETURN QUERY
   SELECT 
     f.id,
