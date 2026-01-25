@@ -718,9 +718,13 @@ export async function hashFile(file, onProgress = () => {}) {
 // ===========================================================================
 
 export async function generateKeyFingerprint(publicKeyJWK) {
-  const keyString = JSON.stringify(publicKeyJWK);
+  // CRITICAL: Use canonical JSON (sorted keys) to match server-side computation
+  // Without sorted keys, the same JWK can produce different fingerprints
+  // depending on property insertion order, causing "identity not authorized" errors
+  const sortedKeys = Object.keys(publicKeyJWK).sort();
+  const canonical = JSON.stringify(publicKeyJWK, sortedKeys);
   const encoder = new TextEncoder();
-  return await sha256(encoder.encode(keyString));
+  return await sha256(encoder.encode(canonical));
 }
 
 export function formatFingerprint(fingerprint) {
