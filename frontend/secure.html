@@ -574,6 +574,32 @@
                     </svg>
                   </button>
                 </div>
+                <!-- Identity Backup Actions -->
+                <div class="identity-backup-actions">
+                  <button
+                    type="button"
+                    class="backup-btn"
+                    id="exportBackupBtn"
+                    title="Export encrypted backup of your identity and contacts"
+                  >
+                    <svg
+                      class="lucide-icon"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                      <polyline points="7 10 12 15 17 10" />
+                      <line x1="12" y1="15" x2="12" y2="3" />
+                    </svg>
+                    <span>Export Backup</span>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -777,6 +803,38 @@
             ></span>
             Create & Publish
           </button>
+
+          <div class="onboarding-divider">
+            <span>or</span>
+          </div>
+
+          <button
+            class="btn btn-secondary btn-restore"
+            id="onboardingRestoreBtn"
+          >
+            <svg
+              class="lucide-icon"
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="17 8 12 3 7 8" />
+              <line x1="12" y1="3" x2="12" y2="15" />
+            </svg>
+            <span>Restore from Backup</span>
+          </button>
+          <input
+            type="file"
+            id="restoreBackupInput"
+            accept=".json"
+            class="hidden"
+          />
         </div>
 
         <!-- Footer security note -->

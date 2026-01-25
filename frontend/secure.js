@@ -500,6 +500,142 @@ async function createIdentityFromOnboarding() {
 }
 
 // =============================================================================
+// Identity Backup & Restore
+// =============================================================================
+
+/**
+ * Handle export backup button click
+ * Prompts for password and downloads encrypted backup file
+ */
+async function handleExportBackup() {
+  const exportBtn = document.getElementById("exportBackupBtn");
+
+  // Prompt for password
+  const password = prompt(
+    "Enter a strong password to encrypt your backup.\n\n" +
+      "⚠️ You'll need this password to restore your identity.\n" +
+      "If you forget it, your backup cannot be recovered.",
+  );
+
+  if (!password) {
+    return; // User cancelled
+  }
+
+  if (password.length < 8) {
+    showToast("Password must be at least 8 characters ⚠");
+    return;
+  }
+
+  // Confirm password
+  const confirmPassword = prompt("Confirm your password:");
+  if (password !== confirmPassword) {
+    showToast("Passwords don't match ✗");
+    return;
+  }
+
+  // Show loading state
+  if (exportBtn) {
+    exportBtn.disabled = true;
+    exportBtn.innerHTML = `
+      <svg class="lucide-icon animate-spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+      </svg>
+      <span>Encrypting...</span>
+    `;
+  }
+
+  try {
+    await IdentityManager.exportIdentityBackup(password);
+    hapticSuccess();
+    showToast("Backup downloaded successfully ✓");
+  } catch (error) {
+    console.error("Export backup failed:", error);
+    showToast(error.message || "Failed to export backup ✗");
+  } finally {
+    if (exportBtn) {
+      exportBtn.disabled = false;
+      exportBtn.innerHTML = `
+        <svg class="lucide-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        <span>Export Backup</span>
+      `;
+    }
+  }
+}
+
+/**
+ * Handle restore backup file selection
+ * Prompts for password and imports the encrypted backup
+ */
+async function handleRestoreBackup(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+
+  const restoreBtn = document.getElementById("onboardingRestoreBtn");
+
+  // Prompt for password
+  const password = prompt(
+    "Enter the password you used when creating this backup:",
+  );
+
+  if (!password) {
+    // Clear file input
+    event.target.value = "";
+    return;
+  }
+
+  // Show loading state
+  if (restoreBtn) {
+    restoreBtn.disabled = true;
+    restoreBtn.innerHTML = `
+      <svg class="lucide-icon animate-spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
+      </svg>
+      <span>Restoring...</span>
+    `;
+  }
+
+  try {
+    const restoredIdentity = await IdentityManager.importIdentityBackup(
+      file,
+      password,
+    );
+
+    // Update current identity
+    currentIdentity = restoredIdentity;
+
+    // Update UI
+    updateIdentityUI();
+    loadContacts(onRecipientChange);
+    validateAccessConfig();
+
+    hapticSuccess();
+    showToast(`Identity restored: ${restoredIdentity.displayName} ✓`);
+  } catch (error) {
+    console.error("Restore backup failed:", error);
+    showToast(error.message || "Failed to restore backup ✗");
+  } finally {
+    // Clear file input
+    event.target.value = "";
+
+    if (restoreBtn) {
+      restoreBtn.disabled = false;
+      restoreBtn.innerHTML = `
+        <svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        <span>Restore from Backup</span>
+      `;
+    }
+  }
+}
+
+// =============================================================================
 // Link Overwrite Warning Modal
 // =============================================================================
 
@@ -803,6 +939,23 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
     });
   }
+
+  // Export Backup button (visible when user has identity)
+  document
+    .getElementById("exportBackupBtn")
+    ?.addEventListener("click", handleExportBackup);
+
+  // Restore from Backup button (in onboarding modal)
+  document
+    .getElementById("onboardingRestoreBtn")
+    ?.addEventListener("click", () => {
+      document.getElementById("restoreBackupInput")?.click();
+    });
+
+  // Hidden file input for restore
+  document
+    .getElementById("restoreBackupInput")
+    ?.addEventListener("change", handleRestoreBackup);
 
   // User directory search
   document
