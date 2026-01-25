@@ -784,9 +784,10 @@ app.post("/metadata/:fileId", metadataLimiter, async (req, res) => {
       ).toISOString();
     }
 
-    // Upsert metadata to Supabase (zero-knowledge: no plaintext data stored)
+    // Insert metadata to Supabase (zero-knowledge: no plaintext data stored)
+    // SECURITY: Use insert (not upsert) to prevent metadata overwrite attacks
     console.log(`📝 Storing metadata for ${fileId} in Supabase...`);
-    const { error } = await supabase.from("files").upsert({
+    const { error } = await supabase.from("files").insert({
       id: fileId,
       size: metadata.size || 0,
       content_hash: metadata.contentHash || null,
@@ -795,6 +796,14 @@ app.post("/metadata/:fileId", metadataLimiter, async (req, res) => {
     });
 
     if (error) {
+      // Check if this is a duplicate key error (metadata already exists)
+      if (error.code === "23505") {
+        console.warn(`⚠️ Metadata already exists for ${fileId}`);
+        return res.status(409).json({
+          success: false,
+          error: "Metadata already set for this file.",
+        });
+      }
       console.error(
         "❌ Metadata storage error:",
         error.message,
@@ -1270,12 +1279,23 @@ app.get("/pubkey/username/:username", pubkeyLimiter, async (req, res) => {
 
 /**
  * GET /pubkey/fingerprint/:fingerprint - Lookup by fingerprint
+ * Note: Uses constant-time response to prevent timing-based enumeration
  */
-app.get("/pubkey/fingerprint/:fingerprint", async (req, res) => {
+app.get("/pubkey/fingerprint/:fingerprint", pubkeyLimiter, async (req, res) => {
+  const startTime = Date.now();
+  const MIN_RESPONSE_TIME = 150; // Minimum response time in ms to mask timing differences
+
   try {
     const fingerprint = req.params.fingerprint.toLowerCase();
 
     if (!/^[a-f0-9]{64}$/.test(fingerprint)) {
+      // Still apply delay for invalid format
+      const elapsed = Date.now() - startTime;
+      if (elapsed < MIN_RESPONSE_TIME) {
+        await new Promise((resolve) =>
+          setTimeout(resolve, MIN_RESPONSE_TIME - elapsed),
+        );
+      }
       return res.status(400).json({
         success: false,
         error: "Invalid fingerprint format.",
@@ -1289,6 +1309,14 @@ app.get("/pubkey/fingerprint/:fingerprint", async (req, res) => {
       )
       .eq("fingerprint", fingerprint)
       .single();
+
+    // Apply constant-time delay AFTER all operations complete
+    const elapsed = Date.now() - startTime;
+    if (elapsed < MIN_RESPONSE_TIME) {
+      await new Promise((resolve) =>
+        setTimeout(resolve, MIN_RESPONSE_TIME - elapsed),
+      );
+    }
 
     if (error || !data) {
       return res.status(404).json({
@@ -1306,6 +1334,13 @@ app.get("/pubkey/fingerprint/:fingerprint", async (req, res) => {
       signingPublicKey: data.signing_public_key,
     });
   } catch (error) {
+    // Apply delay even on errors
+    const elapsed = Date.now() - startTime;
+    if (elapsed < MIN_RESPONSE_TIME) {
+      await new Promise((resolve) =>
+        setTimeout(resolve, MIN_RESPONSE_TIME - elapsed),
+      );
+    }
     console.error("❌ Public key lookup error:", error);
     res.status(500).json({
       success: false,
@@ -1317,7 +1352,7 @@ app.get("/pubkey/fingerprint/:fingerprint", async (req, res) => {
 /**
  * GET /pubkey/:id - Retrieve a public key by ID
  */
-app.get("/pubkey/:id", async (req, res) => {
+app.get("/pubkey/:id", pubkeyLimiter, async (req, res) => {
   try {
     const id = req.params.id;
 
@@ -1363,7 +1398,7 @@ app.get("/pubkey/:id", async (req, res) => {
 /**
  * GET /pubkey/check/:username - Check if username is available
  */
-app.get("/pubkey/check/:username", async (req, res) => {
+app.get("/pubkey/check/:username", pubkeyLimiter, async (req, res) => {
   try {
     const username = req.params.username.toLowerCase().trim();
 
