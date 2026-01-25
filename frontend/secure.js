@@ -61,10 +61,11 @@ let uploadAbortController = null; // AbortController for cancelling in-progress 
  * Validate access configuration (recipients selected)
  * @param {Object} options - Configuration options
  * @param {boolean} options.showWarning - Whether to show the warning UI (default: true)
+ * @param {boolean} options.triggerWobble - Whether to trigger wobble animation (default: false)
  * @returns {{ valid: boolean, canUpload: boolean }}
  */
 function validateAccessConfig(options = {}) {
-  const { showWarning = true } = options;
+  const { showWarning = true, triggerWobble = false } = options;
   const uploadBtn = document.getElementById("uploadBtn");
   const warningEl = document.getElementById("accessWarning");
   const warningTitle = document.getElementById("accessWarningTitle");
@@ -89,8 +90,18 @@ function validateAccessConfig(options = {}) {
   if (showWarning) {
     if (!isValid) {
       warningEl.classList.add("show");
+
+      // Trigger wobble animation if requested (e.g., when user tries to interact without recipients)
+      if (triggerWobble) {
+        // Remove and re-add class to restart animation
+        warningEl.classList.remove("wobble");
+        // Force reflow to restart animation
+        void warningEl.offsetWidth;
+        warningEl.classList.add("wobble");
+      }
     } else {
       warningEl.classList.remove("show");
+      warningEl.classList.remove("wobble");
     }
   }
 
@@ -826,8 +837,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (selectedRecipients.length === 0) {
       e.preventDefault();
       e.stopPropagation();
-      // Show the warning
-      validateAccessConfig();
+      // Show the warning with wobble to grab attention
+      validateAccessConfig({ triggerWobble: true });
       return false;
     }
   });
@@ -842,8 +853,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         e.stopPropagation();
         // Clear any dragged files
         if (fileInput) fileInput.value = "";
-        // Show the warning
-        validateAccessConfig();
+        // Show the warning with wobble to grab attention
+        validateAccessConfig({ triggerWobble: true });
         return false;
       }
     },

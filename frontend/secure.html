@@ -122,6 +122,37 @@
                 <button class="alert-close" id="alertCloseBtn">×</button>
               </div>
 
+              <!-- Access Validation Warning (No Recipients) -->
+              <div class="access-warning" id="accessWarning">
+                <span class="access-warning-icon"
+                  ><svg
+                    class="lucide-icon"
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path
+                      d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"
+                    />
+                    <path d="M12 9v4" />
+                    <path d="M12 17h.01" /></svg
+                ></span>
+                <div class="access-warning-content">
+                  <strong id="accessWarningTitle"
+                    >No Recipients Selected</strong
+                  >
+                  <span id="accessWarningMessage"
+                    >Select at least one recipient to encrypt the file
+                    for.</span
+                  >
+                </div>
+              </div>
+
               <!-- Drop Zone -->
               <div class="drop-zone" id="dropZone">
                 <div class="drop-zone-content">
@@ -251,35 +282,6 @@
                     <option value="72">3 days</option>
                     <option value="168">7 days</option>
                   </select>
-                </div>
-              </div>
-
-              <!-- Access Validation Warning -->
-              <div class="access-warning" id="accessWarning">
-                <span class="access-warning-icon"
-                  ><svg
-                    class="lucide-icon"
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  >
-                    <path
-                      d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"
-                    />
-                    <path d="M12 9v4" />
-                    <path d="M12 17h.01" /></svg
-                ></span>
-                <div class="access-warning-content">
-                  <strong id="accessWarningTitle">No Decryption Method</strong>
-                  <span id="accessWarningMessage"
-                    >Select at least one recipient to encrypt the file
-                    for.</span
-                  >
                 </div>
               </div>
 
