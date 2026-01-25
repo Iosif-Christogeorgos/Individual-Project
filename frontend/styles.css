@@ -271,7 +271,7 @@ body::after {
   background-color: transparent;
   background-image:
     radial-gradient(
-      rgba(255, 255, 255, 0.08) 1px,
+      rgba(255, 255, 255, 0.12) 1px,
       transparent 1px
     );
   background-size: 32px 32px;
@@ -279,19 +279,19 @@ body::after {
   pointer-events: none;
 }
 
-/* Vignette overlay - heavy radial fade to focus attention on center */
+/* Vignette overlay - radial fade to focus attention on center */
 html::after {
   content: "";
   position: fixed;
   inset: 0;
   z-index: 1;
   background: radial-gradient(
-    ellipse 70% 60% at 50% 45%,
+    ellipse 85% 80% at 50% 50%,
     transparent 0%,
-    transparent 25%,
-    rgba(0, 0, 0, 0.4) 55%,
-    rgba(0, 0, 0, 0.75) 80%,
-    rgba(0, 0, 0, 0.95) 100%
+    transparent 35%,
+    rgba(0, 0, 0, 0.3) 60%,
+    rgba(0, 0, 0, 0.55) 80%,
+    rgba(0, 0, 0, 0.8) 100%
   );
   pointer-events: none;
 }
