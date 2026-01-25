@@ -741,7 +741,7 @@ export function formatFingerprint(fingerprint) {
 /**
  * Derives a cryptographic key from a user password using PBKDF2.
  * Uses high iteration count (100,000) to resist brute-force attacks.
- * 
+ *
  * @param {string} password - User-provided backup password
  * @param {Uint8Array} salt - Random salt (16 bytes recommended)
  * @returns {Promise<CryptoKey>} AES-GCM key derived from password
@@ -773,7 +773,7 @@ async function deriveKeyFromPassword(password, salt) {
 /**
  * Encrypts an object (identity data) with a user-provided password.
  * Returns a portable JSON structure containing salt, IV, and encrypted data.
- * 
+ *
  * @param {Object} dataObj - The data to encrypt (identity, contacts, etc.)
  * @param {string} password - User-provided backup password
  * @returns {Promise<Object>} Encrypted backup package { salt, iv, data }
@@ -802,7 +802,7 @@ export async function encryptBackup(dataObj, password) {
 /**
  * Decrypts a backup package using the user's password.
  * Throws descriptive error if password is wrong or file is corrupted.
- * 
+ *
  * @param {Object} backupObj - The encrypted backup { salt, iv, data }
  * @param {string} password - User-provided backup password
  * @returns {Promise<Object>} The decrypted identity data

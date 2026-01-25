@@ -534,12 +534,12 @@ const BACKUP_VERSION = 1;
 /**
  * Export identity and contacts to an encrypted backup file.
  * Downloads a JSON file that can be used to restore identity on any device.
- * 
- * SECURITY: 
+ *
+ * SECURITY:
  * - Backup is encrypted with AES-256-GCM using PBKDF2-derived key
  * - Password never leaves the client
  * - File is useless without the password
- * 
+ *
  * @param {string} password - User-provided backup password (should be strong)
  * @returns {Promise<void>} Triggers file download
  * @throws {Error} If no identity exists or encryption fails
@@ -581,7 +581,10 @@ export async function exportIdentityBackup(password) {
   };
 
   // Encrypt with user password
-  const encryptedBackup = await CryptoModule.encryptBackup(backupData, password);
+  const encryptedBackup = await CryptoModule.encryptBackup(
+    backupData,
+    password,
+  );
 
   // Create and trigger download
   const blob = new Blob([JSON.stringify(encryptedBackup, null, 2)], {
@@ -600,9 +603,9 @@ export async function exportIdentityBackup(password) {
 /**
  * Import identity from an encrypted backup file.
  * Restores identity and contacts, OVERWRITING any existing identity.
- * 
+ *
  * WARNING: This will replace the current identity! User should be warned.
- * 
+ *
  * @param {File} file - The backup file selected by user
  * @param {string} password - The password used when creating the backup
  * @returns {Promise<Object>} The restored identity
@@ -631,7 +634,10 @@ export async function importIdentityBackup(file, password) {
   }
 
   // Decrypt with password
-  const backupData = await CryptoModule.decryptBackup(encryptedBackup, password);
+  const backupData = await CryptoModule.decryptBackup(
+    encryptedBackup,
+    password,
+  );
 
   // Validate backup version
   if (!backupData.version) {
@@ -644,19 +650,31 @@ export async function importIdentityBackup(file, password) {
   }
 
   // Validate identity structure
-  if (!backupData.identity || !backupData.identity.encryption || !backupData.identity.signing) {
+  if (
+    !backupData.identity ||
+    !backupData.identity.encryption ||
+    !backupData.identity.signing
+  ) {
     throw new Error("Invalid backup: missing identity keys.");
   }
 
   // Verify keys can be imported (validates JWK format and curve)
   try {
     // Test import encryption keys (P-256 ECDH)
-    await CryptoModule.importECDHPublicKey(backupData.identity.encryption.publicKey);
-    await CryptoModule.importECDHPrivateKey(backupData.identity.encryption.privateKey);
-    
+    await CryptoModule.importECDHPublicKey(
+      backupData.identity.encryption.publicKey,
+    );
+    await CryptoModule.importECDHPrivateKey(
+      backupData.identity.encryption.privateKey,
+    );
+
     // Test import signing keys (P-256 ECDSA)
-    await CryptoModule.importSigningPublicKey(backupData.identity.signing.publicKey);
-    await CryptoModule.importSigningPrivateKey(backupData.identity.signing.privateKey);
+    await CryptoModule.importSigningPublicKey(
+      backupData.identity.signing.publicKey,
+    );
+    await CryptoModule.importSigningPrivateKey(
+      backupData.identity.signing.privateKey,
+    );
   } catch (keyError) {
     throw new Error(`Invalid backup: key import failed - ${keyError.message}`);
   }

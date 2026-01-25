@@ -49,6 +49,12 @@ const DEFAULT_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24 hours
 const CLEANUP_INTERVAL_MS = 15 * 60 * 1000;
 
 // Allowed expiry options (in hours) - validated on upload
+// IMPORTANT: Max value (168h = 7 days) determines R2 Lifecycle Rule configuration
+// R2 Bucket MUST have lifecycle rules configured:
+//   1. Abort incomplete multipart uploads after 1 day
+//   2. Delete all objects after 8 days (max_expiry + 1 day buffer)
+// This catches "ghost files" where R2 upload succeeded but metadata failed.
+// See: Cloudflare Dashboard > R2 > Bucket Settings > Lifecycle Rules
 const ALLOWED_EXPIRY_HOURS = [1, 6, 24, 72, 168]; // 1h, 6h, 24h, 3d, 7d
 
 // =============================================================================
