@@ -15,7 +15,15 @@ import {
   updateStep,
   formatExpiryDuration,
 } from "./ui-utils.js";
-import { hapticSuccess, hapticHeavy, hapticError } from "./haptics.js";
+import {
+  hapticSuccess,
+  hapticHeavy,
+  hapticError,
+  hapticNotification,
+} from "./haptics.js";
+
+// Security: Enable post-decryption integrity verification
+const ENABLE_INTEGRITY_CHECK = true;
 
 let currentIdentity = null;
 let fileMetadata = null;
@@ -626,7 +634,25 @@ async function startDownload() {
       decryptedResult;
     const fileContent = new Uint8Array(fileContentBuffer);
 
-    // Step 4: Verify signature if present
+    // Step 4a: SECURITY - Verify file integrity (content hash)
+    // This detects if a malicious admin swapped the file in storage
+    if (ENABLE_INTEGRITY_CHECK && fileMetadata?.contentHash) {
+      updateStep("step4", "pending");
+      const decryptedHash =
+        await CryptoModule.hashArrayBuffer(fileContentBuffer);
+
+      if (decryptedHash !== fileMetadata.contentHash) {
+        hapticError();
+        throw new Error(
+          "SECURITY ALERT: File integrity check failed. " +
+            "The file may have been tampered with. Do not trust this file.",
+        );
+      }
+      // Hash verified - file is authentic
+      console.log("✅ File integrity verified: hash matches");
+    }
+
+    // Step 4b: Verify signature if present
     if (fileMetadata?.signature) {
       showSignatureStep(); // Make signature step visible
       updateStep("step5", "pending"); // Optional signature step
@@ -660,7 +686,8 @@ async function startDownload() {
       originalFilename.replace(/[/\\]/g, "_").replace(/\x00/g, "").trim() ||
       "download";
 
-    // Note: Hash verification removed - AES-GCM already provides integrity checking.\n    // If ciphertext was tampered with, decryption would have failed above.
+    // Note: Hash verification is now performed in Step 4a above.
+    // This provides defense-in-depth against malicious admin attacks.
 
     // Create download
     const blob = new Blob([fileContent]);

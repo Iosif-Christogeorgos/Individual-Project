@@ -36,7 +36,7 @@ function arrayBufferToBase64(buffer) {
     const chunk = bytes.subarray(i, i + CHUNK);
     parts.push(String.fromCharCode.apply(null, chunk));
   }
-  return btoa(parts.join(''));
+  return btoa(parts.join(""));
 }
 
 function base64ToArrayBuffer(base64) {
@@ -48,7 +48,9 @@ function base64ToArrayBuffer(base64) {
     }
     return bytes.buffer;
   } catch (e) {
-    throw new Error("Invalid base64 encoding. The decryption key may be corrupted.");
+    throw new Error(
+      "Invalid base64 encoding. The decryption key may be corrupted.",
+    );
   }
 }
 
@@ -69,6 +71,16 @@ async function sha256(data) {
   return arrayBufferToHex(hashBuffer);
 }
 
+/**
+ * Hash an ArrayBuffer or Uint8Array using SHA-256.
+ * Used for post-decryption integrity verification.
+ * @param {ArrayBuffer|Uint8Array} data - The data to hash
+ * @returns {Promise<string>} Hex-encoded SHA-256 hash
+ */
+export async function hashArrayBuffer(data) {
+  return await sha256(data);
+}
+
 // ===========================================================================
 // AES-256-GCM Operations (Data Encryption)
 // ===========================================================================
@@ -77,7 +89,7 @@ export async function generateAESKey() {
   return await window.crypto.subtle.generateKey(
     { name: "AES-GCM", length: AES_KEY_LENGTH },
     true,
-    ["encrypt", "decrypt"]
+    ["encrypt", "decrypt"],
   );
 }
 
@@ -99,7 +111,7 @@ export async function importAESKeyFromJWK(jwk) {
     jwk,
     { name: "AES-GCM" },
     true,
-    ["encrypt", "decrypt"]
+    ["encrypt", "decrypt"],
   );
 }
 
@@ -109,7 +121,7 @@ export async function importAESKeyFromRaw(rawKey) {
     rawKey,
     { name: "AES-GCM", length: AES_KEY_LENGTH },
     true,
-    ["encrypt", "decrypt"]
+    ["encrypt", "decrypt"],
   );
 }
 
@@ -117,7 +129,7 @@ export async function encryptAES(data, key, iv) {
   return await window.crypto.subtle.encrypt(
     { name: "AES-GCM", iv: iv },
     key,
-    data
+    data,
   );
 }
 
@@ -125,7 +137,7 @@ export async function decryptAES(ciphertext, key, iv) {
   return await window.crypto.subtle.decrypt(
     { name: "AES-GCM", iv: iv },
     key,
-    ciphertext
+    ciphertext,
   );
 }
 
@@ -145,13 +157,13 @@ export async function encryptFileChunked(file, aesKey, onProgress = () => {}) {
   const encryptedFilename = await encryptAES(
     filenameBytes.buffer,
     aesKey,
-    filenameIV
+    filenameIV,
   );
   const encryptedFilenameArray = new Uint8Array(encryptedFilename);
 
   // Filename header
   const filenameHeader = new Uint8Array(
-    2 + 12 + 4 + encryptedFilenameArray.length
+    2 + 12 + 4 + encryptedFilenameArray.length,
   );
   filenameHeader[0] = (filenameBytes.length >> 8) & 0xff;
   filenameHeader[1] = filenameBytes.length & 0xff;
@@ -159,7 +171,7 @@ export async function encryptFileChunked(file, aesKey, onProgress = () => {}) {
   new DataView(filenameHeader.buffer).setUint32(
     14,
     encryptedFilenameArray.length,
-    false
+    false,
   );
   filenameHeader.set(encryptedFilenameArray, 18);
   encryptedChunks.push(filenameHeader);
@@ -186,7 +198,7 @@ export async function encryptFileChunked(file, aesKey, onProgress = () => {}) {
     new DataView(chunkPacket.buffer).setUint32(
       12,
       ciphertextArray.length,
-      false
+      false,
     );
     chunkPacket.set(ciphertextArray, 16);
 
@@ -211,12 +223,12 @@ export async function createEncryptedHeader(file, aesKey, totalChunks) {
   const encryptedFilename = await encryptAES(
     filenameBytes.buffer,
     aesKey,
-    filenameIV
+    filenameIV,
   );
   const encryptedFilenameArray = new Uint8Array(encryptedFilename);
 
   const filenameHeader = new Uint8Array(
-    2 + 12 + 4 + encryptedFilenameArray.length
+    2 + 12 + 4 + encryptedFilenameArray.length,
   );
   filenameHeader[0] = (filenameBytes.length >> 8) & 0xff;
   filenameHeader[1] = filenameBytes.length & 0xff;
@@ -224,7 +236,7 @@ export async function createEncryptedHeader(file, aesKey, totalChunks) {
   new DataView(filenameHeader.buffer).setUint32(
     14,
     encryptedFilenameArray.length,
-    false
+    false,
   );
   filenameHeader.set(encryptedFilenameArray, 18);
   headerParts.push(filenameHeader);
@@ -236,7 +248,11 @@ export async function createEncryptedHeader(file, aesKey, totalChunks) {
   return headerParts;
 }
 
-export async function createEncryptedStream(file, aesKey, onProgress = () => {}) {
+export async function createEncryptedStream(
+  file,
+  aesKey,
+  onProgress = () => {},
+) {
   const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
   let chunkIndex = 0;
   let offset = 0;
@@ -278,7 +294,7 @@ export async function createEncryptedStream(file, aesKey, onProgress = () => {})
       new DataView(chunkPacket.buffer).setUint32(
         12,
         ciphertextArray.length,
-        false
+        false,
       );
       chunkPacket.set(ciphertextArray, 16);
 
@@ -323,7 +339,7 @@ export function detectEncryptionFormat(data) {
 export async function decryptFileChunked(
   encryptedData,
   aesKey,
-  onProgress = () => {}
+  onProgress = () => {},
 ) {
   let offset = 0;
 
@@ -345,14 +361,14 @@ export async function decryptFileChunked(
 
   const filenameCiphertext = encryptedData.slice(
     offset,
-    offset + filenameCipherLength
+    offset + filenameCipherLength,
   );
   offset += filenameCipherLength;
 
   const decryptedFilenameBuffer = await decryptAES(
     filenameCiphertext,
     aesKey,
-    filenameIV
+    filenameIV,
   );
   const filename = new TextDecoder().decode(decryptedFilenameBuffer);
 
@@ -402,14 +418,14 @@ export async function downloadAndDecryptStreaming(
   url,
   aesKey,
   onDownloadProgress = () => {},
-  onDecryptProgress = () => {}
+  onDecryptProgress = () => {},
 ) {
   const response = await fetch(url);
   if (!response.ok) throw new Error(`Download failed: ${response.status}`);
 
   const contentLength = parseInt(
     response.headers.get("Content-Length") || "0",
-    10
+    10,
   );
   const reader = response.body.getReader();
   let encryptedData;
@@ -445,7 +461,7 @@ export async function downloadAndDecryptStreaming(
       position += chunk.length;
     }
   }
-  
+
   // Ensure 100% is reported after download completes
   onDownloadProgress(100);
 
@@ -454,7 +470,7 @@ export async function downloadAndDecryptStreaming(
     return await decryptFileChunked(
       encryptedData.buffer,
       aesKey,
-      onDecryptProgress
+      onDecryptProgress,
     );
   } else {
     throw new Error("Unsupported file format");
@@ -469,7 +485,7 @@ export async function generateECDHKeyPair() {
   return await window.crypto.subtle.generateKey(
     { name: "ECDH", namedCurve: ECDH_CURVE },
     true,
-    ["deriveKey", "deriveBits"]
+    ["deriveKey", "deriveBits"],
   );
 }
 
@@ -487,7 +503,7 @@ export async function importECDHPublicKey(jwk) {
     jwk,
     { name: "ECDH", namedCurve: ECDH_CURVE },
     true,
-    []
+    [],
   );
 }
 
@@ -497,7 +513,7 @@ export async function importECDHPrivateKey(jwk) {
     jwk,
     { name: "ECDH", namedCurve: ECDH_CURVE },
     true,
-    ["deriveKey", "deriveBits"]
+    ["deriveKey", "deriveBits"],
   );
 }
 
@@ -507,7 +523,7 @@ export async function deriveSharedKey(privateKey, publicKey) {
     privateKey,
     { name: "AES-GCM", length: AES_KEY_LENGTH },
     true,
-    ["encrypt", "decrypt"]
+    ["encrypt", "decrypt"],
   );
 }
 
@@ -515,13 +531,13 @@ export async function encryptKeyForRecipient(fileAESKey, recipientPublicKey) {
   const ephemeralKeyPair = await generateECDHKeyPair();
   const sharedKey = await deriveSharedKey(
     ephemeralKeyPair.privateKey,
-    recipientPublicKey
+    recipientPublicKey,
   );
   const rawFileKey = await exportAESKeyRaw(fileAESKey);
   const iv = generateIV();
   const encryptedKeyData = await encryptAES(rawFileKey, sharedKey, iv);
   const ephemeralPublicKeyJWK = await exportECDHPublicKey(
-    ephemeralKeyPair.publicKey
+    ephemeralKeyPair.publicKey,
   );
 
   return {
@@ -531,7 +547,10 @@ export async function encryptKeyForRecipient(fileAESKey, recipientPublicKey) {
   };
 }
 
-export async function decryptKeyWithPrivateKey(encryptedKeyBundle, ourPrivateKey) {
+export async function decryptKeyWithPrivateKey(
+  encryptedKeyBundle,
+  ourPrivateKey,
+) {
   const { ephemeralPublicKey, encryptedKey, iv } = encryptedKeyBundle;
   const ephemeralPubKey = await importECDHPublicKey(ephemeralPublicKey);
   const sharedKey = await deriveSharedKey(ourPrivateKey, ephemeralPubKey);
@@ -540,7 +559,7 @@ export async function decryptKeyWithPrivateKey(encryptedKeyBundle, ourPrivateKey
   const rawFileKey = await decryptAES(
     encryptedKeyBytes,
     sharedKey,
-    new Uint8Array(ivBytes)
+    new Uint8Array(ivBytes),
   );
   return await importAESKeyFromRaw(rawFileKey);
 }
@@ -553,7 +572,7 @@ export async function generateSigningKeyPair() {
   return await window.crypto.subtle.generateKey(
     { name: "ECDSA", namedCurve: ECDSA_CURVE },
     true,
-    ["sign", "verify"]
+    ["sign", "verify"],
   );
 }
 
@@ -571,7 +590,7 @@ export async function importSigningPublicKey(jwk) {
     jwk,
     { name: "ECDSA", namedCurve: ECDSA_CURVE },
     true,
-    ["verify"]
+    ["verify"],
   );
 }
 
@@ -581,7 +600,7 @@ export async function importSigningPrivateKey(jwk) {
     jwk,
     { name: "ECDSA", namedCurve: ECDSA_CURVE },
     true,
-    ["sign"]
+    ["sign"],
   );
 }
 
@@ -589,7 +608,7 @@ export async function sign(data, privateKey) {
   return await window.crypto.subtle.sign(
     { name: "ECDSA", hash: "SHA-256" },
     privateKey,
-    data
+    data,
   );
 }
 
@@ -598,23 +617,23 @@ export async function verify(data, signature, publicKey) {
     { name: "ECDSA", hash: "SHA-256" },
     publicKey,
     signature,
-    data
+    data,
   );
 }
 
 export async function signFileMetadata(metadata, signingPrivateKey) {
   const timestamp = new Date().toISOString();
-  
+
   // Hash the filename to avoid storing plaintext in the signature bundle
   // This maintains zero-knowledge while still allowing verification that
   // the file wasn't tampered with (since we sign the hash)
   const encoder = new TextEncoder();
   const filenameHashBuffer = await window.crypto.subtle.digest(
     "SHA-256",
-    encoder.encode(metadata.filename)
+    encoder.encode(metadata.filename),
   );
   const filenameHash = arrayBufferToHex(filenameHashBuffer);
-  
+
   const dataToSign = JSON.stringify({
     filenameHash: filenameHash, // Hash instead of plaintext filename
     size: metadata.size,
@@ -632,7 +651,10 @@ export async function signFileMetadata(metadata, signingPrivateKey) {
   };
 }
 
-export async function verifyFileMetadataSignature(signatureBundle, signerPublicKey) {
+export async function verifyFileMetadataSignature(
+  signatureBundle,
+  signerPublicKey,
+) {
   try {
     const signatureBytes = base64ToArrayBuffer(signatureBundle.signature);
     const signedDataBytes = base64ToArrayBuffer(signatureBundle.signedData);
@@ -640,7 +662,7 @@ export async function verifyFileMetadataSignature(signatureBundle, signerPublicK
     const valid = await verify(
       signedDataBytes,
       signatureBytes,
-      signerPublicKey
+      signerPublicKey,
     );
 
     if (valid) {
@@ -686,7 +708,7 @@ export async function hashFile(file, onProgress = () => {}) {
 
   const finalHash = await window.crypto.subtle.digest(
     "SHA-256",
-    concatenatedHashes
+    concatenatedHashes,
   );
   return arrayBufferToHex(finalHash);
 }

@@ -225,3 +225,80 @@ END;
 $$;
 
 GRANT EXECUTE ON FUNCTION consume_ownership_nonce(TEXT) TO service_role;
+
+
+-- 9. SECURITY FIX: IMMUTABLE FILE INTEGRITY
+-- ============================================================================
+-- Prevents "Malicious Admin" from swapping the hash/size of an existing file.
+-- Forces any modification to require full deletion, which is auditable.
+--
+-- CRITICAL: Must protect BOTH the SQL columns AND the JSONB metadata fields,
+-- since the client reads from metadata.contentHash (JSONB), not content_hash (SQL).
+-- ============================================================================
+
+CREATE OR REPLACE FUNCTION prevent_file_tampering()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- =========================================================================
+  -- LAYER 1: Protect SQL columns (defense in depth)
+  -- =========================================================================
+  
+  IF NEW.content_hash IS DISTINCT FROM OLD.content_hash THEN
+      RAISE EXCEPTION 'Security Violation: content_hash is immutable.';
+  END IF;
+
+  IF NEW.size IS DISTINCT FROM OLD.size THEN
+      RAISE EXCEPTION 'Security Violation: File size is immutable.';
+  END IF;
+
+  IF NEW.owner_id IS DISTINCT FROM OLD.owner_id THEN
+      RAISE EXCEPTION 'Security Violation: File ownership cannot be transferred.';
+  END IF;
+
+  -- =========================================================================
+  -- LAYER 2: Protect JSONB metadata fields (what the client actually reads)
+  -- This closes the "window" attack where admin modifies JSONB but not SQL columns
+  -- =========================================================================
+  
+  -- Protect contentHash inside JSONB
+  IF (NEW.metadata->>'contentHash') IS DISTINCT FROM (OLD.metadata->>'contentHash') THEN
+      RAISE EXCEPTION 'Security Violation: metadata.contentHash is immutable.';
+  END IF;
+
+  -- Protect size inside JSONB  
+  IF (NEW.metadata->>'size')::BIGINT IS DISTINCT FROM (OLD.metadata->>'size')::BIGINT THEN
+      RAISE EXCEPTION 'Security Violation: metadata.size is immutable.';
+  END IF;
+
+  -- Protect version (prevents downgrade attacks)
+  IF (NEW.metadata->>'version')::INT IS DISTINCT FROM (OLD.metadata->>'version')::INT THEN
+      RAISE EXCEPTION 'Security Violation: metadata.version is immutable.';
+  END IF;
+
+  -- Protect signature bundle (prevents signature stripping attacks)
+  IF (OLD.metadata->'signature') IS NOT NULL 
+     AND (NEW.metadata->'signature') IS DISTINCT FROM (OLD.metadata->'signature') THEN
+      RAISE EXCEPTION 'Security Violation: metadata.signature is immutable once set.';
+  END IF;
+
+  -- Protect encrypted keys (prevents recipient list manipulation)
+  IF (OLD.metadata->'encryptedKeys') IS NOT NULL 
+     AND (NEW.metadata->'encryptedKeys') IS DISTINCT FROM (OLD.metadata->'encryptedKeys') THEN
+      RAISE EXCEPTION 'Security Violation: metadata.encryptedKeys is immutable once set.';
+  END IF;
+
+  -- =========================================================================
+  -- ALLOWED changes: expires_at, timestamp, accessModes, expiryHours
+  -- These don't affect file integrity or authenticity
+  -- =========================================================================
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Apply the trigger
+DROP TRIGGER IF EXISTS trg_prevent_file_tampering ON files;
+CREATE TRIGGER trg_prevent_file_tampering
+  BEFORE UPDATE ON files
+  FOR EACH ROW
+  EXECUTE PROCEDURE prevent_file_tampering();
