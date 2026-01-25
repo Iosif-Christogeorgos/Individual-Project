@@ -1193,7 +1193,7 @@ async function executeStreamingUpload(file, includeLinkKey) {
     throw new Error("Server did not return a file ID.");
   }
 
-  await uploadMetadata(serverData.fileId, metadata);
+  await uploadMetadata(serverData.fileId, metadata, serverData.uploadToken);
 
   // Don't set 100% here - triggerLockAndComplete() will handle that
   updateProgress(98, "Finalizing...");
@@ -1291,7 +1291,7 @@ async function executeBufferedUpload(file, includeLinkKey) {
     throw new Error("Server did not return a file ID.");
   }
 
-  await uploadMetadata(serverData.fileId, metadata);
+  await uploadMetadata(serverData.fileId, metadata, serverData.uploadToken);
 
   // Don't set 100% here - triggerLockAndComplete() will handle that
   updateProgress(98, "Finalizing...");
@@ -1371,7 +1371,7 @@ async function prepareMetadata(file, contentHash, aesKey, includeLinkKey) {
   return metadata;
 }
 
-async function uploadMetadata(fileId, metadata) {
+async function uploadMetadata(fileId, metadata, uploadToken) {
   const hasCustomExpiry = metadata.expiryHours !== 24;
   const hasRecipients = metadata.encryptedKeys.length > 0;
   const hasSignature = metadata.signature !== null;
@@ -1381,7 +1381,10 @@ async function uploadMetadata(fileId, metadata) {
 
     const metadataResponse = await fetch(`/metadata/${fileId}`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "X-Upload-Token": uploadToken,
+      },
       body: JSON.stringify(metadata),
     });
 

@@ -8,7 +8,13 @@
 
 import * as CryptoModule from "./crypto.js";
 import * as IdentityManager from "./identity.js";
-import { showAlert, hideAlert, escapeHtml, updateStep, formatExpiryDuration } from "./ui-utils.js";
+import {
+  showAlert,
+  hideAlert,
+  escapeHtml,
+  updateStep,
+  formatExpiryDuration,
+} from "./ui-utils.js";
 import { hapticSuccess, hapticHeavy, hapticError } from "./haptics.js";
 
 let currentIdentity = null;
@@ -16,7 +22,6 @@ let fileMetadata = null;
 
 // Threshold for streaming download (100MB)
 const STREAMING_DOWNLOAD_THRESHOLD = 100 * 1024 * 1024;
-
 
 /**
  * Update the expiry notice on the download page based on metadata.
@@ -70,16 +75,16 @@ async function validateDownloadLink() {
   if (!fileId) {
     showInvalidLinkPage(
       "Invalid Link",
-      "This download link is invalid or incomplete. Please make sure you have the complete URL."
+      "This download link is invalid or incomplete. Please make sure you have the complete URL.",
     );
     return;
   }
 
-  // Validate fileId format
-  if (!/^file-\d+-[a-f0-9]+\.bin$/.test(fileId)) {
+  // Validate fileId format (new format: 64 hex chars, no timestamp)
+  if (!/^file-[a-f0-9]{64}\.bin$/.test(fileId)) {
     showInvalidLinkPage(
       "Invalid Link",
-      "This download link appears to be malformed. Please check the URL and try again."
+      "This download link appears to be malformed. Please check the URL and try again.",
     );
     return;
   }
@@ -93,7 +98,7 @@ async function validateDownloadLink() {
     if (response.status === 404) {
       showInvalidLinkPage(
         "File Not Found",
-        "This file has expired or been deleted. Files are automatically removed after their expiry period."
+        "This file has expired or been deleted. Files are automatically removed after their expiry period.",
       );
       return;
     }
@@ -101,7 +106,7 @@ async function validateDownloadLink() {
     if (!response.ok) {
       showInvalidLinkPage(
         "File Unavailable",
-        "Unable to access this file. Please try again later or request a new link."
+        "Unable to access this file. Please try again later or request a new link.",
       );
       return;
     }
@@ -129,14 +134,14 @@ async function validateDownloadLink() {
       // No key in URL and no identity access
       showInvalidLinkPage(
         "Missing Decryption Key",
-        "This link does not contain the decryption key. You may need to use identity-based access or request a new link."
+        "This link does not contain the decryption key. You may need to use identity-based access or request a new link.",
       );
     }
   } catch (error) {
     console.error("Validation error:", error);
     showInvalidLinkPage(
       "Connection Error",
-      "Unable to verify file availability. Please check your connection and try again."
+      "Unable to verify file availability. Please check your connection and try again.",
     );
     return;
   }
@@ -180,7 +185,7 @@ async function loadUserIdentity(retryCount = 0) {
     // Retry on failure (IndexedDB can be flaky on some browsers)
     if (retryCount < MAX_RETRIES) {
       await new Promise((resolve) =>
-        setTimeout(resolve, 100 * (retryCount + 1))
+        setTimeout(resolve, 100 * (retryCount + 1)),
       );
       return loadUserIdentity(retryCount + 1);
     }
@@ -196,7 +201,7 @@ function canDecryptWithIdentity() {
 
   // Check if any encrypted key matches our identity
   return fileMetadata.encryptedKeys.some(
-    (ek) => ek.recipientFingerprint === currentIdentity.fingerprint
+    (ek) => ek.recipientFingerprint === currentIdentity.fingerprint,
   );
 }
 
@@ -204,7 +209,7 @@ function getMatchingEncryptedKey() {
   if (!currentIdentity || !fileMetadata?.encryptedKeys) return null;
 
   return fileMetadata.encryptedKeys.find(
-    (ek) => ek.recipientFingerprint === currentIdentity.fingerprint
+    (ek) => ek.recipientFingerprint === currentIdentity.fingerprint,
   );
 }
 
@@ -261,7 +266,7 @@ function showIdentityRequiredPage() {
       <div class="identity-info">
         <span class="identity-badge"><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 10h2"/><path d="M16 14h2"/><path d="M6.17 15a3 3 0 0 1 5.66 0"/><circle cx="9" cy="11" r="2"/><rect x="2" y="5" width="20" height="14" rx="2"/></svg></span>
         <span>Your identity: <strong>${escapeHtml(
-          currentIdentity.displayName
+          currentIdentity.displayName,
         )}</strong></span>
         <span class="fingerprint">${currentIdentity.fingerprint
           .substring(0, 16)
@@ -300,7 +305,7 @@ function showDownloadReady(accessMode) {
           <div class="access-details">
             <span class="access-label">Identity-Based Access</span>
             <span class="access-user">Decrypting as: ${escapeHtml(
-              currentIdentity?.displayName || "Unknown"
+              currentIdentity?.displayName || "Unknown",
             )}</span>
           </div>
         </div>
@@ -460,12 +465,13 @@ async function startDownload() {
   showStatus();
 
   btn.disabled = true;
-  btn.innerHTML = '<span><svg class="lucide-icon animate-spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg></span> Decrypting...';
+  btn.innerHTML =
+    '<span><svg class="lucide-icon animate-spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg></span> Decrypting...';
 
   try {
     if (!window.crypto || !window.crypto.subtle) {
       throw new Error(
-        "Web Crypto API not available. Please use HTTPS or localhost."
+        "Web Crypto API not available. Please use HTTPS or localhost.",
       );
     }
 
@@ -478,8 +484,8 @@ async function startDownload() {
       throw new Error("Invalid download link. Missing file ID.");
     }
 
-    // Validate fileId format
-    if (!/^file-\d+-[a-f0-9]+\.bin$/.test(fileId)) {
+    // Validate fileId format (new format: 64 hex chars, no timestamp)
+    if (!/^file-[a-f0-9]{64}\.bin$/.test(fileId)) {
       throw new Error("Invalid file ID format.");
     }
 
@@ -488,13 +494,13 @@ async function startDownload() {
       `/download/${encodeURIComponent(fileId)}`,
       {
         method: "HEAD",
-      }
+      },
     );
 
     if (!headResponse.ok) {
       if (headResponse.status === 404) {
         throw new Error(
-          "File not found. It may have been deleted or the link is invalid."
+          "File not found. It may have been deleted or the link is invalid.",
         );
       }
       throw new Error(`Failed to fetch file: ${headResponse.status}`);
@@ -502,7 +508,7 @@ async function startDownload() {
 
     const contentLength = parseInt(
       headResponse.headers.get("Content-Length") || "0",
-      10
+      10,
     );
     const useStreaming = contentLength > STREAMING_DOWNLOAD_THRESHOLD;
 
@@ -529,21 +535,21 @@ async function startDownload() {
       // Identity-based access: decrypt key using private key
       if (!currentIdentity) {
         throw new Error(
-          "No identity available. Please set up your identity first."
+          "No identity available. Please set up your identity first.",
         );
       }
 
       const encryptedKeyBundle = getMatchingEncryptedKey();
       if (!encryptedKeyBundle) {
         throw new Error(
-          "Your identity is not authorized to decrypt this file."
+          "Your identity is not authorized to decrypt this file.",
         );
       }
 
       try {
         key = await CryptoModule.decryptKeyWithPrivateKey(
           encryptedKeyBundle,
-          currentIdentity.encryption.privateKey
+          currentIdentity.encryption.privateKey,
         );
       } catch (keyError) {
         console.error("Key decryption error:", keyError);
@@ -564,7 +570,8 @@ async function startDownload() {
         (downloadProgress) => {
           // Download progress (step 1)
           if (downloadProgress < 100) {
-            btn.innerHTML = '<span><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg></span> Downloading... ${downloadProgress}%';
+            btn.innerHTML =
+              '<span><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg></span> Downloading... ${downloadProgress}%';
           } else {
             updateStep("step1", "complete");
           }
@@ -572,9 +579,10 @@ async function startDownload() {
         (decryptProgress) => {
           // Decryption progress (step 3)
           if (decryptProgress < 100) {
-            btn.innerHTML = '<span><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg></span> Decrypting... ${decryptProgress}%';
+            btn.innerHTML =
+              '<span><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg></span> Decrypting... ${decryptProgress}%';
           }
-        }
+        },
       );
       updateStep("step1", "complete");
       updateStep("step3", "complete");
@@ -585,7 +593,7 @@ async function startDownload() {
       if (!response.ok) {
         if (response.status === 404) {
           throw new Error(
-            "File not found. It may have been deleted or the link is invalid."
+            "File not found. It may have been deleted or the link is invalid.",
           );
         }
         throw new Error(`Failed to fetch file: ${response.status}`);
@@ -603,12 +611,12 @@ async function startDownload() {
             if (progress < 100) {
               updateStep("step3", "pending");
             }
-          }
+          },
         );
       } catch (decryptError) {
         throw new Error(
           "Decryption failed: " + decryptError.message ||
-            "The file may be corrupted or the key is incorrect."
+            "The file may be corrupted or the key is incorrect.",
         );
       }
       updateStep("step3", "complete");
@@ -624,12 +632,12 @@ async function startDownload() {
       updateStep("step5", "pending"); // Optional signature step
       try {
         const signerPublicKey = await CryptoModule.importSigningPublicKey(
-          fileMetadata.signature.signerPublicKey
+          fileMetadata.signature.signerPublicKey,
         );
 
         const verification = await CryptoModule.verifyFileMetadataSignature(
           fileMetadata.signature,
-          signerPublicKey
+          signerPublicKey,
         );
 
         if (verification.valid) {
@@ -668,7 +676,8 @@ async function startDownload() {
     // Success state
     hapticHeavy(); // Strong feedback for successful download
     btn.disabled = false;
-    btn.innerHTML = '<span><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span> Download Complete';
+    btn.innerHTML =
+      '<span><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span> Download Complete';
     btn.classList.add("btn-secondary");
     btn.classList.remove("btn-primary");
   } catch (error) {
@@ -683,11 +692,12 @@ async function startDownload() {
     showAlert(
       "Decryption Failed",
       error.message || "An unexpected error occurred.",
-      "error"
+      "error",
     );
 
     btn.disabled = false;
-    btn.innerHTML = '<span><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg></span> Retry Download';
+    btn.innerHTML =
+      '<span><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg></span> Retry Download';
   }
 }
 
@@ -729,4 +739,3 @@ function showSignatureWarning() {
   `;
   infoEl.classList.add("show", "warning");
 }
-

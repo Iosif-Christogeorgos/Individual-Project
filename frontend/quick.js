@@ -69,20 +69,24 @@ function copyLink() {
     .then(() => {
       hapticSuccess(); // Provide tactile feedback on successful copy
       btn.classList.add("copied");
-      btn.innerHTML = '<span><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span> Copied!';
+      btn.innerHTML =
+        '<span><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span> Copied!';
 
       setTimeout(() => {
         btn.classList.remove("copied");
-        btn.innerHTML = '<span><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg></span> Copy';
+        btn.innerHTML =
+          '<span><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg></span> Copy';
       }, 2000);
     })
     .catch(() => {
       input.select();
       input.setSelectionRange(0, 99999);
-      btn.innerHTML = '<span><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></span> Select & Copy';
+      btn.innerHTML =
+        '<span><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></span> Select & Copy';
 
       setTimeout(() => {
-        btn.innerHTML = '<span><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg></span> Copy';
+        btn.innerHTML =
+          '<span><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg></span> Copy';
       }, 3000);
     });
 }
@@ -96,7 +100,8 @@ function resetToUpload() {
   const copyBtn = document.getElementById("copyBtn");
   if (copyBtn) {
     copyBtn.classList.remove("copied");
-    copyBtn.innerHTML = '<span><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg></span> Copy';
+    copyBtn.innerHTML =
+      '<span><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg></span> Copy';
   }
 }
 
@@ -112,13 +117,16 @@ document.addEventListener("DOMContentLoaded", async () => {
   initializeExpiryDropdown();
 
   // Initialize file handler (disable binary rain - using voltage pulse instead)
-  initializeFileHandler((file) => {
-    const expiryHours = getSelectedExpiryHours();
-    const validation = validateFileForExpiry(file, expiryHours);
-    if (!validation.valid) {
-      showAlert("File Exceeds Size Limit", validation.message, "error");
-    }
-  }, { enableBinaryRain: false });
+  initializeFileHandler(
+    (file) => {
+      const expiryHours = getSelectedExpiryHours();
+      const validation = validateFileForExpiry(file, expiryHours);
+      if (!validation.valid) {
+        showAlert("File Exceeds Size Limit", validation.message, "error");
+      }
+    },
+    { enableBinaryRain: false },
+  );
 
   // Expiry change listener
   const expirySelect = document.getElementById("expirySelect");
@@ -127,7 +135,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   // Alert close
-  document.getElementById("alertCloseBtn")?.addEventListener("click", hideAlert);
+  document
+    .getElementById("alertCloseBtn")
+    ?.addEventListener("click", hideAlert);
 
   // File clear button
   document.getElementById("clearFileBtn")?.addEventListener("click", () => {
@@ -165,7 +175,8 @@ window.cancelUpload = function () {
   const uploadBtn = document.getElementById("uploadBtn");
   if (uploadBtn) {
     uploadBtn.disabled = false;
-    uploadBtn.innerHTML = '<span><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span> Encrypt & Upload';
+    uploadBtn.innerHTML =
+      '<span><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span> Encrypt & Upload';
   }
 
   hideProgress();
@@ -190,7 +201,11 @@ async function processFile() {
   hideAlert();
 
   if (!file) {
-    showAlert("No File Selected", "Please select a file to encrypt.", "warning");
+    showAlert(
+      "No File Selected",
+      "Please select a file to encrypt.",
+      "warning",
+    );
     return;
   }
 
@@ -218,7 +233,8 @@ function cancelUpload() {
   const uploadBtn = document.getElementById("uploadBtn");
   if (uploadBtn) {
     uploadBtn.disabled = false;
-    uploadBtn.innerHTML = '<span><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span> Encrypt & Upload';
+    uploadBtn.innerHTML =
+      '<span><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span> Encrypt & Upload';
   }
 
   hideProgress();
@@ -236,7 +252,8 @@ async function executeUpload() {
   const expiryHours = getSelectedExpiryHours();
 
   uploadBtn.disabled = true;
-  uploadBtn.innerHTML = '<span><svg class="lucide-icon animate-spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg></span> Processing...';
+  uploadBtn.innerHTML =
+    '<span><svg class="lucide-icon animate-spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg></span> Processing...';
   isUploading = true;
 
   uploadAbortController = new AbortController();
@@ -271,12 +288,17 @@ async function executeUpload() {
   } catch (error) {
     if (error.name === "AbortError") return;
     hideProgress();
-    showAlert("Encryption Failed", error.message || "An error occurred.", "error");
+    showAlert(
+      "Encryption Failed",
+      error.message || "An error occurred.",
+      "error",
+    );
   } finally {
     isUploading = false;
     uploadAbortController = null;
     uploadBtn.disabled = false;
-    uploadBtn.innerHTML = '<span><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span> Encrypt & Upload';
+    uploadBtn.innerHTML =
+      '<span><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span> Encrypt & Upload';
   }
 }
 
@@ -293,7 +315,7 @@ async function executeStreamingUpload(file, expiryHours) {
       // Scale progress to 10-90% to leave room for metadata
       const overallProgress = 10 + Math.round(percent * 0.8);
       updateProgress(overallProgress, `Encrypting & Uploading... ${percent}%`);
-    }
+    },
   );
 
   updateProgress(90, "Processing response...");
@@ -314,12 +336,17 @@ async function executeStreamingUpload(file, expiryHours) {
   const serverData = await uploadResponse.json();
   if (!serverData.fileId) throw new Error("Server did not return file ID");
 
-  await uploadMetadata(serverData.fileId, file, expiryHours);
+  await uploadMetadata(
+    serverData.fileId,
+    file,
+    expiryHours,
+    serverData.uploadToken,
+  );
 
   // Don't set 100% here - triggerLockAndComplete() will handle that
   updateProgress(98, "Finalizing...");
   const shareLink = `${window.location.origin}/download?id=${encodeURIComponent(
-    serverData.fileId
+    serverData.fileId,
   )}#${exportedKey.k}`;
 
   showUploadSuccess(shareLink, Date.now() + expiryHours * 60 * 60 * 1000);
@@ -338,7 +365,7 @@ async function executeBufferedUpload(file, expiryHours) {
       // Encryption takes 10-50%
       const overallProgress = 10 + Math.round(percent * 0.4);
       updateProgress(overallProgress, `Encrypting... ${percent}%`);
-    }
+    },
   );
 
   updateProgress(50, "Uploading encrypted file...");
@@ -347,21 +374,24 @@ async function executeBufferedUpload(file, expiryHours) {
   formData.append(
     "encryptedFile",
     new Blob([encryptedData]),
-    `${file.name}.enc`
+    `${file.name}.enc`,
   );
 
   // Use XMLHttpRequest for upload progress tracking
   const serverData = await new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open("POST", "/upload", true);
-    
+
     // Upload progress handler
     xhr.upload.onprogress = (event) => {
       if (event.lengthComputable) {
         const percentComplete = event.loaded / event.total;
         // Upload phase is 50% -> 85% of total progress
         const overallProgress = 50 + Math.round(percentComplete * 35);
-        updateProgress(overallProgress, `Uploading... ${Math.round(percentComplete * 100)}%`);
+        updateProgress(
+          overallProgress,
+          `Uploading... ${Math.round(percentComplete * 100)}%`,
+        );
       }
     };
 
@@ -375,10 +405,10 @@ async function executeBufferedUpload(file, expiryHours) {
         }
       } else {
         try {
-            const error = JSON.parse(xhr.responseText);
-            reject(new Error(error.error || `Upload failed: ${xhr.status}`));
+          const error = JSON.parse(xhr.responseText);
+          reject(new Error(error.error || `Upload failed: ${xhr.status}`));
         } catch (e) {
-            reject(new Error(`Upload failed: ${xhr.status}`));
+          reject(new Error(`Upload failed: ${xhr.status}`));
         }
       }
     };
@@ -388,7 +418,7 @@ async function executeBufferedUpload(file, expiryHours) {
 
     // Link abort controller
     if (uploadAbortController) {
-      uploadAbortController.signal.addEventListener('abort', () => xhr.abort());
+      uploadAbortController.signal.addEventListener("abort", () => xhr.abort());
     }
 
     xhr.send(formData);
@@ -396,18 +426,23 @@ async function executeBufferedUpload(file, expiryHours) {
 
   if (!serverData.fileId) throw new Error("Server did not return file ID");
 
-  await uploadMetadata(serverData.fileId, file, expiryHours);
+  await uploadMetadata(
+    serverData.fileId,
+    file,
+    expiryHours,
+    serverData.uploadToken,
+  );
 
   // Don't set 100% here - triggerLockAndComplete() will handle that
   updateProgress(98, "Finalizing...");
   const shareLink = `${window.location.origin}/download?id=${encodeURIComponent(
-    serverData.fileId
+    serverData.fileId,
   )}#${exportedKey.k}`;
 
   showUploadSuccess(shareLink, Date.now() + expiryHours * 60 * 60 * 1000);
 }
 
-async function uploadMetadata(fileId, file, expiryHours) {
+async function uploadMetadata(fileId, file, expiryHours, uploadToken) {
   const expiresAt = Date.now() + expiryHours * 60 * 60 * 1000;
 
   const metadata = {
@@ -428,7 +463,10 @@ async function uploadMetadata(fileId, file, expiryHours) {
     updateProgress(95, "Saving metadata...");
     await fetch(`/metadata/${fileId}`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "X-Upload-Token": uploadToken,
+      },
       body: JSON.stringify(metadata),
     });
   }
