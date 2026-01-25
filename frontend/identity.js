@@ -368,7 +368,7 @@ export async function getContacts() {
  * Add a contact (known recipient).
  * SECURITY: Computes fingerprint client-side from public key.
  * Never trusts the fingerprint string sent by the server (MITM protection).
- * 
+ *
  * @param {Object} publicIdentity - Public identity of the contact
  * @returns {Promise<void>}
  */
@@ -397,16 +397,21 @@ export async function addContact(publicIdentity) {
   // SECURITY: Compute fingerprint client-side from the public key
   // Never trust the fingerprint string sent by the server (MITM protection)
   const computedFingerprint = await CryptoModule.generateKeyFingerprint(
-    publicIdentity.encryptionPublicKey
+    publicIdentity.encryptionPublicKey,
   );
 
   // Log if server's fingerprint doesn't match (potential MITM attack detection)
-  if (publicIdentity.fingerprint && 
-      publicIdentity.fingerprint.toLowerCase() !== computedFingerprint.toLowerCase()) {
+  if (
+    publicIdentity.fingerprint &&
+    publicIdentity.fingerprint.toLowerCase() !==
+      computedFingerprint.toLowerCase()
+  ) {
     console.warn(
       "⚠️ SECURITY WARNING: Server fingerprint does not match computed fingerprint!",
-      "\n  Server sent:", publicIdentity.fingerprint,
-      "\n  Computed:   ", computedFingerprint
+      "\n  Server sent:",
+      publicIdentity.fingerprint,
+      "\n  Computed:   ",
+      computedFingerprint,
     );
     // We still use the computed fingerprint, not the server's
   }
@@ -422,7 +427,7 @@ export async function addContact(publicIdentity) {
   // Store contact with CLIENT-COMPUTED fingerprint (not server's)
   const verifiedContact = {
     ...publicIdentity,
-    fingerprint: computedFingerprint,  // Override with computed value
+    fingerprint: computedFingerprint, // Override with computed value
   };
 
   const contacts = await getContacts();

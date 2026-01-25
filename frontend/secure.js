@@ -550,16 +550,21 @@ async function searchUserByUsername() {
 
     // SECURITY: Compute fingerprint client-side - never trust server's fingerprint
     const computedFingerprint = await CryptoModule.generateKeyFingerprint(
-      userData.encryptionPublicKey
+      userData.encryptionPublicKey,
     );
 
     // Log mismatch for security monitoring (potential MITM detection)
-    if (userData.fingerprint && 
-        userData.fingerprint.toLowerCase() !== computedFingerprint.toLowerCase()) {
+    if (
+      userData.fingerprint &&
+      userData.fingerprint.toLowerCase() !== computedFingerprint.toLowerCase()
+    ) {
       console.warn(
-        "⚠️ SECURITY WARNING: Server fingerprint mismatch for @" + userData.username,
-        "\n  Server sent:", userData.fingerprint,
-        "\n  Computed:   ", computedFingerprint
+        "⚠️ SECURITY WARNING: Server fingerprint mismatch for @" +
+          userData.username,
+        "\n  Server sent:",
+        userData.fingerprint,
+        "\n  Computed:   ",
+        computedFingerprint,
       );
     }
 
@@ -596,7 +601,7 @@ async function searchUserByUsername() {
           displayName: `@${userData.username}`,
           encryptionPublicKey: userData.encryptionPublicKey,
           signingPublicKey: userData.signingPublicKey,
-          fingerprint: computedFingerprint,  // Use computed fingerprint
+          fingerprint: computedFingerprint, // Use computed fingerprint
         };
 
         try {

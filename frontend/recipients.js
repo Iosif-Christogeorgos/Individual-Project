@@ -5,9 +5,9 @@
 // SECURITY: All fingerprints displayed are computed client-side from public keys.
 // =============================================================================
 
-import * as IdentityManager from './identity.js';
-import * as CryptoModule from './crypto.js';
-import { showAlert, showToast, escapeHtml } from './ui-utils.js';
+import * as IdentityManager from "./identity.js";
+import * as CryptoModule from "./crypto.js";
+import { showAlert, showToast, escapeHtml } from "./ui-utils.js";
 
 // State
 let selectedRecipients = [];
@@ -51,54 +51,52 @@ export async function loadContacts(onChangeCallback) {
     const contactsWithVerifiedFingerprints = await Promise.all(
       contacts.map(async (contact) => {
         const computedFingerprint = await CryptoModule.generateKeyFingerprint(
-          contact.encryptionPublicKey
+          contact.encryptionPublicKey,
         );
         return {
           ...contact,
           verifiedFingerprint: computedFingerprint,
         };
-      })
+      }),
     );
 
     contactsList.innerHTML = contactsWithVerifiedFingerprints
-      .map(
-        (contact) => {
-          const safeId = escapeHtml(contact.id);
-          // Use the client-computed fingerprint for display
-          const displayFingerprint = contact.verifiedFingerprint || contact.fingerprint;
-          return `
+      .map((contact) => {
+        const safeId = escapeHtml(contact.id);
+        // Use the client-computed fingerprint for display
+        const displayFingerprint =
+          contact.verifiedFingerprint || contact.fingerprint;
+        return `
       <div class="contact-item" data-id="${safeId}">
         <input type="checkbox" class="contact-checkbox" data-contact-id="${safeId}"
-               ${selectedRecipients.includes(contact.id) ? 'checked' : ''}>
+               ${selectedRecipients.includes(contact.id) ? "checked" : ""}>
         <div class="contact-info">
           <span class="contact-name">${escapeHtml(contact.displayName)}</span>
-          <span class="contact-fingerprint">${escapeHtml(displayFingerprint
-            .substring(0, 16)
-            .toUpperCase())}</span>
+          <span class="contact-fingerprint">${escapeHtml(
+            displayFingerprint.substring(0, 16).toUpperCase(),
+          )}</span>
         </div>
         <button class="contact-remove" data-remove-id="${safeId}" title="Remove contact">×</button>
       </div>
     `;
-        }
-      )
+      })
       .join("");
 
     // Attach event listeners for checkboxes
-    contactsList.querySelectorAll('.contact-checkbox').forEach(checkbox => {
-      checkbox.addEventListener('change', (e) => {
+    contactsList.querySelectorAll(".contact-checkbox").forEach((checkbox) => {
+      checkbox.addEventListener("change", (e) => {
         const contactId = e.target.dataset.contactId;
         toggleRecipient(contactId, e.target.checked, onChangeCallback);
       });
     });
 
     // Attach event listeners for remove buttons
-    contactsList.querySelectorAll('.contact-remove').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
+    contactsList.querySelectorAll(".contact-remove").forEach((btn) => {
+      btn.addEventListener("click", async (e) => {
         const contactId = e.target.dataset.removeId;
         await removeContactUI(contactId, onChangeCallback);
       });
     });
-
   } catch (error) {
     console.error("Failed to load contacts:", error);
   }
@@ -119,7 +117,7 @@ export function toggleRecipient(contactId, selected, onChangeCallback) {
     selectedRecipients = selectedRecipients.filter((id) => id !== contactId);
   }
   updateRecipientCount();
-  
+
   if (onChangeCallback) {
     onChangeCallback();
   }
@@ -149,7 +147,7 @@ export async function removeContactUI(contactId, onChangeCallback) {
     selectedRecipients = selectedRecipients.filter((id) => id !== contactId);
     await loadContacts(onChangeCallback);
     updateRecipientCount();
-    
+
     if (onChangeCallback) {
       onChangeCallback();
     }
