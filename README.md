@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Iosif-Christogeorgos/Individual-Project/main/frontend/favicon.svg" width="80" alt="CrypShare Logo"/>
+  <img src="frontend/favicon.svg" width="80" alt="CrypShare Logo"/>
 </p>
 
 <h1 align="center">CrypShare</h1>
