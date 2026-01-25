@@ -368,15 +368,24 @@ function showIdentityOnboarding() {
 
   if (!backdrop || !modal) return;
 
+  // Prevent body scroll when modal is open (important for mobile)
+  document.body.style.overflow = "hidden";
+  // Fix for iOS safari - prevent background scroll
+  document.body.style.position = "fixed";
+  document.body.style.width = "100%";
+  document.body.style.top = `-${window.scrollY}px`;
+
   // Small delay to ensure DOM is ready and enable smooth entrance animation
   requestAnimationFrame(() => {
     backdrop.classList.add("active");
     modal.classList.add("active");
 
-    // Focus the username input
+    // Focus the username input (with delay for mobile keyboard)
     const usernameInput = document.getElementById("onboardingUsernameInput");
     if (usernameInput) {
-      setTimeout(() => usernameInput.focus(), 400);
+      // Longer delay on mobile to allow modal animation to complete
+      const isMobile = window.innerWidth <= 480;
+      setTimeout(() => usernameInput.focus(), isMobile ? 600 : 400);
     }
   });
 }
@@ -390,14 +399,31 @@ function hideIdentityOnboarding() {
 
   if (!backdrop || !modal) return;
 
+  // Blur any focused input to close mobile keyboard before animating
+  const activeElement = document.activeElement;
+  if (activeElement && activeElement.tagName === "INPUT") {
+    activeElement.blur();
+  }
+
   // Add closing class for exit animation
   backdrop.classList.add("closing");
   modal.classList.add("closing");
 
-  // Remove classes after animation completes
+  // Remove classes after animation completes and restore body scroll
   setTimeout(() => {
     backdrop.classList.remove("active", "closing");
     modal.classList.remove("active", "closing");
+
+    // Restore body scroll
+    const scrollY = document.body.style.top;
+    document.body.style.overflow = "";
+    document.body.style.position = "";
+    document.body.style.width = "";
+    document.body.style.top = "";
+    // Restore scroll position
+    if (scrollY) {
+      window.scrollTo(0, parseInt(scrollY || "0") * -1);
+    }
   }, 500);
 }
 

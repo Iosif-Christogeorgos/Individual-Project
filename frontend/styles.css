@@ -6063,19 +6063,30 @@ input[type="checkbox"]:checked {
 /* Mobile responsive for onboarding modal */
 @media (max-width: 480px) {
   .identity-onboarding-modal {
-    padding: 1rem;
+    padding: 0;
     align-items: flex-end;
-    padding-bottom: 0;
+    /* Use dvh for better mobile viewport handling when keyboard opens */
+    height: 100dvh;
+    height: -webkit-fill-available;
   }
   
   .identity-onboarding-card {
     max-width: 100%;
-    border-radius: var(--radius) var(--radius) 0 0;
+    width: 100%;
+    max-height: 90vh;
+    max-height: 90dvh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    border-radius: 16px 16px 0 0;
     transform: translateY(100%);
+    /* Prevent layout shifts */
+    will-change: transform;
   }
   
   .identity-onboarding-modal.active .identity-onboarding-card {
     transform: translateY(0);
+    animation: none; /* Disable pulse animation on mobile for performance */
   }
   
   .identity-onboarding-modal.closing .identity-onboarding-card {
@@ -6084,6 +6095,10 @@ input[type="checkbox"]:checked {
   
   .identity-onboarding-header {
     padding: 1.25rem 1.25rem;
+    position: sticky;
+    top: 0;
+    background: rgba(10, 15, 26, 0.98);
+    z-index: 1;
   }
   
   .identity-onboarding-header-icon {
@@ -6092,8 +6107,8 @@ input[type="checkbox"]:checked {
   }
   
   .identity-onboarding-header-icon svg {
-    width: 20px;
-    height: 20px;
+    width: 24px;
+    height: 24px;
   }
   
   .identity-onboarding-title {
@@ -6102,17 +6117,166 @@ input[type="checkbox"]:checked {
   
   .identity-onboarding-body {
     padding: 1.25rem;
+    padding-top: 1rem;
   }
   
   .identity-onboarding-desc {
     font-size: 0.85rem;
     margin-bottom: 1.25rem;
+    line-height: 1.5;
+  }
+  
+  .identity-onboarding-body .panel-input {
+    /* Prevent zoom on iOS when focusing input (requires 16px minimum) */
+    font-size: 16px;
+    padding: 0.875rem 0.75rem;
+  }
+  
+  .identity-onboarding-body .btn-primary {
+    /* Larger touch target for mobile */
+    min-height: 48px;
+    font-size: 1rem;
   }
   
   .identity-onboarding-footer {
-    padding: 1rem 1.25rem 1.5rem;
+    padding: 1rem 1.25rem;
     /* Add safe area padding for devices with home indicators */
-    padding-bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
+  }
+  
+  .identity-onboarding-footer-text {
+    font-size: 0.75rem;
+  }
+  
+  .identity-onboarding-subtitle {
+    bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* Even smaller screens / keyboard open */
+@media (max-width: 480px) and (max-height: 600px) {
+  .identity-onboarding-card {
+    max-height: 95vh;
+    max-height: 95dvh;
+  }
+  
+  .identity-onboarding-header {
+    padding: 1rem;
+  }
+  
+  .identity-onboarding-body {
+    padding: 1rem;
+  }
+  
+  .identity-onboarding-desc {
+    font-size: 0.8rem;
+    margin-bottom: 1rem;
+  }
+  
+  .identity-onboarding-footer {
+    padding: 0.75rem 1rem;
+    padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
+  }
+  
+  .identity-onboarding-footer-text {
+    font-size: 0.7rem;
+  }
+}
+
+/* Landscape mobile - compact mode */
+@media (max-height: 450px) and (orientation: landscape) {
+  .identity-onboarding-modal {
+    align-items: center;
+    padding: 0.5rem;
+  }
+  
+  .identity-onboarding-card {
+    max-width: 420px;
+    max-height: 95vh;
+    border-radius: var(--radius);
+    transform: scale(0.9) translateY(20px);
+  }
+  
+  .identity-onboarding-modal.active .identity-onboarding-card {
+    transform: scale(1) translateY(0);
+  }
+  
+  .identity-onboarding-modal.closing .identity-onboarding-card {
+    transform: scale(0.95) translateY(-10px);
+  }
+  
+  .identity-onboarding-header {
+    padding: 0.75rem 1rem;
+  }
+  
+  .identity-onboarding-header-icon svg {
+    width: 20px;
+    height: 20px;
+  }
+  
+  .identity-onboarding-title {
+    font-size: 0.95rem;
+  }
+  
+  .identity-onboarding-body {
+    padding: 0.75rem 1rem;
+  }
+  
+  .identity-onboarding-desc {
+    font-size: 0.8rem;
+    margin-bottom: 0.75rem;
+  }
+  
+  .identity-onboarding-body .input-group {
+    margin-bottom: 0.75rem;
+  }
+  
+  .identity-onboarding-body .panel-input {
+    font-size: 16px;
+    padding: 0.625rem 0.5rem;
+  }
+  
+  .identity-onboarding-body .btn-primary {
+    min-height: 40px;
+    padding: 0.5rem 1rem;
+  }
+  
+  .identity-onboarding-footer {
+    padding: 0.5rem 1rem;
+  }
+  
+  .identity-onboarding-footer-text {
+    font-size: 0.7rem;
+  }
+}
+
+/* Touch device improvements for modal */
+@media (hover: none) and (pointer: coarse) {
+  .identity-onboarding-card {
+    /* Improve touch scrolling */
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+  }
+  
+  .identity-onboarding-body .btn-primary {
+    /* Larger touch target */
+    min-height: 48px;
+    /* Active state feedback */
+    transition: transform 0.1s ease, background-color 0.2s ease;
+  }
+  
+  .identity-onboarding-body .btn-primary:active {
+    transform: scale(0.98);
+  }
+  
+  /* Remove hover effects that can cause stickiness on touch */
+  .identity-onboarding-body .username-input-wrapper:hover {
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+  
+  .identity-onboarding-body .username-input-wrapper:focus-within {
+    border-color: var(--cyber-green);
+    box-shadow: 0 0 0 3px rgba(0, 255, 65, 0.1);
   }
 }
 
