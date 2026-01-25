@@ -112,6 +112,33 @@ body {
   overflow-x: hidden;
 }
 
+/* Smooth native scrolling for mobile */
+html {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Prevent scroll chaining/bouncing at boundaries */
+body {
+  overscroll-behavior-y: none;
+}
+
+/* Mobile touch scrolling optimization */
+@media (hover: none) and (pointer: coarse) {
+  html, body {
+    /* Ensure smooth momentum scrolling on iOS */
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .app-layout,
+  .panels-row,
+  .panel-card,
+  .single-panel-layout {
+    /* Allow vertical scroll, prevent horizontal */
+    touch-action: pan-y;
+  }
+}
+
 /* -----------------------------------------------------------------------------
    Lucide Icon Styles
    ----------------------------------------------------------------------------- */
@@ -4951,14 +4978,13 @@ input[type="checkbox"]:checked {
     padding-left: 0;
     display: flex;
     flex-direction: column;
-    min-height: 100vh;
-    min-height: 100dvh;
+    min-height: auto; /* Allow content to determine height */
+    padding-bottom: 100px; /* Space for mobile toggle button */
   }
 
   .main-row {
     padding: 0;
-    min-height: 100vh;
-    min-height: 100dvh; /* Dynamic viewport height for mobile */
+    min-height: auto; /* Remove fixed height to allow natural scrolling */
     flex-direction: column;
     position: relative;
   }
