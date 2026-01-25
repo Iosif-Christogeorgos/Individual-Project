@@ -107,9 +107,16 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-html,
+html {
+  overflow-x: hidden;
+  overflow-y: auto; /* Explicitly allow vertical scroll wheel */
+  height: 100%;
+}
+
 body {
   overflow-x: hidden;
+  overflow-y: auto; /* Explicitly allow vertical scroll wheel */
+  height: 100%;
 }
 
 /* Smooth native scrolling for mobile */
@@ -267,12 +274,10 @@ body {
   font-family: var(--font-sans);
   background: var(--bg-void);
   color: var(--text-primary);
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  min-height: 100%;
   line-height: 1.6;
   overflow-x: hidden;
+  overflow-y: auto; /* Ensure scroll wheel works */
 }
 
 /* -----------------------------------------------------------------------------
