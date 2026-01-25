@@ -10,7 +10,7 @@
 // - Identity is optional (link-based sharing still works without identity)
 // =============================================================================
 
-import * as CryptoModule from './crypto.js';
+import * as CryptoModule from "./crypto.js";
 
 // ===========================================================================
 // Constants
@@ -33,7 +33,11 @@ const CONTACTS_KEY = "contacts";
 function openDatabase() {
   return new Promise((resolve, reject) => {
     if (!indexedDB) {
-      reject(new Error("IndexedDB is not available. Private browsing mode may be enabled."));
+      reject(
+        new Error(
+          "IndexedDB is not available. Private browsing mode may be enabled.",
+        ),
+      );
       return;
     }
 
@@ -41,12 +45,23 @@ function openDatabase() {
 
     request.onerror = (event) => {
       const error = event.target.error;
-      if (error?.name === 'QuotaExceededError') {
-        reject(new Error("Storage quota exceeded. Please free up browser storage."));
-      } else if (error?.name === 'InvalidStateError') {
-        reject(new Error("Database is corrupted. Please clear site data and try again."));
+      if (error?.name === "QuotaExceededError") {
+        reject(
+          new Error("Storage quota exceeded. Please free up browser storage."),
+        );
+      } else if (error?.name === "InvalidStateError") {
+        reject(
+          new Error(
+            "Database is corrupted. Please clear site data and try again.",
+          ),
+        );
       } else {
-        reject(new Error("Failed to open identity database: " + (error?.message || "Unknown error")));
+        reject(
+          new Error(
+            "Failed to open identity database: " +
+              (error?.message || "Unknown error"),
+          ),
+        );
       }
     };
 
@@ -115,25 +130,24 @@ export async function generateIdentity(displayName = "") {
   // Generate ECDH key pair (for key exchange / decryption)
   const ecdhKeyPair = await CryptoModule.generateECDHKeyPair();
   const ecdhPublicKeyJWK = await CryptoModule.exportECDHPublicKey(
-    ecdhKeyPair.publicKey
+    ecdhKeyPair.publicKey,
   );
   const ecdhPrivateKeyJWK = await CryptoModule.exportECDHPrivateKey(
-    ecdhKeyPair.privateKey
+    ecdhKeyPair.privateKey,
   );
 
   // Generate ECDSA key pair (for signing)
   const signingKeyPair = await CryptoModule.generateSigningKeyPair();
   const signingPublicKeyJWK = await CryptoModule.exportSigningPublicKey(
-    signingKeyPair.publicKey
+    signingKeyPair.publicKey,
   );
   const signingPrivateKeyJWK = await CryptoModule.exportSigningPrivateKey(
-    signingKeyPair.privateKey
+    signingKeyPair.privateKey,
   );
 
   // Generate fingerprint from ECDH public key
-  const fingerprint = await CryptoModule.generateKeyFingerprint(
-    ecdhPublicKeyJWK
-  );
+  const fingerprint =
+    await CryptoModule.generateKeyFingerprint(ecdhPublicKeyJWK);
 
   // Create identity object
   const identity = {
@@ -229,6 +243,51 @@ export async function getLoadedIdentity() {
 }
 
 // ===========================================================================
+// Ownership Proof Generation
+// ===========================================================================
+
+/**
+ * Generate an ownership proof for registering/updating public key.
+ * This proves the client owns the private key corresponding to the signing public key.
+ *
+ * @param {Object} identity - The loaded identity with CryptoKey objects
+ * @param {string} username - The username being registered
+ * @returns {Promise<Object>} The ownership proof with signature and timestamp
+ */
+export async function generateOwnershipProof(identity, username) {
+  const timestamp = new Date().toISOString();
+
+  // Message format: id:username:timestamp
+  const message = `${identity.id}:${username.toLowerCase().trim()}:${timestamp}`;
+  const messageBuffer = new TextEncoder().encode(message);
+
+  // Get the signing private key (must be a CryptoKey, not JWK)
+  let signingPrivateKey = identity.signing.privateKey;
+
+  // If it's a JWK, import it first
+  if (signingPrivateKey.kty) {
+    signingPrivateKey =
+      await CryptoModule.importSigningPrivateKey(signingPrivateKey);
+  }
+
+  // Sign the message
+  const signatureBuffer = await CryptoModule.sign(
+    messageBuffer,
+    signingPrivateKey,
+  );
+
+  // Convert to base64 for transmission
+  const signature = btoa(
+    String.fromCharCode(...new Uint8Array(signatureBuffer)),
+  );
+
+  return {
+    signature,
+    timestamp,
+  };
+}
+
+// ===========================================================================
 // Public Key Export (for sharing)
 // ===========================================================================
 
@@ -256,7 +315,7 @@ export function exportPublicIdentity(identity) {
     signingPubKey instanceof CryptoKey
   ) {
     throw new Error(
-      "Cannot export CryptoKey objects. Identity must have JWK keys."
+      "Cannot export CryptoKey objects. Identity must have JWK keys.",
     );
   }
 
@@ -304,7 +363,7 @@ export async function addContact(publicIdentity) {
     !publicIdentity.encryptionPublicKey.kty
   ) {
     throw new Error(
-      "Invalid encryption public key format. Expected a JWK object with 'kty' property."
+      "Invalid encryption public key format. Expected a JWK object with 'kty' property.",
     );
   }
 
@@ -314,7 +373,7 @@ export async function addContact(publicIdentity) {
     !publicIdentity.signingPublicKey.kty
   ) {
     throw new Error(
-      "Invalid signing public key format. Expected a JWK object with 'kty' property."
+      "Invalid signing public key format. Expected a JWK object with 'kty' property.",
     );
   }
 
@@ -327,12 +386,8 @@ export async function addContact(publicIdentity) {
 
   // Try to import the keys to validate they work
   try {
-    await CryptoModule.importECDHPublicKey(
-      publicIdentity.encryptionPublicKey
-    );
-    await CryptoModule.importSigningPublicKey(
-      publicIdentity.signingPublicKey
-    );
+    await CryptoModule.importECDHPublicKey(publicIdentity.encryptionPublicKey);
+    await CryptoModule.importSigningPublicKey(publicIdentity.signingPublicKey);
   } catch (importError) {
     throw new Error("Failed to validate public keys: " + importError.message);
   }
@@ -396,8 +451,6 @@ export async function getContact(contactId) {
 // ===========================================================================
 // Identity Display Utilities
 // ===========================================================================
-
-
 
 /**
  * Get a short fingerprint (first 16 chars).

@@ -16,6 +16,7 @@ import express from "express";
 import cors from "cors";
 import path from "path";
 import crypto from "crypto";
+import { webcrypto } from "crypto";
 import { fileURLToPath } from "url";
 import rateLimit from "express-rate-limit";
 import helmet from "helmet";
@@ -887,36 +888,82 @@ app.post("/pubkey", pubkeyLimiter, async (req, res) => {
       });
     }
 
-    // Ownership verification: require signature if signingPublicKey provided
-    // The ownershipProof should be a signature of (id + username + timestamp) using the signing key
-    if (signingPublicKey && ownershipProof) {
-      try {
-        const { signature, timestamp } = ownershipProof;
+    // CRITICAL: Ownership verification is REQUIRED
+    // The ownershipProof must be a valid ECDSA signature of (id + username + timestamp)
+    if (!signingPublicKey || !ownershipProof) {
+      return res.status(400).json({
+        success: false,
+        error:
+          "Ownership proof required. Please provide signingPublicKey and ownershipProof.",
+      });
+    }
 
-        // Reject if timestamp is too old (5 minute window)
-        const proofTime = new Date(timestamp).getTime();
-        if (
-          isNaN(proofTime) ||
-          Math.abs(Date.now() - proofTime) > 5 * 60 * 1000
-        ) {
-          return res.status(400).json({
-            success: false,
-            error: "Ownership proof expired. Please try again.",
-          });
-        }
+    try {
+      const { signature, timestamp } = ownershipProof;
 
-        // Verify signature using Web Crypto-compatible verification
-        // Note: Full verification would require importing the key and verifying
-        // For now, we trust the client but log the proof for audit
-        console.log(
-          `📝 Ownership proof received for @${cleanUsername}: timestamp=${timestamp}`,
-        );
-      } catch (proofError) {
-        console.warn(
-          `⚠️ Invalid ownership proof for @${cleanUsername}:`,
-          proofError.message,
-        );
+      if (!signature || !timestamp) {
+        return res.status(400).json({
+          success: false,
+          error: "Invalid ownership proof format.",
+        });
       }
+
+      // Reject if timestamp is too old (5 minute window)
+      const proofTime = new Date(timestamp).getTime();
+      if (
+        isNaN(proofTime) ||
+        Math.abs(Date.now() - proofTime) > 5 * 60 * 1000
+      ) {
+        return res.status(400).json({
+          success: false,
+          error: "Ownership proof expired. Please try again.",
+        });
+      }
+
+      // Construct the message that was signed: id + username + timestamp
+      const message = `${id}:${cleanUsername}:${timestamp}`;
+      const messageBuffer = Buffer.from(message, "utf-8");
+
+      // Decode the base64 signature
+      const signatureBuffer = Buffer.from(signature, "base64");
+
+      // Import the signing public key using WebCrypto
+      const publicKey = await webcrypto.subtle.importKey(
+        "jwk",
+        signingPublicKey,
+        { name: "ECDSA", namedCurve: "P-256" },
+        true,
+        ["verify"],
+      );
+
+      // Verify the signature
+      const isValid = await webcrypto.subtle.verify(
+        { name: "ECDSA", hash: "SHA-256" },
+        publicKey,
+        signatureBuffer,
+        messageBuffer,
+      );
+
+      if (!isValid) {
+        console.warn(`⚠️ Invalid signature for @${cleanUsername}`);
+        return res.status(401).json({
+          success: false,
+          error: "Invalid ownership proof signature.",
+        });
+      }
+
+      console.log(
+        `✅ Ownership verified for @${cleanUsername}: timestamp=${timestamp}`,
+      );
+    } catch (proofError) {
+      console.error(
+        `❌ Ownership proof verification failed for @${cleanUsername}:`,
+        proofError.message,
+      );
+      return res.status(400).json({
+        success: false,
+        error: "Failed to verify ownership proof.",
+      });
     }
 
     // Check if username is already taken by another user

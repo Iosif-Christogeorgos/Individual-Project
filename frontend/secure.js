@@ -430,6 +430,13 @@ async function createIdentityFromOnboarding() {
 
     const publicIdentity =
       IdentityManager.exportPublicIdentity(currentIdentity);
+
+    // Generate ownership proof (signed message proving private key ownership)
+    const ownershipProof = await IdentityManager.generateOwnershipProof(
+      currentIdentity,
+      username,
+    );
+
     const response = await fetch("/pubkey", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -439,6 +446,7 @@ async function createIdentityFromOnboarding() {
         encryptionPublicKey: publicIdentity.encryptionPublicKey,
         signingPublicKey: publicIdentity.signingPublicKey,
         fingerprint: currentIdentity.fingerprint,
+        ownershipProof: ownershipProof,
       }),
     });
 
