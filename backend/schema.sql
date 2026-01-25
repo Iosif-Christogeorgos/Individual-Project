@@ -114,7 +114,51 @@ CREATE POLICY "Owner Delete" ON public_keys
   FOR DELETE USING ((select auth.uid()) = owner_id);
 
 
--- 4. HELPER TRIGGERS
+-- 4. UPLOAD_TOKENS TABLE (Security: Persistent tokens for metadata authorization)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS upload_tokens (
+  file_id TEXT PRIMARY KEY,                    -- File ID this token authorizes
+  token_hash TEXT NOT NULL,                    -- SHA-256 hash of the token
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  expires_at TIMESTAMPTZ NOT NULL             -- Tokens expire after 1 hour
+);
+
+-- Index for cleanup queries
+CREATE INDEX IF NOT EXISTS idx_upload_tokens_expires_at ON upload_tokens(expires_at);
+
+-- RLS: Only service role can access (no client access)
+ALTER TABLE upload_tokens ENABLE ROW LEVEL SECURITY;
+
+-- No policies = no client access, only service role can read/write
+
+
+-- 5. OWNERSHIP_NONCES TABLE (Security: Prevent replay attacks on ownership proofs)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS ownership_nonces (
+  nonce TEXT PRIMARY KEY,                      -- Unique nonce value
+  used_at TIMESTAMPTZ DEFAULT NOW()           -- When the nonce was consumed
+);
+
+-- Index for cleanup queries  
+CREATE INDEX IF NOT EXISTS idx_ownership_nonces_used_at ON ownership_nonces(used_at);
+
+-- RLS: Only service role can access
+ALTER TABLE ownership_nonces ENABLE ROW LEVEL SECURITY;
+
+-- Cleanup function for expired nonces (older than 10 minutes)
+CREATE OR REPLACE FUNCTION cleanup_expired_nonces()
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  DELETE FROM ownership_nonces WHERE used_at < NOW() - INTERVAL '10 minutes';
+END;
+$$;
+
+
+-- 6. HELPER TRIGGERS
 -- ============================================================================
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
@@ -130,3 +174,54 @@ CREATE TRIGGER update_public_keys_updated_at
    BEFORE UPDATE ON public_keys
    FOR EACH ROW
    EXECUTE PROCEDURE update_updated_at_column();
+
+
+-- 7. SECURE RPC: Consume upload token atomically
+-- ============================================================================
+CREATE OR REPLACE FUNCTION consume_upload_token(p_file_id TEXT, p_token_hash TEXT)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_found BOOLEAN := FALSE;
+BEGIN
+  -- Atomically check and delete the token
+  DELETE FROM upload_tokens 
+  WHERE file_id = p_file_id 
+    AND token_hash = p_token_hash 
+    AND expires_at > NOW()
+  RETURNING TRUE INTO v_found;
+  
+  RETURN COALESCE(v_found, FALSE);
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION consume_upload_token(TEXT, TEXT) TO service_role;
+
+
+-- 8. SECURE RPC: Check and consume ownership nonce atomically
+-- ============================================================================
+CREATE OR REPLACE FUNCTION consume_ownership_nonce(p_nonce TEXT)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_inserted BOOLEAN := FALSE;
+BEGIN
+  -- Try to insert the nonce (will fail if already used due to PRIMARY KEY)
+  BEGIN
+    INSERT INTO ownership_nonces (nonce, used_at) VALUES (p_nonce, NOW());
+    v_inserted := TRUE;
+  EXCEPTION WHEN unique_violation THEN
+    v_inserted := FALSE;
+  END;
+  
+  RETURN v_inserted;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION consume_ownership_nonce(TEXT) TO service_role;

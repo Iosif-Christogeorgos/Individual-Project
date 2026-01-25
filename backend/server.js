@@ -327,22 +327,99 @@ function hashUploadToken(token) {
   return crypto.createHash("sha256").update(token).digest("hex");
 }
 
-// In-memory store for upload tokens (maps fileId -> hashedToken)
-// In production, consider using Redis with TTL
-const uploadTokens = new Map();
+// =============================================================================
+// Database-backed Upload Token Storage (Horizontally Scalable)
+// =============================================================================
 
-// Clean up old tokens periodically (tokens older than 1 hour)
+/**
+ * Store upload token in database (replaces in-memory Map)
+ * @param {string} fileId - The file ID
+ * @param {string} hashedToken - SHA-256 hash of the token
+ */
+async function storeUploadToken(fileId, hashedToken) {
+  const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1 hour
+  const { error } = await supabase.from("upload_tokens").upsert({
+    file_id: fileId,
+    token_hash: hashedToken,
+    expires_at: expiresAt,
+  });
+  if (error) {
+    console.error("❌ Failed to store upload token:", error.message);
+    throw new Error("Failed to store upload token");
+  }
+}
+
+/**
+ * Verify and consume upload token atomically (one-time use)
+ * @param {string} fileId - The file ID
+ * @param {string} token - The raw token to verify
+ * @returns {boolean} True if token was valid and consumed
+ */
+async function verifyAndConsumeUploadToken(fileId, token) {
+  const hashedToken = hashUploadToken(token);
+  const { data, error } = await supabase.rpc("consume_upload_token", {
+    p_file_id: fileId,
+    p_token_hash: hashedToken,
+  });
+  if (error) {
+    console.error("❌ Token verification error:", error.message);
+    return false;
+  }
+  return data === true;
+}
+
+// Cleanup expired tokens periodically
 setInterval(
-  () => {
-    const oneHourAgo = Date.now() - 60 * 60 * 1000;
-    for (const [fileId, data] of uploadTokens.entries()) {
-      if (data.createdAt < oneHourAgo) {
-        uploadTokens.delete(fileId);
-      }
+  async () => {
+    try {
+      const { error } = await supabase
+        .from("upload_tokens")
+        .delete()
+        .lt("expires_at", new Date().toISOString());
+      if (error) console.error("❌ Token cleanup error:", error.message);
+    } catch (e) {
+      console.error("❌ Token cleanup error:", e.message);
     }
   },
   15 * 60 * 1000,
 ); // Every 15 minutes
+
+// =============================================================================
+// Ownership Nonce Tracking (Replay Attack Prevention)
+// =============================================================================
+
+/**
+ * Verify nonce hasn't been used before and consume it atomically
+ * @param {string} nonce - The nonce to check/consume
+ * @returns {boolean} True if nonce was fresh and consumed
+ */
+async function consumeOwnershipNonce(nonce) {
+  const { data, error } = await supabase.rpc("consume_ownership_nonce", {
+    p_nonce: nonce,
+  });
+  if (error) {
+    console.error("❌ Nonce consumption error:", error.message);
+    return false;
+  }
+  return data === true;
+}
+
+// Cleanup old nonces periodically
+setInterval(
+  async () => {
+    try {
+      const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+      const { error } = await supabase
+        .from("ownership_nonces")
+        .delete()
+        .lt("used_at", tenMinutesAgo);
+      if (error) console.error("❌ Nonce cleanup error:", error.message);
+    } catch (e) {
+      console.error("❌ Nonce cleanup error:", e.message);
+    }
+  },
+  5 * 60 * 1000,
+); // Every 5 minutes
 
 // =============================================================================
 // Multer Configuration (Memory storage for fallback /upload endpoint)
@@ -381,9 +458,8 @@ app.post(
       // Generate upload token for metadata authorization
       const uploadToken = generateUploadToken();
       const hashedToken = hashUploadToken(uploadToken);
-      uploadTokens.set(fileId, { hashedToken, createdAt: Date.now() });
 
-      // Upload to R2
+      // Upload to R2 first
       await s3Client.send(
         new PutObjectCommand({
           Bucket: r2BucketName,
@@ -392,6 +468,9 @@ app.post(
           ContentType: "application/octet-stream",
         }),
       );
+
+      // Store token in database AFTER successful upload
+      await storeUploadToken(fileId, hashedToken);
 
       res.status(201).json({
         success: true,
@@ -429,7 +508,7 @@ app.post("/upload-stream", uploadLimiter, async (req, res) => {
     // Generate upload token for metadata authorization
     const uploadToken = generateUploadToken();
     const hashedToken = hashUploadToken(uploadToken);
-    uploadTokens.set(fileId, { hashedToken, createdAt: Date.now() });
+    // Token will be stored after successful upload
 
     // Create a size-limiting transform stream to enforce max size even without Content-Length
     let bytesReceived = 0;
@@ -468,6 +547,9 @@ app.post("/upload-stream", uploadLimiter, async (req, res) => {
     });
 
     await uploadCmd.done();
+
+    // Store token in database AFTER successful upload
+    await storeUploadToken(fileId, hashedToken);
 
     res.status(201).json({
       success: true,
@@ -638,29 +720,14 @@ app.post("/metadata/:fileId", metadataLimiter, async (req, res) => {
       });
     }
 
-    const storedTokenData = uploadTokens.get(fileId);
-    if (!storedTokenData) {
+    // Verify and consume token atomically (database-backed, one-time use)
+    const tokenValid = await verifyAndConsumeUploadToken(fileId, uploadToken);
+    if (!tokenValid) {
       return res.status(401).json({
         success: false,
         error: "Invalid or expired upload token.",
       });
     }
-
-    const hashedProvidedToken = hashUploadToken(uploadToken);
-    if (
-      !crypto.timingSafeEqual(
-        Buffer.from(hashedProvidedToken),
-        Buffer.from(storedTokenData.hashedToken),
-      )
-    ) {
-      return res.status(401).json({
-        success: false,
-        error: "Invalid upload token.",
-      });
-    }
-
-    // Token is valid - remove it to prevent reuse (one-time use)
-    uploadTokens.delete(fileId);
 
     // Verify file exists in R2
     try {
@@ -796,6 +863,95 @@ app.get("/metadata/:fileId", metadataLimiter, async (req, res) => {
   }
 });
 
+/**
+ * DELETE /file/:fileId - Delete a file (requires valid upload token or deletion token)
+ * Security: Only the original uploader can delete a file using the upload token
+ * This must be called before metadata is set (while token is still valid)
+ */
+app.delete("/file/:fileId", metadataLimiter, async (req, res) => {
+  try {
+    const fileId = req.params.fileId;
+
+    if (!FILE_ID_PATTERN.test(fileId)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid file ID format.",
+      });
+    }
+
+    // Verify upload token (authorization check) - requires token from upload
+    const uploadToken = req.headers["x-upload-token"];
+    if (!uploadToken) {
+      return res.status(401).json({
+        success: false,
+        error:
+          "Missing upload token. Files can only be deleted by the original uploader.",
+      });
+    }
+
+    // Verify and consume token atomically
+    const tokenValid = await verifyAndConsumeUploadToken(fileId, uploadToken);
+    if (!tokenValid) {
+      return res.status(401).json({
+        success: false,
+        error: "Invalid or expired upload token.",
+      });
+    }
+
+    // Delete from R2
+    try {
+      await s3Client.send(
+        new DeleteObjectCommand({
+          Bucket: r2BucketName,
+          Key: fileId,
+        }),
+      );
+    } catch (deleteError) {
+      if (
+        deleteError.name !== "NotFound" &&
+        deleteError.$metadata?.httpStatusCode !== 404
+      ) {
+        console.error(
+          `❌ Failed to delete file from R2: ${fileId}`,
+          deleteError.message,
+        );
+        return res.status(500).json({
+          success: false,
+          error: "Failed to delete file from storage.",
+        });
+      }
+      // File already doesn't exist - continue to clean up metadata
+    }
+
+    // Delete metadata from database (if it exists)
+    const { error: dbError } = await supabase
+      .from("files")
+      .delete()
+      .eq("id", fileId);
+
+    if (dbError) {
+      console.warn(
+        `⚠️ Failed to delete metadata for ${fileId}:`,
+        dbError.message,
+      );
+      // Don't fail the request - file is already deleted from R2
+    }
+
+    console.log(`🗑️ File deleted by uploader: ${fileId}`);
+
+    res.json({
+      success: true,
+      message: "File deleted successfully.",
+    });
+  } catch (error) {
+    console.error("❌ File deletion error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Internal server error during file deletion.",
+    });
+  }
+});
+
 // =============================================================================
 // Public Key Directory Routes (Supabase-backed)
 // =============================================================================
@@ -899,12 +1055,21 @@ app.post("/pubkey", pubkeyLimiter, async (req, res) => {
     }
 
     try {
-      const { signature, timestamp } = ownershipProof;
+      const { signature, timestamp, nonce } = ownershipProof;
 
-      if (!signature || !timestamp) {
+      if (!signature || !timestamp || !nonce) {
         return res.status(400).json({
           success: false,
-          error: "Invalid ownership proof format.",
+          error:
+            "Invalid ownership proof format. Required: signature, timestamp, nonce.",
+        });
+      }
+
+      // Validate nonce format (32 hex chars minimum)
+      if (!/^[a-f0-9]{32,64}$/.test(nonce)) {
+        return res.status(400).json({
+          success: false,
+          error: "Invalid nonce format.",
         });
       }
 
@@ -920,8 +1085,20 @@ app.post("/pubkey", pubkeyLimiter, async (req, res) => {
         });
       }
 
-      // Construct the message that was signed: id + username + timestamp
-      const message = `${id}:${cleanUsername}:${timestamp}`;
+      // CRITICAL: Check and consume nonce atomically to prevent replay attacks
+      const nonceConsumed = await consumeOwnershipNonce(nonce);
+      if (!nonceConsumed) {
+        console.warn(
+          `⚠️ Replay attack detected: nonce already used for @${cleanUsername}`,
+        );
+        return res.status(400).json({
+          success: false,
+          error: "Ownership proof already used. Please generate a new one.",
+        });
+      }
+
+      // Construct the message that was signed: id + username + timestamp + nonce
+      const message = `${id}:${cleanUsername}:${timestamp}:${nonce}`;
       const messageBuffer = Buffer.from(message, "utf-8");
 
       // Decode the base64 signature
@@ -953,7 +1130,7 @@ app.post("/pubkey", pubkeyLimiter, async (req, res) => {
       }
 
       console.log(
-        `✅ Ownership verified for @${cleanUsername}: timestamp=${timestamp}`,
+        `✅ Ownership verified for @${cleanUsername}: nonce=${nonce.substring(0, 8)}...`,
       );
     } catch (proofError) {
       console.error(
@@ -1020,17 +1197,23 @@ app.post("/pubkey", pubkeyLimiter, async (req, res) => {
 
 /**
  * GET /pubkey/username/:username - Lookup by username
- * Note: Uses timing-safe comparison to prevent timing-based enumeration
+ * Note: Uses constant-time response to prevent timing-based enumeration
  */
 app.get("/pubkey/username/:username", pubkeyLimiter, async (req, res) => {
-  // Add artificial delay to prevent timing attacks (between 50-150ms)
-  const delay = 50 + Math.random() * 100;
-  await new Promise((resolve) => setTimeout(resolve, delay));
+  const startTime = Date.now();
+  const MIN_RESPONSE_TIME = 150; // Minimum response time in ms to mask timing differences
 
   try {
     const username = req.params.username.toLowerCase().trim();
 
     if (!/^[a-z0-9_]{3,20}$/.test(username)) {
+      // Still apply delay for invalid format
+      const elapsed = Date.now() - startTime;
+      if (elapsed < MIN_RESPONSE_TIME) {
+        await new Promise((resolve) =>
+          setTimeout(resolve, MIN_RESPONSE_TIME - elapsed),
+        );
+      }
       return res.status(400).json({
         success: false,
         error: "Invalid username format.",
@@ -1044,6 +1227,14 @@ app.get("/pubkey/username/:username", pubkeyLimiter, async (req, res) => {
       )
       .eq("username", username)
       .single();
+
+    // Apply constant-time delay AFTER all operations complete
+    const elapsed = Date.now() - startTime;
+    if (elapsed < MIN_RESPONSE_TIME) {
+      await new Promise((resolve) =>
+        setTimeout(resolve, MIN_RESPONSE_TIME - elapsed),
+      );
+    }
 
     if (error || !data) {
       // Return 404 with generic message (same timing as success due to delay above)
@@ -1062,6 +1253,13 @@ app.get("/pubkey/username/:username", pubkeyLimiter, async (req, res) => {
       signingPublicKey: data.signing_public_key,
     });
   } catch (error) {
+    // Apply delay even on errors
+    const elapsed = Date.now() - startTime;
+    if (elapsed < MIN_RESPONSE_TIME) {
+      await new Promise((resolve) =>
+        setTimeout(resolve, MIN_RESPONSE_TIME - elapsed),
+      );
+    }
     console.error("❌ Public key lookup error:", error);
     res.status(500).json({
       success: false,

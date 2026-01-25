@@ -249,16 +249,24 @@ export async function getLoadedIdentity() {
 /**
  * Generate an ownership proof for registering/updating public key.
  * This proves the client owns the private key corresponding to the signing public key.
+ * Includes a nonce to prevent replay attacks.
  *
  * @param {Object} identity - The loaded identity with CryptoKey objects
  * @param {string} username - The username being registered
- * @returns {Promise<Object>} The ownership proof with signature and timestamp
+ * @returns {Promise<Object>} The ownership proof with signature, timestamp, and nonce
  */
 export async function generateOwnershipProof(identity, username) {
   const timestamp = new Date().toISOString();
 
-  // Message format: id:username:timestamp
-  const message = `${identity.id}:${username.toLowerCase().trim()}:${timestamp}`;
+  // Generate a cryptographically secure random nonce (32 bytes = 64 hex chars)
+  const nonceArray = new Uint8Array(32);
+  crypto.getRandomValues(nonceArray);
+  const nonce = Array.from(nonceArray)
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+
+  // Message format: id:username:timestamp:nonce (nonce added for replay protection)
+  const message = `${identity.id}:${username.toLowerCase().trim()}:${timestamp}:${nonce}`;
   const messageBuffer = new TextEncoder().encode(message);
 
   // Get the signing private key (must be a CryptoKey, not JWK)
@@ -284,6 +292,7 @@ export async function generateOwnershipProof(identity, username) {
   return {
     signature,
     timestamp,
+    nonce,
   };
 }
 
