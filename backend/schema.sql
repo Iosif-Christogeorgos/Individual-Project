@@ -1,5 +1,9 @@
 -- ============================================================================
--- CRYPSHARE MASTER SCHEMA (AUTO-FIX & UPDATE)
+-- CRYPSHARE MASTER SCHEMA (VERSION 1.2 - FINAL)
+-- Includes:
+-- 1. All Security Fixes (Integrity, DoS, Privacy, Zero-Knowledge)
+-- 2. Supabase Warning Fixes (mutable search_path, RLS enablement)
+-- 3. Maintenance Functions (cleanup_expired_nonces)
 -- ============================================================================
 
 -- 1. FILES TABLE
@@ -14,9 +18,10 @@ CREATE TABLE IF NOT EXISTS files (
   metadata JSONB NOT NULL
 );
 
--- [CRITICAL FIX] Ensure filename is gone
+-- Ensure filename is gone (Legacy cleanup)
 ALTER TABLE files DROP COLUMN IF EXISTS filename;
 
+-- Enable RLS for standard protection
 ALTER TABLE files ENABLE ROW LEVEL SECURITY;
 
 -- 1.1 FILES INDEXES
@@ -35,7 +40,6 @@ CREATE POLICY "Owner List Own Files" ON files
 
 -- 2. SECURE RPC FUNCTION: get_file_metadata
 -- ============================================================================
--- [FIX] Drop old function first because return type changed (removed filename)
 DROP FUNCTION IF EXISTS get_file_metadata(text);
 
 CREATE OR REPLACE FUNCTION get_file_metadata(lookup_id TEXT)
@@ -50,13 +54,12 @@ RETURNS TABLE (
 LANGUAGE plpgsql
 SECURITY DEFINER      -- Runs with admin privileges (bypasses RLS)
 SET search_path = public
-SET statement_timeout = '500ms'  -- DOS PROTECTION: Kill slow queries to prevent connection exhaustion
+SET statement_timeout = '500ms'  -- DOS PROTECTION: Kill slow queries
 AS $$
 BEGIN
   -- Validate input format early (fail fast before touching indexes)
-  -- File IDs must match: file-<64 hex chars>.bin
   IF lookup_id IS NULL OR lookup_id !~ '^file-[a-f0-9]{64}\.bin$' THEN
-    RETURN;  -- Return empty result for invalid IDs (no exception = no log spam)
+    RETURN;  -- Return empty result for invalid IDs
   END IF;
 
   RETURN QUERY
@@ -74,7 +77,6 @@ BEGIN
 END;
 $$;
 
--- Grant execute permissions
 GRANT EXECUTE ON FUNCTION get_file_metadata(TEXT) TO anon;
 GRANT EXECUTE ON FUNCTION get_file_metadata(TEXT) TO authenticated;
 
@@ -121,38 +123,31 @@ CREATE POLICY "Owner Delete" ON public_keys
   FOR DELETE USING ((select auth.uid()) = owner_id);
 
 
--- 4. UPLOAD_TOKENS TABLE (Security: Persistent tokens for metadata authorization)
+-- 4. UPLOAD_TOKENS TABLE
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS upload_tokens (
-  file_id TEXT PRIMARY KEY,                    -- File ID this token authorizes
-  token_hash TEXT NOT NULL,                    -- SHA-256 hash of the token
+  file_id TEXT PRIMARY KEY,
+  token_hash TEXT NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  expires_at TIMESTAMPTZ NOT NULL             -- Tokens expire after 1 hour
+  expires_at TIMESTAMPTZ NOT NULL
 );
 
--- Index for cleanup queries
 CREATE INDEX IF NOT EXISTS idx_upload_tokens_expires_at ON upload_tokens(expires_at);
-
--- RLS: Only service role can access (no client access)
-ALTER TABLE upload_tokens ENABLE ROW LEVEL SECURITY;
-
--- No policies = no client access, only service role can read/write
+ALTER TABLE upload_tokens ENABLE ROW LEVEL SECURITY; 
+-- No policies = service role access only
 
 
--- 5. OWNERSHIP_NONCES TABLE (Security: Prevent replay attacks on ownership proofs)
+-- 5. OWNERSHIP_NONCES TABLE
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS ownership_nonces (
-  nonce TEXT PRIMARY KEY,                      -- Unique nonce value
-  used_at TIMESTAMPTZ DEFAULT NOW()           -- When the nonce was consumed
+  nonce TEXT PRIMARY KEY,
+  used_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Index for cleanup queries  
 CREATE INDEX IF NOT EXISTS idx_ownership_nonces_used_at ON ownership_nonces(used_at);
-
--- RLS: Only service role can access
 ALTER TABLE ownership_nonces ENABLE ROW LEVEL SECURITY;
 
--- Cleanup function for expired nonces (older than 10 minutes)
+-- [RESTORED] Cleanup function for expired nonces
 CREATE OR REPLACE FUNCTION cleanup_expired_nonces()
 RETURNS void
 LANGUAGE plpgsql
@@ -174,7 +169,7 @@ BEGIN
    RETURN NEW;
 END;
 $$ language 'plpgsql'
-SET search_path = ''; 
+SET search_path = public; 
 
 DROP TRIGGER IF EXISTS update_public_keys_updated_at ON public_keys;
 CREATE TRIGGER update_public_keys_updated_at
@@ -183,7 +178,7 @@ CREATE TRIGGER update_public_keys_updated_at
    EXECUTE PROCEDURE update_updated_at_column();
 
 
--- 7. SECURE RPC: Consume upload token atomically
+-- 7. SECURE RPC: consume_upload_token
 -- ============================================================================
 CREATE OR REPLACE FUNCTION consume_upload_token(p_file_id TEXT, p_token_hash TEXT)
 RETURNS BOOLEAN
@@ -194,7 +189,6 @@ AS $$
 DECLARE
   v_found BOOLEAN := FALSE;
 BEGIN
-  -- Atomically check and delete the token
   DELETE FROM upload_tokens 
   WHERE file_id = p_file_id 
     AND token_hash = p_token_hash 
@@ -208,7 +202,7 @@ $$;
 GRANT EXECUTE ON FUNCTION consume_upload_token(TEXT, TEXT) TO service_role;
 
 
--- 8. SECURE RPC: Check and consume ownership nonce atomically
+-- 8. SECURE RPC: consume_ownership_nonce
 -- ============================================================================
 CREATE OR REPLACE FUNCTION consume_ownership_nonce(p_nonce TEXT)
 RETURNS BOOLEAN
@@ -219,7 +213,6 @@ AS $$
 DECLARE
   v_inserted BOOLEAN := FALSE;
 BEGIN
-  -- Try to insert the nonce (will fail if already used due to PRIMARY KEY)
   BEGIN
     INSERT INTO ownership_nonces (nonce, used_at) VALUES (p_nonce, NOW());
     v_inserted := TRUE;
@@ -234,22 +227,12 @@ $$;
 GRANT EXECUTE ON FUNCTION consume_ownership_nonce(TEXT) TO service_role;
 
 
--- 9. SECURITY FIX: IMMUTABLE FILE INTEGRITY
+-- 9. SECURITY FIX: IMMUTABLE FILE INTEGRITY (DOUBLE LOCK)
 -- ============================================================================
--- Prevents "Malicious Admin" from swapping the hash/size of an existing file.
--- Forces any modification to require full deletion, which is auditable.
---
--- CRITICAL: Must protect BOTH the SQL columns AND the JSONB metadata fields,
--- since the client reads from metadata.contentHash (JSONB), not content_hash (SQL).
--- ============================================================================
-
 CREATE OR REPLACE FUNCTION prevent_file_tampering()
 RETURNS TRIGGER AS $$
 BEGIN
-  -- =========================================================================
-  -- LAYER 1: Protect SQL columns (defense in depth)
-  -- =========================================================================
-  
+  -- LAYER 1: SQL Columns
   IF NEW.content_hash IS DISTINCT FROM OLD.content_hash THEN
       RAISE EXCEPTION 'Security Violation: content_hash is immutable.';
   END IF;
@@ -262,48 +245,34 @@ BEGIN
       RAISE EXCEPTION 'Security Violation: File ownership cannot be transferred.';
   END IF;
 
-  -- =========================================================================
-  -- LAYER 2: Protect JSONB metadata fields (what the client actually reads)
-  -- This closes the "window" attack where admin modifies JSONB but not SQL columns
-  -- =========================================================================
-  
-  -- Protect contentHash inside JSONB
+  -- LAYER 2: JSONB Metadata (Client View)
   IF (NEW.metadata->>'contentHash') IS DISTINCT FROM (OLD.metadata->>'contentHash') THEN
       RAISE EXCEPTION 'Security Violation: metadata.contentHash is immutable.';
   END IF;
 
-  -- Protect size inside JSONB  
   IF (NEW.metadata->>'size')::BIGINT IS DISTINCT FROM (OLD.metadata->>'size')::BIGINT THEN
       RAISE EXCEPTION 'Security Violation: metadata.size is immutable.';
   END IF;
 
-  -- Protect version (prevents downgrade attacks)
   IF (NEW.metadata->>'version')::INT IS DISTINCT FROM (OLD.metadata->>'version')::INT THEN
       RAISE EXCEPTION 'Security Violation: metadata.version is immutable.';
   END IF;
 
-  -- Protect signature bundle (prevents signature stripping attacks)
   IF (OLD.metadata->'signature') IS NOT NULL 
      AND (NEW.metadata->'signature') IS DISTINCT FROM (OLD.metadata->'signature') THEN
       RAISE EXCEPTION 'Security Violation: metadata.signature is immutable once set.';
   END IF;
 
-  -- Protect encrypted keys (prevents recipient list manipulation)
   IF (OLD.metadata->'encryptedKeys') IS NOT NULL 
      AND (NEW.metadata->'encryptedKeys') IS DISTINCT FROM (OLD.metadata->'encryptedKeys') THEN
       RAISE EXCEPTION 'Security Violation: metadata.encryptedKeys is immutable once set.';
   END IF;
 
-  -- =========================================================================
-  -- ALLOWED changes: expires_at, timestamp, accessModes, expiryHours
-  -- These don't affect file integrity or authenticity
-  -- =========================================================================
-
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql
+SET search_path = public; -- [FIXED] Eliminates Supabase warning
 
--- Apply the trigger
 DROP TRIGGER IF EXISTS trg_prevent_file_tampering ON files;
 CREATE TRIGGER trg_prevent_file_tampering
   BEFORE UPDATE ON files
@@ -311,59 +280,24 @@ CREATE TRIGGER trg_prevent_file_tampering
   EXECUTE PROCEDURE prevent_file_tampering();
 
 
--- 10. SECURITY FIX: METADATA SEGREGATION (Prevents Social Graph Leakage)
+-- 10. SECURITY FIX: METADATA SEGREGATION (ZERO-KNOWLEDGE PRIVACY)
 -- ============================================================================
--- Moves sensitive recipient lists out of public metadata JSONB into a separate
--- table. This prevents recipients from seeing who else received the file 
--- (which would enable building social/organizational graphs).
---
--- ARCHITECTURE NOTE: This app uses client-side identity (keypairs stored in 
--- IndexedDB), NOT Supabase Auth. Recipients are identified by their fingerprint
--- (SHA-256 hash of their public key), not by auth.uid().
---
--- Security Model:
--- 1. The fingerprint is public (like a username) - knowing it doesn't help
--- 2. The encrypted_key can only be decrypted by the holder of the private key
--- 3. RPC returns only the key for the requested fingerprint (no enumeration)
--- ============================================================================
-
 CREATE TABLE IF NOT EXISTS file_recipients (
   file_id TEXT REFERENCES files(id) ON DELETE CASCADE,
-  
-  -- Recipient's identity fingerprint (SHA-256 of their public key)
-  -- This is a TEXT field matching public_keys.fingerprint
   recipient_fingerprint TEXT NOT NULL,
-  
-  -- The AES file key, encrypted with the recipient's ECDH public key
-  -- Contains: ephemeralPublicKey, encryptedKey, iv (all needed to decrypt)
   encrypted_key JSONB NOT NULL,
-  
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  
-  -- Composite Primary Key: one key per fingerprint per file
   PRIMARY KEY (file_id, recipient_fingerprint)
 );
 
--- Performance index for recipient lookups
 CREATE INDEX IF NOT EXISTS idx_file_recipients_fingerprint ON file_recipients(recipient_fingerprint);
 
--- RLS is NOT used here because:
--- 1. Users are not authenticated via Supabase Auth (client-side identity)
--- 2. Security comes from encryption: only private key holder can decrypt
--- 3. Access is controlled via SECURITY DEFINER RPC (not direct table access)
--- The table has no RLS policies; access is ONLY via RPC functions.
+-- [FIXED] Enable RLS to create a "Default Deny" state. 
+ALTER TABLE file_recipients ENABLE ROW LEVEL SECURITY;
 
 
--- 10.1 SECURE RPC: Get encrypted key by fingerprint
+-- 10.1 SECURE RPC: get_encrypted_key_for_recipient
 -- ============================================================================
--- Allows a client to retrieve the encrypted key for a specific fingerprint.
--- The client must know the file_id and their own fingerprint.
--- Returns NULL if fingerprint is not a recipient (no information leakage).
---
--- SECURITY: The encrypted_key is useless without the matching private key.
--- Even if an attacker knows a fingerprint, they can't decrypt the key.
--- ============================================================================
-
 DROP FUNCTION IF EXISTS get_encrypted_key_for_recipient(TEXT, TEXT);
 CREATE OR REPLACE FUNCTION get_encrypted_key_for_recipient(
   lookup_file_id TEXT,
