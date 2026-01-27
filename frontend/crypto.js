@@ -74,11 +74,46 @@ async function sha256(data) {
 /**
  * Hash an ArrayBuffer or Uint8Array using SHA-256.
  * Used for post-decryption integrity verification.
+ * IMPORTANT: Uses same algorithm as hashFile() - chunked hashing for large files
+ * to ensure hash matches between upload and download verification.
  * @param {ArrayBuffer|Uint8Array} data - The data to hash
  * @returns {Promise<string>} Hex-encoded SHA-256 hash
  */
 export async function hashArrayBuffer(data) {
-  return await sha256(data);
+  const buffer = data instanceof ArrayBuffer ? data : data.buffer;
+  const byteLength = buffer.byteLength;
+
+  // Match the threshold used in hashFile() - 100MB
+  if (byteLength <= 100 * 1024 * 1024) {
+    return await sha256(buffer);
+  }
+
+  // For large files, use chunked hashing (same algorithm as hashFile)
+  // Uses subarray() instead of slice() to avoid memory copies - creates views only
+  const totalChunks = Math.ceil(byteLength / CHUNK_SIZE);
+  const chunkHashes = [];
+  const dataView = new Uint8Array(buffer);
+
+  for (let i = 0; i < totalChunks; i++) {
+    const start = i * CHUNK_SIZE;
+    const end = Math.min(start + CHUNK_SIZE, byteLength);
+    // subarray() creates a view (no copy), slice() would copy the data
+    const chunk = dataView.subarray(start, end);
+
+    const chunkHash = await window.crypto.subtle.digest("SHA-256", chunk);
+    chunkHashes.push(new Uint8Array(chunkHash));
+  }
+
+  const concatenatedHashes = new Uint8Array(chunkHashes.length * 32);
+  for (let i = 0; i < chunkHashes.length; i++) {
+    concatenatedHashes.set(chunkHashes[i], i * 32);
+  }
+
+  const finalHash = await window.crypto.subtle.digest(
+    "SHA-256",
+    concatenatedHashes,
+  );
+  return arrayBufferToHex(finalHash);
 }
 
 // ===========================================================================
