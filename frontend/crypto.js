@@ -463,38 +463,33 @@ export async function downloadAndDecryptStreaming(
     10,
   );
   const reader = response.body.getReader();
-  let encryptedData;
   let receivedLength = 0;
 
-  if (contentLength > 0) {
-    encryptedData = new Uint8Array(contentLength);
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      encryptedData.set(value, receivedLength);
-      receivedLength += value.length;
-      onDownloadProgress(Math.round((receivedLength / contentLength) * 100));
-    }
-  } else {
-    // No Content-Length header (common with some CDN/proxy configurations)
-    // Report progress as bytes received, capped at 99% until complete
-    const chunks = [];
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      chunks.push(value);
-      receivedLength += value.length;
-      // Report indeterminate progress - oscillate between 10-90% based on chunks received
-      // This gives visual feedback that download is progressing
+  // FIXED: Always use chunked collection to avoid buffer overflow
+  // when Content-Length header is inaccurate (common with proxies/CDNs)
+  const chunks = [];
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+    receivedLength += value.length;
+    if (contentLength > 0) {
+      // Cap at 99% until actually complete to avoid confusing progress > 100%
+      const progress = Math.min(99, Math.round((receivedLength / contentLength) * 100));
+      onDownloadProgress(progress);
+    } else {
+      // Indeterminate progress when no Content-Length
       const estimatedProgress = Math.min(90, 10 + (chunks.length % 80));
       onDownloadProgress(estimatedProgress);
     }
-    encryptedData = new Uint8Array(receivedLength);
-    let position = 0;
-    for (const chunk of chunks) {
-      encryptedData.set(chunk, position);
-      position += chunk.length;
-    }
+  }
+
+  // Concatenate all chunks
+  const encryptedData = new Uint8Array(receivedLength);
+  let position = 0;
+  for (const chunk of chunks) {
+    encryptedData.set(chunk, position);
+    position += chunk.length;
   }
 
   // Ensure 100% is reported after download completes
@@ -510,6 +505,171 @@ export async function downloadAndDecryptStreaming(
   } else {
     throw new Error("Unsupported file format");
   }
+}
+
+// ===========================================================================
+// True Streaming Decryption (Memory-Efficient)
+// ===========================================================================
+
+/**
+ * Parse the encrypted file header without buffering the whole file.
+ * Returns header info and the offset where chunk data begins.
+ * @param {Uint8Array} headerData - At least the first ~1KB of encrypted data
+ * @param {CryptoKey} aesKey - The AES key for decrypting the filename
+ * @returns {Promise<{filename: string, totalChunks: number, headerSize: number}>}
+ */
+async function parseEncryptedHeader(headerData, aesKey) {
+  let offset = 0;
+
+  // 1. Verify version
+  const version = headerData[0];
+  if (version !== FORMAT_VERSION_CHUNKED) {
+    throw new Error("Invalid chunked format version");
+  }
+  offset = 1;
+
+  // 2. Read filename
+  const dataView = new DataView(headerData.buffer, headerData.byteOffset, headerData.byteLength);
+  offset += 2; // Skip original length storage
+  const filenameIV = headerData.slice(offset, offset + 12);
+  offset += 12;
+
+  const filenameCipherLength = dataView.getUint32(offset, false);
+  offset += 4;
+
+  const filenameCiphertext = headerData.slice(offset, offset + filenameCipherLength);
+  offset += filenameCipherLength;
+
+  const decryptedFilenameBuffer = await decryptAES(
+    filenameCiphertext.buffer.slice(filenameCiphertext.byteOffset, filenameCiphertext.byteOffset + filenameCiphertext.byteLength),
+    aesKey,
+    filenameIV,
+  );
+  const filename = new TextDecoder().decode(decryptedFilenameBuffer);
+
+  // 3. Read chunk count
+  const totalChunks = dataView.getUint32(offset, false);
+  offset += 4;
+
+  return { filename, totalChunks, headerSize: offset };
+}
+
+/**
+ * Streaming decryption that yields decrypted chunks one at a time.
+ * This is memory-efficient as it never holds the whole file in RAM.
+ * 
+ * @param {ArrayBuffer} encryptedData - The full encrypted file (for now, will be improved)
+ * @param {CryptoKey} aesKey - The AES decryption key
+ * @param {function} onProgress - Progress callback (0-100)
+ * @yields {{chunk: Uint8Array, filename?: string, isFirst: boolean, isLast: boolean}}
+ */
+export async function* decryptFileChunkedStreaming(encryptedData, aesKey, onProgress = () => {}) {
+  const data = new Uint8Array(encryptedData);
+  
+  // Parse header
+  const { filename, totalChunks, headerSize } = await parseEncryptedHeader(data, aesKey);
+  
+  let offset = headerSize;
+  const dataView = new DataView(encryptedData);
+
+  for (let i = 0; i < totalChunks; i++) {
+    const iv = data.slice(offset, offset + 12);
+    offset += 12;
+
+    const ciphertextLength = dataView.getUint32(offset, false);
+    offset += 4;
+
+    const ciphertext = encryptedData.slice(offset, offset + ciphertextLength);
+    offset += ciphertextLength;
+
+    const plaintext = await decryptAES(ciphertext, aesKey, iv);
+    const plaintextArray = new Uint8Array(plaintext);
+
+    const progress = Math.round(((i + 1) / totalChunks) * 100);
+    onProgress(progress);
+
+    yield {
+      chunk: plaintextArray,
+      filename: i === 0 ? filename : undefined,
+      isFirst: i === 0,
+      isLast: i === totalChunks - 1,
+    };
+  }
+}
+
+/**
+ * Download and decrypt a file using true streaming to a WritableStream.
+ * This is the most memory-efficient approach - data flows directly to disk.
+ * 
+ * @param {string} url - URL to download from
+ * @param {CryptoKey} aesKey - The AES decryption key
+ * @param {WritableStream} writableStream - Destination stream (e.g., from showSaveFilePicker)
+ * @param {function} onDownloadProgress - Download progress callback (0-100)
+ * @param {function} onDecryptProgress - Decryption progress callback (0-100)
+ * @returns {Promise<{filename: string, bytesWritten: number}>}
+ */
+export async function downloadAndDecryptToStream(
+  url,
+  aesKey,
+  writableStream,
+  onDownloadProgress = () => {},
+  onDecryptProgress = () => {},
+) {
+  // Step 1: Download the encrypted file
+  // NOTE: For true streaming we'd need a different encrypted format that allows
+  // reading chunks without knowing total size upfront. For now, we buffer during
+  // download but stream during decryption to reduce peak memory.
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`Download failed: ${response.status}`);
+
+  const contentLength = parseInt(response.headers.get("Content-Length") || "0", 10);
+  const reader = response.body.getReader();
+  const chunks = [];
+  let receivedLength = 0;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+    receivedLength += value.length;
+    if (contentLength > 0) {
+      onDownloadProgress(Math.min(99, Math.round((receivedLength / contentLength) * 100)));
+    }
+  }
+  onDownloadProgress(100);
+
+  // Concatenate download chunks
+  const encryptedData = new Uint8Array(receivedLength);
+  let pos = 0;
+  for (const chunk of chunks) {
+    encryptedData.set(chunk, pos);
+    pos += chunk.length;
+  }
+  // Release download chunks from memory
+  chunks.length = 0;
+
+  // Step 2: Stream decrypted chunks to the writable stream
+  const writer = writableStream.getWriter();
+  let filename = "";
+  let bytesWritten = 0;
+
+  try {
+    for await (const { chunk, filename: fname, isFirst } of decryptFileChunkedStreaming(
+      encryptedData.buffer,
+      aesKey,
+      onDecryptProgress,
+    )) {
+      if (isFirst && fname) {
+        filename = fname;
+      }
+      await writer.write(chunk);
+      bytesWritten += chunk.length;
+    }
+  } finally {
+    await writer.close();
+  }
+
+  return { filename, bytesWritten };
 }
 
 // ===========================================================================

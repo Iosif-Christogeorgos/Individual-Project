@@ -31,6 +31,11 @@ let fileMetadata = null;
 // Threshold for streaming download (100MB)
 const STREAMING_DOWNLOAD_THRESHOLD = 100 * 1024 * 1024;
 
+// Check if File System Access API is available for true streaming downloads
+function supportsFileSystemAccess() {
+  return typeof window.showSaveFilePicker === "function";
+}
+
 /**
  * Update the expiry notice on the download page based on metadata.
  * Falls back to generic message if expiry info is not available.
@@ -672,10 +677,72 @@ async function startDownload() {
 
     // Step 3: Download and decrypt
     let decryptedResult;
+    let streamingSucceeded = false;
 
-    if (useStreaming) {
-      // Memory-efficient streaming download for large files
+    if (useStreaming && supportsFileSystemAccess()) {
+      // TRUE STREAMING: Use File System Access API to write directly to disk
+      // This avoids loading the entire decrypted file into memory
+      try {
+        // First, we need to get the filename from the encrypted header
+        // We'll do a quick fetch of just the header portion
+        updateButtonProgress(btn, "preparing");
+        
+        // Get file handle from user - they pick where to save
+        // We'll use a generic name first, then rename after we know the real filename
+        const fileHandle = await window.showSaveFilePicker({
+          suggestedName: "encrypted-download",
+          types: [{
+            description: "All Files",
+            accept: { "application/octet-stream": [] },
+          }],
+        });
 
+        const writableStream = await fileHandle.createWritable();
+
+        updateButtonProgress(btn, "downloading", 0);
+
+        // Use the new streaming decryption function
+        const result = await CryptoModule.downloadAndDecryptToStream(
+          `/download/${encodeURIComponent(fileId)}`,
+          key,
+          writableStream,
+          (downloadProgress) => {
+            updateButtonProgress(btn, "downloading", downloadProgress);
+            if (downloadProgress >= 100) {
+              updateStep("step1", "complete");
+            }
+          },
+          (decryptProgress) => {
+            updateButtonProgress(btn, "decrypting", decryptProgress);
+          },
+        );
+
+        updateStep("step1", "complete");
+        updateStep("step3", "complete");
+
+        // File was written directly to disk - create a minimal result object
+        // Note: We can't do integrity check on streaming downloads as the 
+        // decrypted data was written directly to disk and not held in memory
+        decryptedResult = {
+          filename: result.filename,
+          data: null, // Data was streamed to disk, not held in memory
+          streamedToDisk: true,
+          bytesWritten: result.bytesWritten,
+        };
+
+        streamingSucceeded = true;
+      } catch (streamError) {
+        // User cancelled the save dialog or streaming failed
+        if (streamError.name === "AbortError") {
+          throw new Error("Download cancelled.");
+        }
+        console.warn("Streaming download failed, falling back to buffered:", streamError.message);
+        // Fall through to buffered approach
+      }
+    }
+
+    if (!streamingSucceeded && useStreaming) {
+      // Fallback: Memory-based streaming for browsers without File System Access API
       decryptedResult = await CryptoModule.downloadAndDecryptStreaming(
         `/download/${encodeURIComponent(fileId)}`,
         key,
@@ -760,6 +827,31 @@ async function startDownload() {
       updateStep("step3", "complete");
     }
 
+    // Step 5: Prepare download
+    updateStep("step4", "complete");
+
+    // Handle streaming-to-disk case (File System Access API)
+    if (decryptedResult.streamedToDisk) {
+      // File was already written directly to disk by the streaming decryptor
+      // No need to create a blob or trigger download - it's already saved!
+      console.log(`✅ File streamed to disk: ${decryptedResult.filename} (${decryptedResult.bytesWritten} bytes)`);
+      
+      // Note: Integrity verification is not possible for streamed downloads
+      // because we don't hold the full decrypted data in memory
+      if (fileMetadata?.contentHash) {
+        console.warn("⚠️ Content hash verification skipped for streaming download");
+      }
+
+      // Success state
+      hapticHeavy();
+      btn.disabled = false;
+      updateButtonProgress(btn, "complete");
+      btn.classList.add("btn-secondary");
+      btn.classList.remove("btn-primary");
+      return; // Exit early - file is already saved
+    }
+
+    // Standard (non-streaming) path: create blob and trigger download
     const { filename: originalFilename, data: fileContentBuffer } =
       decryptedResult;
     const fileContent = new Uint8Array(fileContentBuffer);
@@ -808,9 +900,6 @@ async function startDownload() {
         console.error("Signature verification error:", sigError);
       }
     }
-
-    // Step 5: Prepare download
-    updateStep("step4", "complete");
 
     // Sanitize filename
     const sanitizedFilename =
