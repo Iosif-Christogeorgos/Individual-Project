@@ -459,17 +459,18 @@ async function uploadMetadata(fileId, file, expiryHours, uploadToken) {
     signature: null,
   };
 
-  if (expiryHours !== 24) {
-    updateProgress(95, "Saving metadata...");
-    await fetch(`/metadata/${fileId}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Upload-Token": uploadToken,
-      },
-      body: JSON.stringify(metadata),
-    });
-  }
+  // CRITICAL: Always upload metadata so the cleanup job knows when to delete the file
+  // Previously this was conditional on expiryHours !== 24, causing 24h files to
+  // be orphaned in R2 forever (never cleaned up)
+  updateProgress(95, "Saving metadata...");
+  await fetch(`/metadata/${fileId}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Upload-Token": uploadToken,
+    },
+    body: JSON.stringify(metadata),
+  });
 }
 
 async function showUploadSuccess(shareLink, expiresAt) {
