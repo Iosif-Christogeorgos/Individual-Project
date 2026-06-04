@@ -434,7 +434,7 @@ setInterval(
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 750 * 1024 * 1024, // 750MB
+    fileSize: 375 * 1024 * 1024, // 375MB
   },
 });
 
@@ -497,7 +497,7 @@ app.post(
 // POST /upload-stream - Accept encrypted file via raw stream (for large files)
 // MEMORY-EFFICIENT: Streams directly to R2 without buffering entire file in RAM
 app.post("/upload-stream", uploadLimiter, async (req, res) => {
-  const MAX_STREAM_SIZE = 750 * 1024 * 1024; // 750MB
+  const MAX_STREAM_SIZE = 375 * 1024 * 1024; // 375MB
 
   try {
     const fileId = generateUniqueFileId();
@@ -507,7 +507,7 @@ app.post("/upload-stream", uploadLimiter, async (req, res) => {
     if (contentLength > MAX_STREAM_SIZE) {
       return res.status(413).json({
         success: false,
-        error: "File too large. Maximum size is 750MB.",
+        error: "File too large. Maximum size is 375MB.",
       });
     }
 
@@ -567,7 +567,7 @@ app.post("/upload-stream", uploadLimiter, async (req, res) => {
     if (error.message === "File too large") {
       return res.status(413).json({
         success: false,
-        error: "File too large. Maximum size is 750MB.",
+        error: "File too large. Maximum size is 375MB.",
       });
     }
     console.error("❌ Stream upload error:", error);

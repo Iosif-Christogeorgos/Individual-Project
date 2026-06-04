@@ -7,7 +7,7 @@
 import { showAlert, hideAlert, formatFileSize, formatExpiryDuration } from './ui-utils.js';
 
 // Absolute maximum file size (used for initial file selection validation)
-const MAX_FILE_SIZE = 750 * 1024 * 1024; // 750MB
+const MAX_FILE_SIZE = 375 * 1024 * 1024; // 375MB
 
 // =============================================================================
 // Dynamic File Size Limits Based on Expiration Duration
