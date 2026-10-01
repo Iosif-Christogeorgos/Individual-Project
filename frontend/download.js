@@ -686,15 +686,17 @@ async function startDownload() {
         // First, we need to get the filename from the encrypted header
         // We'll do a quick fetch of just the header portion
         updateButtonProgress(btn, "preparing");
-        
+
         // Get file handle from user - they pick where to save
         // We'll use a generic name first, then rename after we know the real filename
         const fileHandle = await window.showSaveFilePicker({
           suggestedName: "encrypted-download",
-          types: [{
-            description: "All Files",
-            accept: { "application/octet-stream": [] },
-          }],
+          types: [
+            {
+              description: "All Files",
+              accept: { "application/octet-stream": [] },
+            },
+          ],
         });
 
         const writableStream = await fileHandle.createWritable();
@@ -721,7 +723,7 @@ async function startDownload() {
         updateStep("step3", "complete");
 
         // File was written directly to disk - create a minimal result object
-        // Note: We can't do integrity check on streaming downloads as the 
+        // Note: We can't do integrity check on streaming downloads as the
         // decrypted data was written directly to disk and not held in memory
         decryptedResult = {
           filename: result.filename,
@@ -736,7 +738,10 @@ async function startDownload() {
         if (streamError.name === "AbortError") {
           throw new Error("Download cancelled.");
         }
-        console.warn("Streaming download failed, falling back to buffered:", streamError.message);
+        console.warn(
+          "Streaming download failed, falling back to buffered:",
+          streamError.message,
+        );
         // Fall through to buffered approach
       }
     }
@@ -820,8 +825,9 @@ async function startDownload() {
         );
       } catch (decryptError) {
         throw new Error(
-          "Decryption failed: " + decryptError.message ||
-            "The file may be corrupted or the key is incorrect.",
+          "Decryption failed: " +
+            (decryptError.message ||
+              "The file may be corrupted or the key is incorrect."),
         );
       }
       updateStep("step3", "complete");
@@ -834,12 +840,16 @@ async function startDownload() {
     if (decryptedResult.streamedToDisk) {
       // File was already written directly to disk by the streaming decryptor
       // No need to create a blob or trigger download - it's already saved!
-      console.log(`✅ File streamed to disk: ${decryptedResult.filename} (${decryptedResult.bytesWritten} bytes)`);
-      
+      console.log(
+        `✅ File streamed to disk: ${decryptedResult.filename} (${decryptedResult.bytesWritten} bytes)`,
+      );
+
       // Note: Integrity verification is not possible for streamed downloads
       // because we don't hold the full decrypted data in memory
       if (fileMetadata?.contentHash) {
-        console.warn("⚠️ Content hash verification skipped for streaming download");
+        console.warn(
+          "⚠️ Content hash verification skipped for streaming download",
+        );
       }
 
       // Success state

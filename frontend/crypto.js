@@ -475,7 +475,10 @@ export async function downloadAndDecryptStreaming(
     receivedLength += value.length;
     if (contentLength > 0) {
       // Cap at 99% until actually complete to avoid confusing progress > 100%
-      const progress = Math.min(99, Math.round((receivedLength / contentLength) * 100));
+      const progress = Math.min(
+        99,
+        Math.round((receivedLength / contentLength) * 100),
+      );
       onDownloadProgress(progress);
     } else {
       // Indeterminate progress when no Content-Length
@@ -529,7 +532,11 @@ async function parseEncryptedHeader(headerData, aesKey) {
   offset = 1;
 
   // 2. Read filename
-  const dataView = new DataView(headerData.buffer, headerData.byteOffset, headerData.byteLength);
+  const dataView = new DataView(
+    headerData.buffer,
+    headerData.byteOffset,
+    headerData.byteLength,
+  );
   offset += 2; // Skip original length storage
   const filenameIV = headerData.slice(offset, offset + 12);
   offset += 12;
@@ -537,11 +544,17 @@ async function parseEncryptedHeader(headerData, aesKey) {
   const filenameCipherLength = dataView.getUint32(offset, false);
   offset += 4;
 
-  const filenameCiphertext = headerData.slice(offset, offset + filenameCipherLength);
+  const filenameCiphertext = headerData.slice(
+    offset,
+    offset + filenameCipherLength,
+  );
   offset += filenameCipherLength;
 
   const decryptedFilenameBuffer = await decryptAES(
-    filenameCiphertext.buffer.slice(filenameCiphertext.byteOffset, filenameCiphertext.byteOffset + filenameCiphertext.byteLength),
+    filenameCiphertext.buffer.slice(
+      filenameCiphertext.byteOffset,
+      filenameCiphertext.byteOffset + filenameCiphertext.byteLength,
+    ),
     aesKey,
     filenameIV,
   );
@@ -557,18 +570,25 @@ async function parseEncryptedHeader(headerData, aesKey) {
 /**
  * Streaming decryption that yields decrypted chunks one at a time.
  * This is memory-efficient as it never holds the whole file in RAM.
- * 
+ *
  * @param {ArrayBuffer} encryptedData - The full encrypted file (for now, will be improved)
  * @param {CryptoKey} aesKey - The AES decryption key
  * @param {function} onProgress - Progress callback (0-100)
  * @yields {{chunk: Uint8Array, filename?: string, isFirst: boolean, isLast: boolean}}
  */
-export async function* decryptFileChunkedStreaming(encryptedData, aesKey, onProgress = () => {}) {
+export async function* decryptFileChunkedStreaming(
+  encryptedData,
+  aesKey,
+  onProgress = () => {},
+) {
   const data = new Uint8Array(encryptedData);
-  
+
   // Parse header
-  const { filename, totalChunks, headerSize } = await parseEncryptedHeader(data, aesKey);
-  
+  const { filename, totalChunks, headerSize } = await parseEncryptedHeader(
+    data,
+    aesKey,
+  );
+
   let offset = headerSize;
   const dataView = new DataView(encryptedData);
 
@@ -600,7 +620,7 @@ export async function* decryptFileChunkedStreaming(encryptedData, aesKey, onProg
 /**
  * Download and decrypt a file using true streaming to a WritableStream.
  * This is the most memory-efficient approach - data flows directly to disk.
- * 
+ *
  * @param {string} url - URL to download from
  * @param {CryptoKey} aesKey - The AES decryption key
  * @param {WritableStream} writableStream - Destination stream (e.g., from showSaveFilePicker)
@@ -622,7 +642,10 @@ export async function downloadAndDecryptToStream(
   const response = await fetch(url);
   if (!response.ok) throw new Error(`Download failed: ${response.status}`);
 
-  const contentLength = parseInt(response.headers.get("Content-Length") || "0", 10);
+  const contentLength = parseInt(
+    response.headers.get("Content-Length") || "0",
+    10,
+  );
   const reader = response.body.getReader();
   const chunks = [];
   let receivedLength = 0;
@@ -633,7 +656,9 @@ export async function downloadAndDecryptToStream(
     chunks.push(value);
     receivedLength += value.length;
     if (contentLength > 0) {
-      onDownloadProgress(Math.min(99, Math.round((receivedLength / contentLength) * 100)));
+      onDownloadProgress(
+        Math.min(99, Math.round((receivedLength / contentLength) * 100)),
+      );
     }
   }
   onDownloadProgress(100);
@@ -654,7 +679,11 @@ export async function downloadAndDecryptToStream(
   let bytesWritten = 0;
 
   try {
-    for await (const { chunk, filename: fname, isFirst } of decryptFileChunkedStreaming(
+    for await (const {
+      chunk,
+      filename: fname,
+      isFirst,
+    } of decryptFileChunkedStreaming(
       encryptedData.buffer,
       aesKey,
       onDecryptProgress,
