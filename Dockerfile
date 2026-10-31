@@ -1,5 +1,5 @@
 # 1. Use Node.js as the base
-FROM node:20
+FROM node:24
 
 # 2. Create a folder for your app on the server
 WORKDIR /app
@@ -7,9 +7,9 @@ WORKDIR /app
 # 3. Copy ALL your files (Frontend and Backend) to the server
 COPY . .
 
-# 4. Go into the backend folder and install the libraries
+# 4. Go into the backend folder and install the exact locked libraries (no test tools)
 WORKDIR /app/backend
-RUN npm install
+RUN npm ci --omit=dev
 
 # 5. Reset working directory to root
 WORKDIR /app
