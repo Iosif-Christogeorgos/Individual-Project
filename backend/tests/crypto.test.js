@@ -342,7 +342,11 @@ describe('Chunked File Encryption Format (v2)', () => {
 
     // Create data larger than CHUNK_SIZE (64KB) — non-aligned size
     const size = CHUNK_SIZE * 3 + 1234; // ~193KB
-    const content = crypto.getRandomValues(new Uint8Array(size));
+    const content = new Uint8Array(size);
+    // getRandomValues is capped at 65536 bytes per call
+    for (let i = 0; i < size; i += 65536) {
+      crypto.getRandomValues(content.subarray(i, i + 65536));
+    }
 
     const encrypted = await encryptFileData('large-test.bin', content.buffer, key);
     const decrypted = await decryptFileData(encrypted, key);
