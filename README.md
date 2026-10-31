@@ -175,23 +175,22 @@ Recipients query only by their fingerprint—they cannot enumerate other recipie
 
 ### Environment Variables
 
-Create a `.env` file in the `backend/` directory:
+Create a `.env` file in the `backend/` directory (see `backend/.env.example`):
 
 ```env
-# Server
+# Server (optional)
 PORT=3000
-NODE_ENV=production
+ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
 
 # Supabase (Database)
 SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_SERVICE_KEY=eyJ...your-service-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 
 # Cloudflare R2 (Storage)
-R2_ACCOUNT_ID=your-account-id
+R2_ENDPOINT=https://your-account-id.r2.cloudflarestorage.com
 R2_ACCESS_KEY_ID=your-access-key
 R2_SECRET_ACCESS_KEY=your-secret-key
 R2_BUCKET_NAME=crypshare-files
-R2_PUBLIC_URL=https://your-bucket.r2.dev
 ```
 
 ### Database Setup
