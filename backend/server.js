@@ -2,7 +2,7 @@
 // CrypShare Backend - Zero-Knowledge File Storage Server (Hybrid E2EE)
 // =============================================================================
 // CLOUD-NATIVE VERSION: Uses Supabase (Postgres) + Cloudflare R2 (S3-compatible)
-// This enables stateless deployment (Docker, DigitalOcean, etc.)
+// This enables stateless deployment (Docker, Render, etc.)
 //
 // ZERO-KNOWLEDGE PRINCIPLES:
 // - Server never sees plaintext file contents

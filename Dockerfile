@@ -14,7 +14,7 @@ RUN npm ci --omit=dev
 # 5. Reset working directory to root
 WORKDIR /app
 
-# 6. Expose the port DigitalOcean expects
+# 6. Default port (the host can override it by setting PORT)
 ENV NODE_ENV=production
 ENV PORT=8080
 EXPOSE 8080
