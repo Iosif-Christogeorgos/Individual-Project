@@ -10,24 +10,24 @@
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"></a>
-  <img src="https://img.shields.io/badge/Security-Hardened-00ff41.svg" alt="Security: Hardened">
+  <a href="https://github.com/Iosif-Christogeorgos/Individual-Project/actions/workflows/ci.yml"><img src="https://github.com/Iosif-Christogeorgos/Individual-Project/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <img src="https://img.shields.io/badge/Architecture-Zero--Knowledge-8b5cf6.svg" alt="Zero-Knowledge">
   <img src="https://img.shields.io/badge/Encryption-AES--256--GCM-00d4ff.svg" alt="Encryption: AES-256-GCM">
   <img src="https://img.shields.io/badge/Node.js-22+-339933.svg" alt="Node.js 22+">
 </p>
 
 <p align="center">
-  End-to-end encrypted file sharing where <strong>the server learns nothing</strong>.<br/>
-  No accounts. No tracking. No trust required.
+  End-to-end encrypted file sharing where <strong>the server only stores ciphertext</strong>.<br/>
+  No accounts. No passwords. Files expire automatically.
 </p>
 
 ---
 
 ## 🔐 What is CrypShare?
 
-CrypShare is a **cryptographically hardened file-sharing platform** that implements true zero-knowledge architecture. Files are encrypted entirely on the client using AES-256-GCM before upload—the server only ever sees ciphertext. Recipients decrypt locally using either a shareable link key or identity-based encryption with ECDH key exchange.
+CrypShare is a file-sharing platform with a zero-knowledge storage design. Files are encrypted entirely on the client using AES-256-GCM before upload, so the server only ever stores ciphertext. Recipients decrypt locally using either a shareable link key or identity-based encryption with ECDH key exchange.
 
-Unlike traditional file-sharing services, CrypShare is designed so that even a **malicious server operator** cannot access your files, identify recipients, or tamper with metadata without detection.
+A stolen database or storage bucket doesn't expose your files, and a file altered in storage fails to decrypt. See [SECURITY.md](SECURITY.md) for exactly what this does and doesn't protect against, including the limits of trusting the server that delivers the code.
 
 ---
 
@@ -40,16 +40,17 @@ Unlike traditional file-sharing services, CrypShare is designed so that even a *
 | **Quick Share**  | Anonymous, link-based sharing with key embedded in URL fragment | One-time transfers, no setup required |
 | **Secure Share** | Identity-based encryption for specific recipients               | Recurring contacts, maximum security  |
 
-### 🛡️ The Six Pillars of Security
+### 🛡️ Security Features
 
-| Pillar                | Threat                      | Solution                                              |
-| --------------------- | --------------------------- | ----------------------------------------------------- |
-| **🔒 Integrity**      | Malicious Admin tampering   | Database triggers + client-side hash verification     |
-| **⚡ DoS Protection** | Resource exhaustion attacks | Statement timeouts + input validation                 |
-| **🎭 MITM Defense**   | Key substitution attacks    | Client-side fingerprint computation                   |
-| **👁️ Privacy**        | Social graph enumeration    | Segregated recipient vault with fingerprint-based RPC |
-| **💾 Data Safety**    | Key loss / device change    | PBKDF2-encrypted identity backups                     |
-| **🗑️ Infrastructure** | Ghost file accumulation     | R2 Lifecycle Rules for auto-cleanup                   |
+| Feature                 | Threat                         | Solution                                                  |
+| ----------------------- | ------------------------------ | --------------------------------------------------------- |
+| **🔒 File integrity**   | Stored files being altered     | Each chunk authenticated with its position (AES-GCM AAD)  |
+| **✍️ Sender signatures** | Impersonation                  | ECDSA signatures checked against your saved contacts      |
+| **⚡ DoS protection**   | Resource exhaustion            | Rate limits, size limits, statement timeouts, validation  |
+| **🎭 Key verification** | Swapped public keys            | Fingerprints computed locally, to compare out of band     |
+| **👁️ Privacy**          | Recipients seeing each other   | Separate recipient table, looked up per fingerprint       |
+| **💾 Data safety**      | Key loss or device change      | PBKDF2-encrypted identity backups                         |
+| **🗑️ Cleanup**          | Files outliving their expiry   | Scheduled cleanup plus R2 lifecycle rules                 |
 
 ---
 
@@ -110,41 +111,34 @@ flowchart TB
 
 ## 🔬 Security Model
 
-### Zero-Knowledge Guarantees
+### What the Server Can See
 
-| Data            | Server Knows           | Server Cannot Know    |
-| --------------- | ---------------------- | --------------------- |
-| File Content    | ❌ Ciphertext only     | ✅ Plaintext          |
-| File Name       | ❌ Encrypted in blob   | ✅ Original filename  |
-| Recipients      | ❌ Fingerprints only   | ✅ Who can decrypt    |
-| Sender Identity | ⚠️ Optional signature  | ✅ Without signing    |
-| Access Patterns | ⚠️ Download timestamps | ✅ Decryption success |
+| Data            | Stored on the server                                           |
+| --------------- | -------------------------------------------------------------- |
+| File content    | Ciphertext only                                                |
+| File name       | Encrypted. Signed files also store a hash of it                |
+| File key        | Never. Link keys stay in the `#` fragment; recipient keys are encrypted to the recipient |
+| Recipients      | Their key fingerprints, which map to usernames in the directory |
+| Sender          | Name and public key, for signed files                          |
+| Plaintext hash  | SHA-256 for Secure Share files, which can confirm a guessed file |
+| Access patterns | File sizes, timestamps and IP addresses                        |
 
-### The "Double Lock" Integrity System
+### File Integrity
 
-```sql
--- Database trigger prevents tampering with critical fields
-CREATE TRIGGER prevent_file_tampering
-  BEFORE UPDATE ON files
-  FOR EACH ROW
-  EXECUTE FUNCTION prevent_file_tampering();
-```
+Files use a chunked AES-256-GCM format. Each chunk's position and the total chunk count are authenticated as additional data, so reordering, removing, duplicating or appending chunks makes decryption fail. Database triggers also stop metadata such as a file's hash, size and expiry being changed through normal queries, though someone with full database access could remove them.
 
-Even with database access, an attacker cannot:
+### Sender Signatures
 
-- Modify content hashes (detected client-side)
-- Extend file expiry (trigger blocks it)
-- Swap encrypted keys (fingerprint mismatch)
+A signature's name and key come from the uploader, so a valid signature alone doesn't prove who sent a file. CrypShare checks that the signature covers the decrypted file, then shows the sender as confirmed only if the signing key belongs to one of your contacts.
 
-### Client-Side Fingerprint Verification
+### Client-Side Fingerprints
 
 ```javascript
-// MITM Protection: Never trust server-provided fingerprints
+// Compute the fingerprint locally rather than trusting the server's value
 const computedFingerprint = await generateKeyFingerprint(publicKey);
-// Compare against claimed fingerprint before encrypting
 ```
 
-The client computes fingerprints locally from public keys using canonical JSON + SHA-256. This prevents key substitution attacks where a malicious server could inject its own keys.
+Fingerprints are computed in the browser using canonical JSON and SHA-256. This proves a fingerprint matches the key you received. To rule out a swapped key, compare the fingerprint with the other person over another channel.
 
 ### Segregated Recipient Vault
 
@@ -161,7 +155,7 @@ The client computes fingerprints locally from public keys using canonical JSON +
 └─────────────────────────────────────────────────────────┘
 ```
 
-Recipients query only by their fingerprint—they cannot enumerate other recipients. Even the server cannot determine who else has access.
+Recipients query only by their fingerprint, so they cannot enumerate other recipients. The server does hold the full list, because it stores the rows.
 
 ---
 
@@ -169,7 +163,7 @@ Recipients query only by their fingerprint—they cannot enumerate other recipie
 
 ### Prerequisites
 
-- **Node.js** 22+
+- **Node.js** 22.13+
 - **Supabase** account (free tier works)
 - **Cloudflare R2** bucket (free tier: 10GB)
 
@@ -211,6 +205,8 @@ R2_BUCKET_NAME=crypshare-files
 \i backend/schema.sql
 ```
 
+The schema can be re-run safely on an existing database, which is how to apply updates to it.
+
 ### R2 Lifecycle Rules
 
 Configure automatic cleanup in Cloudflare Dashboard:
@@ -233,10 +229,23 @@ cd Individual-Project
 cd backend
 npm install
 
+# Copy .env.example to .env and fill in your values
+cp .env.example .env
+
 # Start the server
 npm start
 
 # Open http://localhost:3000
+```
+
+### Development
+
+Run these from the `backend/` directory. No cloud accounts are needed: the tests use the real server with an in-memory stand-in for Supabase and R2, and a real Postgres engine for the schema.
+
+```bash
+npm test             # Run all tests
+npm run test:watch   # Re-run tests on change
+npm run lint         # Lint backend and frontend
 ```
 
 ---
@@ -279,20 +288,28 @@ npm start
 
 ### File Operations
 
-| Endpoint                              | Method | Description                          |
-| ------------------------------------- | ------ | ------------------------------------ |
-| `/upload`                             | `POST` | Request upload URL and token         |
-| `/metadata/:fileId`                   | `POST` | Store file metadata (requires token) |
-| `/metadata/:fileId`                   | `GET`  | Retrieve file metadata               |
-| `/recipient-key/:fileId/:fingerprint` | `GET`  | Get encrypted key for recipient      |
+| Endpoint                              | Method   | Description                                      |
+| ------------------------------------- | -------- | ------------------------------------------------ |
+| `/upload`                             | `POST`   | Upload ciphertext as a multipart form            |
+| `/upload-stream`                      | `POST`   | Upload ciphertext as a raw stream (large files)  |
+| `/download/:fileId`                   | `GET`    | Download ciphertext                              |
+| `/download/:fileId`                   | `HEAD`   | Check a file exists and get its size             |
+| `/file/:fileId`                       | `DELETE` | Delete a file (requires upload token)            |
+| `/metadata/:fileId`                   | `POST`   | Store file metadata (requires upload token)      |
+| `/metadata/:fileId`                   | `GET`    | Retrieve file metadata                           |
+| `/recipient-key/:fileId/:fingerprint` | `GET`    | Get the encrypted key for a recipient            |
+
+Uploads are limited to 375MB. Each upload returns a one-time upload token.
 
 ### Identity Operations
 
-| Endpoint                           | Method | Description                       |
-| ---------------------------------- | ------ | --------------------------------- |
-| `/pubkey`                          | `POST` | Register public key with username |
-| `/pubkey/username/:username`       | `GET`  | Lookup user by username           |
-| `/pubkey/fingerprint/:fingerprint` | `GET`  | Lookup user by fingerprint        |
+| Endpoint                           | Method | Description                                        |
+| ---------------------------------- | ------ | -------------------------------------------------- |
+| `/pubkey`                          | `POST` | Register or update a public key (requires a proof) |
+| `/pubkey/:id`                      | `GET`  | Look up a user by ID                               |
+| `/pubkey/username/:username`       | `GET`  | Look up a user by username                         |
+| `/pubkey/fingerprint/:fingerprint` | `GET`  | Look up a user by fingerprint                      |
+| `/pubkey/check/:username`          | `GET`  | Check whether a username is available              |
 
 ---
 
@@ -300,24 +317,23 @@ npm start
 
 | Purpose           | Algorithm        | Parameters                          |
 | ----------------- | ---------------- | ----------------------------------- |
-| File Encryption   | AES-256-GCM      | 256-bit key, 96-bit IV, 64KB chunks |
+| File Encryption   | AES-256-GCM      | 256-bit key, 96-bit IV, 64KB chunks, position bound as AAD |
 | Key Exchange      | ECDH             | P-256 (secp256r1)                   |
 | Signatures        | ECDSA            | P-256 + SHA-256                     |
 | Fingerprints      | SHA-256          | Canonical JSON of JWK               |
-| Backup Encryption | PBKDF2 + AES-GCM | 100,000 iterations, 256-bit key     |
+| Backup Encryption | PBKDF2 + AES-GCM | 600,000 iterations, 256-bit key     |
 
 ---
 
 ## 📁 Project Structure
 
 ```
-CrypShare/
+├── .github/                # CI workflow and Dependabot config
 ├── backend/
 │   ├── server.js           # Express API server
 │   ├── schema.sql          # Complete database schema
-│   ├── package.json
-│   └── tests/
-│       └── server.test.js
+│   ├── eslint.config.js
+│   └── tests/              # API, crypto, schema and UI tests
 ├── frontend/
 │   ├── index.html          # Landing page
 │   ├── quick.html          # Quick Share UI
@@ -331,7 +347,8 @@ CrypShare/
 │   └── styles.css          # Cyber-glass design
 ├── Dockerfile
 ├── LICENSE
-└── README.md
+├── README.md
+└── SECURITY.md             # Threat model and how to report vulnerabilities
 ```
 
 ---
@@ -340,20 +357,22 @@ CrypShare/
 
 ### What CrypShare Protects Against
 
-✅ Server compromise (data is encrypted client-side)  
-✅ Database breach (no plaintext, no correlation)  
-✅ Man-in-the-middle (client-side fingerprint verification)  
-✅ Metadata tampering (database triggers + client verification)  
-✅ Social graph analysis (segregated recipient vault)  
-✅ Replay attacks (nonce-protected ownership proofs)
+✅ Theft of the database or storage bucket (files are encrypted client-side)
+✅ Stored files being altered, reordered or cut short
+✅ Uploaders impersonating your contacts
+✅ Identity takeover and replayed registration requests
+✅ Recipients discovering each other
 
 ### What CrypShare Does NOT Protect Against
 
-❌ Compromised client device  
-❌ Weak passwords for identity backup  
-❌ Shoulder surfing / screen capture  
-❌ Coerced key disclosure  
+❌ A server that delivers modified code, which applies to all browser-based encryption
+❌ Key substitution, unless you compare fingerprints over another channel
+❌ Compromised client device
+❌ Weak passwords for identity backup
+❌ Coerced key disclosure
 ❌ Traffic analysis (timing, file sizes)
+
+See [SECURITY.md](SECURITY.md) for the full threat model and how to report a vulnerability.
 
 ---
 
