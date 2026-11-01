@@ -1,5 +1,5 @@
 # 1. Use Node.js as the base
-FROM node:24-slim
+FROM node:26-slim
 
 # 2. Create a folder for your app on the server
 WORKDIR /app
