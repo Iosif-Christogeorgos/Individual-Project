@@ -624,7 +624,7 @@ export async function importIdentityBackup(file, password) {
   let encryptedBackup;
   try {
     encryptedBackup = JSON.parse(text);
-  } catch (e) {
+  } catch {
     throw new Error("Invalid backup file format. File must be valid JSON.");
   }
 

@@ -40,7 +40,6 @@ import {
 import { formatFileSize } from "./ui-utils.js";
 import {
   hapticSuccess,
-  hapticMedium,
   hapticSelection,
   hapticHeavy,
 } from "./haptics.js";
@@ -654,8 +653,6 @@ async function searchUserByUsername() {
   const searchInput = document.getElementById("searchUsernameInput");
   const searchResult = document.getElementById("searchResult");
   const searchBtn = document.getElementById("searchUserBtn");
-  const btnText = searchBtn?.querySelector(".search-submit-text");
-  const btnLoader = searchBtn?.querySelector(".search-submit-loader");
 
   const username = searchInput?.value.toLowerCase().trim();
 
@@ -770,7 +767,7 @@ async function searchUserByUsername() {
   }
 }
 
-function showOverwriteModal(file) {
+function showOverwriteModal() {
   const modal = document.getElementById("linkOverwriteModal");
   const linkPreview = document.getElementById("modalLinkPreview");
   const currentLink = document.getElementById("shareLink").value;
@@ -1150,7 +1147,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     identityVaultPanel.addEventListener(
       "touchend",
-      (e) => {
+      () => {
         if (!isDragging) return;
         isDragging = false;
 
@@ -1183,7 +1180,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 // =============================================================================
 
 async function processFile() {
-  const uploadBtn = document.getElementById("uploadBtn");
   const file = getSelectedFile();
 
   hideAlert();
@@ -1481,14 +1477,14 @@ async function executeBufferedUpload(file, includeLinkKey) {
         try {
           const response = JSON.parse(xhr.responseText);
           resolve(response);
-        } catch (e) {
+        } catch {
           reject(new Error("Invalid server response"));
         }
       } else {
         try {
           const error = JSON.parse(xhr.responseText);
           reject(new Error(error.error || `Upload failed: ${xhr.status}`));
-        } catch (e) {
+        } catch {
           reject(new Error(`Upload failed: ${xhr.status}`));
         }
       }
@@ -1590,27 +1586,26 @@ async function prepareMetadata(file, contentHash, aesKey, includeLinkKey) {
 }
 
 async function uploadMetadata(fileId, metadata, uploadToken) {
-  const hasCustomExpiry = metadata.expiryHours !== 24;
-  const hasRecipients = metadata.encryptedKeys.length > 0;
-  const hasSignature = metadata.signature !== null;
+  // Always store metadata: the expiry cleanup job only knows about files with a row
+  updateProgress(95, "Uploading metadata...");
 
-  if (hasCustomExpiry || hasRecipients || hasSignature) {
-    updateProgress(95, "Uploading metadata...");
+  const metadataResponse = await fetch(`/metadata/${fileId}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Upload-Token": uploadToken,
+    },
+    body: JSON.stringify(metadata),
+  });
 
-    const metadataResponse = await fetch(`/metadata/${fileId}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Upload-Token": uploadToken,
-      },
-      body: JSON.stringify(metadata),
-    });
-
-    if (!metadataResponse.ok) {
-      console.warn(
-        "Failed to upload metadata, link-based access will still work",
-      );
+  if (!metadataResponse.ok) {
+    // Without a key in the link, recipients need the stored keys to open the file
+    if (!metadata.accessModes.includes("link")) {
+      throw new Error("Failed to store recipient keys. Please try again.");
     }
+    console.warn(
+      "Failed to upload metadata, link-based access will still work",
+    );
   }
 
   return metadata;
@@ -1660,8 +1655,8 @@ function showShareModeInfo(hasLinkKey, recipientCount) {
   const infoEl = document.getElementById("shareModeInfo");
   if (!infoEl) return;
 
-  let message = "";
-  let icon = "";
+  let message;
+  let icon;
 
   if (hasLinkKey && recipientCount > 0) {
     icon =

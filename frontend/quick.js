@@ -12,7 +12,6 @@ import {
   showToast,
   updateProgress,
   hideProgress,
-  formatFileSize,
 } from "./ui-utils.js";
 import {
   getSelectedExpiryHours,
@@ -24,12 +23,10 @@ import {
   clearFile,
   getSelectedFile,
   validateFileForExpiry,
-  getMaxFileSizeForExpiry,
 } from "./file-handler.js";
 import { hapticSuccess, hapticHeavy } from "./haptics.js";
 
 // State
-let hasActiveLink = false;
 let isUploading = false;
 let uploadAbortController = null;
 
@@ -57,7 +54,6 @@ function showShareLink(link) {
 
   input.value = link;
   container.setAttribute("data-state", "success");
-  hasActiveLink = true;
 }
 
 function copyLink() {
@@ -95,7 +91,6 @@ function resetToUpload() {
   const container = document.querySelector(".container[data-state]");
   container.setAttribute("data-state", "upload");
   clearFile();
-  hasActiveLink = false;
 
   const copyBtn = document.getElementById("copyBtn");
   if (copyBtn) {
@@ -195,7 +190,6 @@ window.cancelUpload = function () {
 const STREAMING_THRESHOLD = 100 * 1024 * 1024;
 
 async function processFile() {
-  const uploadBtn = document.getElementById("uploadBtn");
   const file = getSelectedFile();
 
   hideAlert();
@@ -400,14 +394,14 @@ async function executeBufferedUpload(file, expiryHours) {
         try {
           const response = JSON.parse(xhr.responseText);
           resolve(response);
-        } catch (e) {
+        } catch {
           reject(new Error("Invalid server response"));
         }
       } else {
         try {
           const error = JSON.parse(xhr.responseText);
           reject(new Error(error.error || `Upload failed: ${xhr.status}`));
-        } catch (e) {
+        } catch {
           reject(new Error(`Upload failed: ${xhr.status}`));
         }
       }

@@ -62,7 +62,6 @@ class EncryptionAnimator {
     
     // Expose to global for upload.js integration
     window.encryptionAnimator = this;
-    console.log('EncryptionAnimator initialized (fullscreen mode only)');
   }
   
   // ===========================================================================
