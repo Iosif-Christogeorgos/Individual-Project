@@ -77,8 +77,9 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION get_file_metadata(TEXT) TO anon;
-GRANT EXECUTE ON FUNCTION get_file_metadata(TEXT) TO authenticated;
+-- Only the backend calls this. Functions are executable by PUBLIC unless revoked.
+REVOKE ALL ON FUNCTION get_file_metadata(TEXT) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION get_file_metadata(TEXT) TO service_role;
 
 
 -- 3. PUBLIC_KEYS TABLE
@@ -106,9 +107,9 @@ CREATE INDEX IF NOT EXISTS idx_public_keys_username ON public_keys(username);
 CREATE INDEX IF NOT EXISTS idx_public_keys_fingerprint ON public_keys(fingerprint);
 
 -- 3.2 PUBLIC_KEYS POLICIES
+-- Lookups go through the rate-limited backend, so the whole directory can't be
+-- dumped with the anon key
 DROP POLICY IF EXISTS "Public Read" ON public_keys;
-CREATE POLICY "Public Read" ON public_keys 
-  FOR SELECT USING (true);
 
 DROP POLICY IF EXISTS "Owner Insert" ON public_keys;
 CREATE POLICY "Owner Insert" ON public_keys 
@@ -159,6 +160,9 @@ BEGIN
 END;
 $$;
 
+REVOKE ALL ON FUNCTION cleanup_expired_nonces() FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION cleanup_expired_nonces() TO service_role;
+
 
 -- 6. HELPER TRIGGERS
 -- ============================================================================
@@ -199,6 +203,7 @@ BEGIN
 END;
 $$;
 
+REVOKE ALL ON FUNCTION consume_upload_token(TEXT, TEXT) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION consume_upload_token(TEXT, TEXT) TO service_role;
 
 
@@ -224,6 +229,7 @@ BEGIN
 END;
 $$;
 
+REVOKE ALL ON FUNCTION consume_ownership_nonce(TEXT) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION consume_ownership_nonce(TEXT) TO service_role;
 
 
@@ -243,6 +249,10 @@ BEGIN
 
   IF NEW.owner_id IS DISTINCT FROM OLD.owner_id THEN
       RAISE EXCEPTION 'Security Violation: File ownership cannot be transferred.';
+  END IF;
+
+  IF NEW.expires_at IS DISTINCT FROM OLD.expires_at THEN
+      RAISE EXCEPTION 'Security Violation: File expiry is immutable.';
   END IF;
 
   -- LAYER 2: JSONB Metadata (Client View)
@@ -315,5 +325,5 @@ AS $$
   AND recipient_fingerprint = lookup_fingerprint;
 $$;
 
-GRANT EXECUTE ON FUNCTION get_encrypted_key_for_recipient(TEXT, TEXT) TO anon;
-GRANT EXECUTE ON FUNCTION get_encrypted_key_for_recipient(TEXT, TEXT) TO authenticated;
+REVOKE ALL ON FUNCTION get_encrypted_key_for_recipient(TEXT, TEXT) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION get_encrypted_key_for_recipient(TEXT, TEXT) TO service_role;
