@@ -157,10 +157,14 @@ export function formatExpiryDuration(hours) {
  * @returns {string} Escaped text
  */
 export function escapeHtml(text) {
-  if (!text) return "";
-  const div = document.createElement("div");
-  div.textContent = text;
-  return div.innerHTML;
+  if (text === null || text === undefined) return "";
+  // Quotes matter too: escaped values are also used inside HTML attributes
+  return String(text)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 // ===========================================================================
@@ -174,9 +178,6 @@ export function escapeHtml(text) {
  */
 export function updateProgress(percent, status) {
   const container = document.getElementById("progressContainer");
-  const track = document.getElementById("progressTrack");
-  const percentEl = document.getElementById("progressPercent");
-  const statusEl = document.getElementById("progressStatus");
 
   // Hide the progress bar - we use the lock animation instead
   if (container) {

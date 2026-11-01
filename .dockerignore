@@ -1,6 +1,12 @@
 .git
+.github
 **/node_modules
 **/.env
 **/.env.*
 !**/.env.example
 *.log
+README.md
+SECURITY.md
+LICENSE
+backend/tests
+backend/eslint.config.js

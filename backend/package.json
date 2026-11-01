@@ -6,15 +6,16 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "test": "vitest",
-    "test:run": "vitest run"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "cd .. && eslint --config backend/eslint.config.js backend frontend"
   },
   "keywords": [
     "encryption",
     "file-sharing",
     "zero-knowledge"
   ],
-  "author": "",
+  "author": "Iosif Christogeorgos",
   "license": "MIT",
   "type": "module",
   "dependencies": {
@@ -29,6 +30,21 @@
     "multer": "^2.5.0"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.14",
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.14.0",
+    "globals": "^17.14.0",
     "vitest": "^5.0.5"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Iosif-Christogeorgos/Individual-Project.git"
+  },
+  "homepage": "https://crypshare.app",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "overrides": {
+    "minimatch": "^11.0.1"
   }
 }

@@ -1,5 +1,5 @@
 # 1. Use Node.js as the base
-FROM node:24
+FROM node:24-slim
 
 # 2. Create a folder for your app on the server
 WORKDIR /app
@@ -14,9 +14,13 @@ RUN npm ci --omit=dev
 # 5. Reset working directory to root
 WORKDIR /app
 
-# 6. Expose the port DigitalOcean expects
+# 6. Default port (the host can override it by setting PORT)
+ENV NODE_ENV=production
 ENV PORT=8080
 EXPOSE 8080
 
-# 7. Start the server
+# 7. Run as an unprivileged user (the server never writes to disk)
+USER node
+
+# 8. Start the server
 CMD ["node", "backend/server.js"]

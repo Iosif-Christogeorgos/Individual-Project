@@ -19,7 +19,6 @@ import {
   hapticSuccess,
   hapticHeavy,
   hapticError,
-  hapticNotification,
 } from "./haptics.js";
 
 // Security: Enable post-decryption integrity verification
@@ -46,7 +45,7 @@ function updateExpiryNotice() {
 
   if (fileMetadata?.expiryHours) {
     // Use expiryHours from metadata for exact duration
-    const duration = formatExpiryDuration(fileMetadata.expiryHours);
+    const duration = escapeHtml(formatExpiryDuration(fileMetadata.expiryHours));
     expiryNoticeText.innerHTML = `This link expires <strong>${duration}</strong> after upload`;
   } else if (fileMetadata?.expiresAt) {
     // Calculate remaining time from expiresAt timestamp
@@ -421,13 +420,13 @@ function showDownloadReady(accessMode) {
             </svg>
           </div>
           <div class="sig-status-text">
-            <span class="sig-status-label">Verified Signature</span>
-            <span class="sig-status-badge">AUTHENTIC</span>
+            <span class="sig-status-label">Signature Attached</span>
+            <span class="sig-status-badge">NOT YET CHECKED</span>
           </div>
         </div>
         <div class="sig-body">
           <div class="sig-signer-row">
-            <span class="sig-signer-label">Signed by</span>
+            <span class="sig-signer-label">Claims to be</span>
             <span class="sig-signer-name">${escapeHtml(signerName)}</span>
           </div>
           <button type="button" class="sig-fingerprint-toggle" aria-expanded="false">
@@ -442,7 +441,7 @@ function showDownloadReady(accessMode) {
           <div class="sig-fingerprint-panel" hidden>
             <div class="sig-fingerprint-content">
               <code class="sig-fingerprint-code">${
-                signerFingerprint || "Not available"
+                escapeHtml(signerFingerprint) || "Not available"
               }</code>
               <button type="button" class="sig-copy-btn" title="Copy fingerprint">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -451,7 +450,7 @@ function showDownloadReady(accessMode) {
                 </svg>
               </button>
             </div>
-            <span class="sig-fingerprint-hint">Compare this with the sender's known fingerprint to verify authenticity</span>
+            <span class="sig-fingerprint-hint">Claimed by the uploader. The sender is only confirmed if they are in your contacts</span>
           </div>
         </div>
       </div>
@@ -645,7 +644,7 @@ async function startDownload() {
 
       try {
         key = await CryptoModule.importAESKeyFromJWK(jwk);
-      } catch (keyError) {
+      } catch {
         throw new Error("Invalid decryption key. The link may be corrupted.");
       }
     } else {
@@ -683,14 +682,24 @@ async function startDownload() {
       // TRUE STREAMING: Use File System Access API to write directly to disk
       // This avoids loading the entire decrypted file into memory
       try {
-        // First, we need to get the filename from the encrypted header
-        // We'll do a quick fetch of just the header portion
         updateButtonProgress(btn, "preparing");
 
+        // Read the real filename from the encrypted header
+        let suggestedName = "download";
+        try {
+          suggestedName = sanitizeFilename(
+            await CryptoModule.fetchEncryptedFilename(
+              `/download/${encodeURIComponent(fileId)}`,
+              key,
+            ),
+          );
+        } catch (headerError) {
+          console.warn("Could not read filename:", headerError.message);
+        }
+
         // Get file handle from user - they pick where to save
-        // We'll use a generic name first, then rename after we know the real filename
         const fileHandle = await window.showSaveFilePicker({
-          suggestedName: "encrypted-download",
+          suggestedName: suggestedName,
           types: [
             {
               description: "All Files",
@@ -717,19 +726,19 @@ async function startDownload() {
           (decryptProgress) => {
             updateButtonProgress(btn, "decrypting", decryptProgress);
           },
+          ENABLE_INTEGRITY_CHECK ? fileMetadata?.contentHash : null,
         );
 
         updateStep("step1", "complete");
         updateStep("step3", "complete");
 
         // File was written directly to disk - create a minimal result object
-        // Note: We can't do integrity check on streaming downloads as the
-        // decrypted data was written directly to disk and not held in memory
         decryptedResult = {
           filename: result.filename,
           data: null, // Data was streamed to disk, not held in memory
           streamedToDisk: true,
           bytesWritten: result.bytesWritten,
+          contentHash: result.contentHash,
         };
 
         streamingSucceeded = true;
@@ -765,7 +774,7 @@ async function startDownload() {
       );
       updateStep("step1", "complete");
       updateStep("step3", "complete");
-    } else {
+    } else if (!useStreaming) {
       // Buffered download for small files (original approach)
       updateButtonProgress(btn, "downloading", 0);
 
@@ -840,17 +849,11 @@ async function startDownload() {
     if (decryptedResult.streamedToDisk) {
       // File was already written directly to disk by the streaming decryptor
       // No need to create a blob or trigger download - it's already saved!
-      console.log(
-        `✅ File streamed to disk: ${decryptedResult.filename} (${decryptedResult.bytesWritten} bytes)`,
-      );
-
-      // Note: Integrity verification is not possible for streamed downloads
-      // because we don't hold the full decrypted data in memory
-      if (fileMetadata?.contentHash) {
-        console.warn(
-          "⚠️ Content hash verification skipped for streaming download",
-        );
-      }
+      await verifyFileSignature({
+        filename: decryptedResult.filename,
+        size: decryptedResult.bytesWritten,
+        contentHash: decryptedResult.contentHash,
+      });
 
       // Success state
       hapticHeavy();
@@ -868,11 +871,10 @@ async function startDownload() {
 
     // Step 4a: SECURITY - Verify file integrity (content hash)
     // This detects if a malicious admin swapped the file in storage
+    const decryptedHash = await CryptoModule.hashArrayBuffer(fileContentBuffer);
     if (ENABLE_INTEGRITY_CHECK && fileMetadata?.contentHash) {
       updateButtonProgress(btn, "verifying");
       updateStep("step4", "pending");
-      const decryptedHash =
-        await CryptoModule.hashArrayBuffer(fileContentBuffer);
 
       if (decryptedHash !== fileMetadata.contentHash) {
         hapticError();
@@ -886,35 +888,13 @@ async function startDownload() {
     }
 
     // Step 4b: Verify signature if present
-    if (fileMetadata?.signature) {
-      showSignatureStep(); // Make signature step visible
-      updateStep("step5", "pending"); // Optional signature step
-      try {
-        const signerPublicKey = await CryptoModule.importSigningPublicKey(
-          fileMetadata.signature.signerPublicKey,
-        );
+    await verifyFileSignature({
+      filename: originalFilename,
+      size: fileContent.length,
+      contentHash: decryptedHash,
+    });
 
-        const verification = await CryptoModule.verifyFileMetadataSignature(
-          fileMetadata.signature,
-          signerPublicKey,
-        );
-
-        if (verification.valid) {
-          updateStep("step5", "complete");
-          showSignatureVerified(verification.metadata);
-        } else {
-          console.warn("Signature verification failed");
-          showSignatureWarning();
-        }
-      } catch (sigError) {
-        console.error("Signature verification error:", sigError);
-      }
-    }
-
-    // Sanitize filename
-    const sanitizedFilename =
-      originalFilename.replace(/[/\\]/g, "_").replace(/\x00/g, "").trim() ||
-      "download";
+    const sanitizedFilename = sanitizeFilename(originalFilename);
 
     // Note: Hash verification is now performed in Step 4a above.
     // This provides defense-in-depth against malicious admin attacks.
@@ -956,6 +936,67 @@ async function startDownload() {
   }
 }
 
+function sanitizeFilename(filename) {
+  return (
+    filename.replace(/[/\\]/g, "_").replaceAll("\0", "").trim() || "download"
+  );
+}
+
+/**
+ * Verify the signature attached to a decrypted file and report who signed it.
+ * The signer's name and key come from the uploader's metadata, so a valid signature
+ * only identifies the sender if that key belongs to one of the user's contacts.
+ * @param {{filename: string, size: number, contentHash: string}} file - The decrypted file
+ */
+async function verifyFileSignature(file) {
+  const signature = fileMetadata?.signature;
+  if (!signature) return;
+
+  showSignatureStep(); // Make signature step visible
+  updateStep("step5", "pending"); // Optional signature step
+
+  try {
+    const signerPublicKey = await CryptoModule.importSigningPublicKey(
+      signature.signerPublicKey,
+    );
+    const verification = await CryptoModule.verifyFileMetadataSignature(
+      signature,
+      signerPublicKey,
+    );
+    const coversThisFile =
+      verification.valid &&
+      (await CryptoModule.signedMetadataMatchesFile(
+        verification.metadata,
+        file,
+      ));
+
+    if (!coversThisFile) {
+      updateStep("step5", "error");
+      showSignatureWarning();
+      return;
+    }
+
+    const isSignerKey = (key) =>
+      key?.x === signature.signerPublicKey.x &&
+      key?.y === signature.signerPublicKey.y;
+    const contacts = await IdentityManager.getContacts();
+    const contact = contacts.find((c) => isSignerKey(c.signingPublicKey));
+
+    updateStep("step5", "complete");
+    if (isSignerKey(currentIdentity?.signing?.publicKeyJWK)) {
+      showSignatureVerified("you");
+    } else if (contact) {
+      showSignatureVerified(`your contact ${contact.displayName}`);
+    } else {
+      showSignatureUnknownSender();
+    }
+  } catch (sigError) {
+    console.error("Signature verification error:", sigError);
+    updateStep("step5", "error");
+    showSignatureWarning();
+  }
+}
+
 function showStatus() {
   const container = document.getElementById("statusContainer");
   if (container) {
@@ -967,7 +1008,7 @@ function showStatus() {
 // Signature Verification UI
 // =============================================================================
 
-function showSignatureVerified() {
+function showSignatureVerified(signerLabel) {
   hapticSuccess(); // Positive feedback for verified signature
   const infoEl = document.getElementById("signatureVerification");
   if (!infoEl) return;
@@ -975,10 +1016,23 @@ function showSignatureVerified() {
   infoEl.innerHTML = `
     <div class="signature-verified">
       <span class="sig-icon"><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg></span>
-      <span>Signature verified - File was signed by the uploader</span>
+      <span>Signature verified - Signed by ${escapeHtml(signerLabel)}</span>
     </div>
   `;
   infoEl.classList.add("show");
+}
+
+function showSignatureUnknownSender() {
+  const infoEl = document.getElementById("signatureVerification");
+  if (!infoEl) return;
+
+  infoEl.innerHTML = `
+    <div class="signature-warning">
+      <span class="sig-icon"><svg class="lucide-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></span>
+      <span>Sender not confirmed - The signature is valid, but its key isn't in your contacts, so the name shown can't be trusted</span>
+    </div>
+  `;
+  infoEl.classList.add("show", "warning");
 }
 
 function showSignatureWarning() {

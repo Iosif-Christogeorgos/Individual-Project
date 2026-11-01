@@ -2,7 +2,7 @@
 // CrypShare Backend - Zero-Knowledge File Storage Server (Hybrid E2EE)
 // =============================================================================
 // CLOUD-NATIVE VERSION: Uses Supabase (Postgres) + Cloudflare R2 (S3-compatible)
-// This enables stateless deployment (Docker, DigitalOcean, etc.)
+// This enables stateless deployment (Docker, Render, etc.)
 //
 // ZERO-KNOWLEDGE PRINCIPLES:
 // - Server never sees plaintext file contents
@@ -30,7 +30,7 @@ import {
   HeadObjectCommand,
 } from "@aws-sdk/client-s3";
 import { Upload } from "@aws-sdk/lib-storage";
-import { pipeline, PassThrough } from "stream";
+import { pipeline, Transform } from "stream";
 import { promisify } from "util";
 
 const pipelineAsync = promisify(pipeline);
@@ -101,6 +101,18 @@ const s3Client = new S3Client({
 // =============================================================================
 
 const FILE_ID_PATTERN = /^file-[a-f0-9]{64}\.bin$/;
+const SHA256_HEX_PATTERN = /^[a-fA-F0-9]{64}$/;
+
+function isValidEncryptedKey(key) {
+  return (
+    typeof key?.recipientFingerprint === "string" &&
+    SHA256_HEX_PATTERN.test(key.recipientFingerprint) &&
+    typeof key.encryptedKey === "string" &&
+    typeof key.iv === "string" &&
+    typeof key.ephemeralPublicKey === "object" &&
+    key.ephemeralPublicKey !== null
+  );
+}
 
 async function cleanupExpiredFiles() {
   const now = new Date().toISOString();
@@ -197,7 +209,9 @@ app.use(
         callback(null, true);
       } else {
         console.warn(`⚠️ CORS: Blocked request from origin: ${origin}`);
-        callback(new Error("Not allowed by CORS"));
+        const corsError = new Error("Not allowed by CORS");
+        corsError.status = 403;
+        callback(corsError);
       }
     },
     methods: ["GET", "POST", "HEAD", "OPTIONS"],
@@ -274,9 +288,7 @@ app.use((req, res, next) => {
   const host = req.headers.host || "";
   if (host.startsWith("www.")) {
     const newHost = host.substring(4);
-    const protocol =
-      req.headers["x-forwarded-proto"] || req.protocol || "https";
-    const newUrl = `${protocol}://${newHost}${req.originalUrl}`;
+    const newUrl = `${req.protocol}://${newHost}${req.originalUrl}`;
     console.log(`🔄 Redirecting www to non-www: ${newUrl}`);
     return res.redirect(301, newUrl);
   }
@@ -288,7 +300,7 @@ app.use((req, res, next) => {
 // =============================================================================
 
 app.get("/favicon.ico", (req, res) => {
-  res.sendFile(path.join(__dirname, "../frontend/favicon.ico"));
+  res.redirect(301, "/favicon.svg");
 });
 
 app.get("/", (req, res) => {
@@ -516,27 +528,25 @@ app.post("/upload-stream", uploadLimiter, async (req, res) => {
     const hashedToken = hashUploadToken(uploadToken);
     // Token will be stored after successful upload
 
-    // Create a size-limiting transform stream to enforce max size even without Content-Length
+    // Enforce max size even without Content-Length. req.pipe() applies backpressure,
+    // so a slow R2 connection pauses the client instead of buffering in memory.
     let bytesReceived = 0;
-    const sizeLimitStream = new PassThrough();
-
-    req.on("data", (chunk) => {
-      bytesReceived += chunk.length;
-      if (bytesReceived > MAX_STREAM_SIZE) {
-        sizeLimitStream.destroy(new Error("File too large"));
-        req.destroy();
-      } else {
-        sizeLimitStream.write(chunk);
-      }
-    });
-
-    req.on("end", () => {
-      sizeLimitStream.end();
+    const sizeLimitStream = new Transform({
+      transform(chunk, _encoding, callback) {
+        bytesReceived += chunk.length;
+        if (bytesReceived > MAX_STREAM_SIZE) {
+          callback(new Error("File too large"));
+        } else {
+          callback(null, chunk);
+        }
+      },
     });
 
     req.on("error", (err) => {
       sizeLimitStream.destroy(err);
     });
+
+    req.pipe(sizeLimitStream);
 
     // Stream directly to R2 without buffering in memory
     // The Upload class handles multipart uploads automatically
@@ -565,6 +575,8 @@ app.post("/upload-stream", uploadLimiter, async (req, res) => {
     });
   } catch (error) {
     if (error.message === "File too large") {
+      // The rest of the body is never read, so the connection can't be reused
+      res.set("Connection", "close");
       return res.status(413).json({
         success: false,
         error: "File too large. Maximum size is 375MB.",
@@ -777,9 +789,10 @@ app.post("/metadata/:fileId", metadataLimiter, async (req, res) => {
 
     // Validate expiry hours
     let expiresAt = new Date(Date.now() + DEFAULT_EXPIRY_MS).toISOString();
+    let expiryHours;
     if (metadata.expiryHours !== undefined) {
-      const expiryHours = parseInt(metadata.expiryHours, 10);
-      if (isNaN(expiryHours) || !ALLOWED_EXPIRY_HOURS.includes(expiryHours)) {
+      expiryHours = Number(metadata.expiryHours);
+      if (!ALLOWED_EXPIRY_HOURS.includes(expiryHours)) {
         return res.status(400).json({
           success: false,
           error: `Invalid expiry time. Allowed values: ${ALLOWED_EXPIRY_HOURS.join(", ")} hours.`,
@@ -788,6 +801,42 @@ app.post("/metadata/:fileId", metadataLimiter, async (req, res) => {
       expiresAt = new Date(
         Date.now() + expiryHours * 60 * 60 * 1000,
       ).toISOString();
+    }
+
+    // Validate field types up front: metadata is uploader-controlled and later
+    // shown to whoever opens the link
+    if (
+      metadata.size !== undefined &&
+      (!Number.isSafeInteger(metadata.size) || metadata.size < 0)
+    ) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid file size.",
+      });
+    }
+
+    if (
+      metadata.contentHash !== undefined &&
+      metadata.contentHash !== null &&
+      !SHA256_HEX_PATTERN.test(metadata.contentHash)
+    ) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid content hash.",
+      });
+    }
+
+    if (
+      metadata.encryptedKeys !== undefined &&
+      !(
+        Array.isArray(metadata.encryptedKeys) &&
+        metadata.encryptedKeys.every(isValidEncryptedKey)
+      )
+    ) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid recipient keys.",
+      });
     }
 
     // Insert metadata to Supabase (zero-knowledge: no plaintext data stored)
@@ -803,6 +852,9 @@ app.post("/metadata/:fileId", metadataLimiter, async (req, res) => {
     delete sanitizedMetadata.encryptedKeys;
     // Keep an empty array for backward compatibility with clients checking accessModes
     sanitizedMetadata.encryptedKeys = [];
+    // Store the validated expiry rather than what the uploader sent
+    sanitizedMetadata.expiresAt = new Date(expiresAt).getTime();
+    if (expiryHours !== undefined) sanitizedMetadata.expiryHours = expiryHours;
 
     const { error } = await supabase.from("files").insert({
       id: fileId,
@@ -950,7 +1002,7 @@ app.get(
       }
 
       // Validate fingerprint format (64 hex chars - SHA-256 of public key)
-      if (!/^[a-fA-F0-9]{64}$/.test(fingerprint)) {
+      if (!SHA256_HEX_PATTERN.test(fingerprint)) {
         return res.status(400).json({
           success: false,
           error: "Invalid fingerprint format.",
@@ -1128,6 +1180,17 @@ app.post("/pubkey", pubkeyLimiter, async (req, res) => {
       });
     }
 
+    if (
+      typeof username !== "string" ||
+      typeof fingerprint !== "string" ||
+      typeof encryptionPublicKey !== "object"
+    ) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid field types.",
+      });
+    }
+
     // Validate ID format (32 hex chars)
     if (!/^[a-f0-9]{32}$/.test(id)) {
       return res
@@ -1146,7 +1209,7 @@ app.post("/pubkey", pubkeyLimiter, async (req, res) => {
     }
 
     // Validate fingerprint format (64 hex chars)
-    if (!/^[a-fA-F0-9]{64}$/.test(fingerprint)) {
+    if (!SHA256_HEX_PATTERN.test(fingerprint)) {
       return res
         .status(400)
         .json({ success: false, error: "Invalid fingerprint format." });
@@ -1188,6 +1251,26 @@ app.post("/pubkey", pubkeyLimiter, async (req, res) => {
           "Ownership proof required. Please provide signingPublicKey and ownershipProof.",
       });
     }
+
+    // SECURITY: The ID is derived from the public encryption key, so anyone can compute
+    // it. An existing identity may only be updated with a proof from its registered
+    // signing key - otherwise anyone could replace its signing key or username.
+    const { data: existingIdentity, error: lookupError } = await supabase
+      .from("public_keys")
+      .select("signing_public_key")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (lookupError) {
+      console.error("❌ Public key lookup error:", lookupError.message);
+      return res.status(500).json({
+        success: false,
+        error: "Failed to register public key.",
+      });
+    }
+
+    const trustedSigningKey =
+      existingIdentity?.signing_public_key ?? signingPublicKey;
 
     try {
       const { signature, timestamp, nonce } = ownershipProof;
@@ -1242,7 +1325,7 @@ app.post("/pubkey", pubkeyLimiter, async (req, res) => {
       // Import the signing public key using WebCrypto
       const publicKey = await webcrypto.subtle.importKey(
         "jwk",
-        signingPublicKey,
+        trustedSigningKey,
         { name: "ECDSA", namedCurve: "P-256" },
         true,
         ["verify"],
@@ -1299,11 +1382,18 @@ app.post("/pubkey", pubkeyLimiter, async (req, res) => {
       username: cleanUsername,
       fingerprint: computedFingerprint.toLowerCase(), // Use server-computed fingerprint
       encryption_public_key: encryptionPublicKey,
-      signing_public_key: signingPublicKey || null,
+      signing_public_key: trustedSigningKey,
       updated_at: new Date().toISOString(),
     });
 
     if (error) {
+      // Unique violation: another request claimed this username first
+      if (error.code === "23505") {
+        return res.status(409).json({
+          success: false,
+          error: "Username already taken. Please choose another.",
+        });
+      }
       console.error("❌ Public key registration error:", error.message);
       return res.status(500).json({
         success: false,
@@ -1549,12 +1639,33 @@ app.get("/pubkey/check/:username", pubkeyLimiter, async (req, res) => {
 // Error Handling Middleware
 // =============================================================================
 
+const CLIENT_ERROR_MESSAGES = {
+  400: "Invalid request.",
+  403: "Request not allowed.",
+  404: "Not found.",
+  413: "Request too large.",
+};
+
 app.use((error, req, res, next) => {
-  console.error("❌ Unhandled error:", error);
-  res.status(500).json({
-    success: false,
-    error: "Internal server error.",
-  });
+  if (res.headersSent) return next(error);
+
+  // Malformed JSON, oversized bodies, blocked origins and bad uploads are client
+  // errors, not server faults
+  let status = error.status || error.statusCode || 500;
+  if (error instanceof multer.MulterError) {
+    status = error.code === "LIMIT_FILE_SIZE" ? 413 : 400;
+  }
+
+  const message = CLIENT_ERROR_MESSAGES[status];
+  if (!message) {
+    console.error("❌ Unhandled error:", error);
+    return res.status(500).json({
+      success: false,
+      error: "Internal server error.",
+    });
+  }
+
+  res.status(status).json({ success: false, error: message });
 });
 
 // =============================================================================

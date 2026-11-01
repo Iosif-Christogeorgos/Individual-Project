@@ -181,7 +181,7 @@ export async function importContact() {
     input.value = "";
     await loadContacts();
     showToast(`Added ${publicIdentity.displayName} to contacts ✓`);
-  } catch (error) {
+  } catch {
     showToast("Failed to import contact ✗");
   }
 }
@@ -209,7 +209,7 @@ export async function importContactFromFile() {
       await IdentityManager.addContact(publicIdentity);
       await loadContacts();
       showToast(`Added ${publicIdentity.displayName} to contacts ✓`);
-    } catch (error) {
+    } catch {
       showToast("Failed to import contact ✗");
     }
   };

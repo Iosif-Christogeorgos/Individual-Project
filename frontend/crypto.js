@@ -21,7 +21,12 @@ const AES_IV_LENGTH = 12; // 96 bits for AES-GCM
 const CHUNK_SIZE = 64 * 1024; // 64KB chunks for streaming
 const ECDH_CURVE = "P-256"; // WebCrypto compatible, ~128-bit security
 const ECDSA_CURVE = "P-256";
-const FORMAT_VERSION_CHUNKED = 2; // Chunked: [version][filename header][chunks]
+const FORMAT_VERSION_CHUNKED = 2; // Legacy, decrypt only: chunks not bound to their position
+const FORMAT_VERSION_AUTHENTICATED = 3; // Same layout, every ciphertext bound to its position
+const CHUNKED_HASH_THRESHOLD = 100 * 1024 * 1024; // Larger files hash per chunk
+const PBKDF2_ITERATIONS = 600000; // OWASP recommendation for PBKDF2-HMAC-SHA256
+const LEGACY_PBKDF2_ITERATIONS = 100000; // Backups that don't record their iteration count
+const MAX_FILENAME_CIPHERTEXT_LENGTH = 0xffff + 16; // 16-bit length plus GCM tag
 
 // ===========================================================================
 // Helpers (Internal)
@@ -47,7 +52,7 @@ function base64ToArrayBuffer(base64) {
       bytes[i] = binary.charCodeAt(i);
     }
     return bytes.buffer;
-  } catch (e) {
+  } catch {
     throw new Error(
       "Invalid base64 encoding. The decryption key may be corrupted.",
     );
@@ -71,6 +76,39 @@ async function sha256(data) {
   return arrayBufferToHex(hashBuffer);
 }
 
+async function combineChunkHashes(chunkHashes) {
+  const concatenatedHashes = new Uint8Array(chunkHashes.length * 32);
+  for (let i = 0; i < chunkHashes.length; i++) {
+    concatenatedHashes.set(chunkHashes[i], i * 32);
+  }
+  return await sha256(concatenatedHashes);
+}
+
+// Additional authenticated data for format v3. The server can't produce a valid
+// ciphertext for a different position or chunk count, so reordering, dropping or
+// appending chunks fails decryption.
+function buildAAD(label, totalChunks, chunkIndex = 0) {
+  const labelBytes = new TextEncoder().encode(label);
+  const aad = new Uint8Array(labelBytes.length + 8);
+  aad.set(labelBytes, 0);
+  const view = new DataView(aad.buffer);
+  view.setUint32(labelBytes.length, totalChunks, false);
+  view.setUint32(labelBytes.length + 4, chunkIndex, false);
+  return aad;
+}
+
+function filenameAAD(version, totalChunks) {
+  return version === FORMAT_VERSION_AUTHENTICATED
+    ? buildAAD("crypshare-v3-filename", totalChunks)
+    : undefined;
+}
+
+function chunkAAD(version, totalChunks, chunkIndex) {
+  return version === FORMAT_VERSION_AUTHENTICATED
+    ? buildAAD("crypshare-v3-chunk", totalChunks, chunkIndex)
+    : undefined;
+}
+
 /**
  * Hash an ArrayBuffer or Uint8Array using SHA-256.
  * Used for post-decryption integrity verification.
@@ -83,8 +121,8 @@ export async function hashArrayBuffer(data) {
   const buffer = data instanceof ArrayBuffer ? data : data.buffer;
   const byteLength = buffer.byteLength;
 
-  // Match the threshold used in hashFile() - 100MB
-  if (byteLength <= 100 * 1024 * 1024) {
+  // Match the threshold used in hashFile()
+  if (byteLength <= CHUNKED_HASH_THRESHOLD) {
     return await sha256(buffer);
   }
 
@@ -104,16 +142,7 @@ export async function hashArrayBuffer(data) {
     chunkHashes.push(new Uint8Array(chunkHash));
   }
 
-  const concatenatedHashes = new Uint8Array(chunkHashes.length * 32);
-  for (let i = 0; i < chunkHashes.length; i++) {
-    concatenatedHashes.set(chunkHashes[i], i * 32);
-  }
-
-  const finalHash = await window.crypto.subtle.digest(
-    "SHA-256",
-    concatenatedHashes,
-  );
-  return arrayBufferToHex(finalHash);
+  return await combineChunkHashes(chunkHashes);
 }
 
 // ===========================================================================
@@ -160,17 +189,19 @@ export async function importAESKeyFromRaw(rawKey) {
   );
 }
 
-export async function encryptAES(data, key, iv) {
-  return await window.crypto.subtle.encrypt(
-    { name: "AES-GCM", iv: iv },
-    key,
-    data,
-  );
+function aesGcmParams(iv, aad) {
+  return aad
+    ? { name: "AES-GCM", iv: iv, additionalData: aad }
+    : { name: "AES-GCM", iv: iv };
 }
 
-export async function decryptAES(ciphertext, key, iv) {
+export async function encryptAES(data, key, iv, aad) {
+  return await window.crypto.subtle.encrypt(aesGcmParams(iv, aad), key, data);
+}
+
+export async function decryptAES(ciphertext, key, iv, aad) {
   return await window.crypto.subtle.decrypt(
-    { name: "AES-GCM", iv: iv },
+    aesGcmParams(iv, aad),
     key,
     ciphertext,
   );
@@ -181,67 +212,50 @@ export async function decryptAES(ciphertext, key, iv) {
 // ===========================================================================
 
 export async function encryptFileChunked(file, aesKey, onProgress = () => {}) {
-  const encryptedChunks = [];
-
-  // 1. Version byte
-  encryptedChunks.push(new Uint8Array([FORMAT_VERSION_CHUNKED]));
-
-  // 2. Encrypt and store filename
-  const filenameBytes = new TextEncoder().encode(file.name);
-  const filenameIV = generateIV();
-  const encryptedFilename = await encryptAES(
-    filenameBytes.buffer,
-    aesKey,
-    filenameIV,
-  );
-  const encryptedFilenameArray = new Uint8Array(encryptedFilename);
-
-  // Filename header
-  const filenameHeader = new Uint8Array(
-    2 + 12 + 4 + encryptedFilenameArray.length,
-  );
-  filenameHeader[0] = (filenameBytes.length >> 8) & 0xff;
-  filenameHeader[1] = filenameBytes.length & 0xff;
-  filenameHeader.set(filenameIV, 2);
-  new DataView(filenameHeader.buffer).setUint32(
-    14,
-    encryptedFilenameArray.length,
-    false,
-  );
-  filenameHeader.set(encryptedFilenameArray, 18);
-  encryptedChunks.push(filenameHeader);
-
-  // 3. Chunk count
   const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
-  const chunkCountHeader = new Uint8Array(4);
-  new DataView(chunkCountHeader.buffer).setUint32(0, totalChunks, false);
-  encryptedChunks.push(chunkCountHeader);
+  const encryptedChunks = await createEncryptedHeader(
+    file,
+    aesKey,
+    totalChunks,
+  );
 
-  // 4. Encrypt file chunks
   for (let i = 0; i < totalChunks; i++) {
     const start = i * CHUNK_SIZE;
     const end = Math.min(start + CHUNK_SIZE, file.size);
-    const chunkBlob = file.slice(start, end);
-    const chunkData = await chunkBlob.arrayBuffer();
-
-    const iv = generateIV();
-    const ciphertext = await encryptAES(chunkData, aesKey, iv);
-    const ciphertextArray = new Uint8Array(ciphertext);
-
-    const chunkPacket = new Uint8Array(16 + ciphertextArray.length);
-    chunkPacket.set(iv, 0);
-    new DataView(chunkPacket.buffer).setUint32(
-      12,
-      ciphertextArray.length,
-      false,
+    encryptedChunks.push(
+      await encryptChunkPacket(
+        await file.slice(start, end).arrayBuffer(),
+        aesKey,
+        i,
+        totalChunks,
+      ),
     );
-    chunkPacket.set(ciphertextArray, 16);
-
-    encryptedChunks.push(chunkPacket);
     onProgress(Math.round(((i + 1) / totalChunks) * 100));
   }
 
   return new Blob(encryptedChunks, { type: "application/octet-stream" });
+}
+
+// Packet layout: [12-byte IV][4-byte ciphertext length][ciphertext + tag]
+async function encryptChunkPacket(chunkData, aesKey, chunkIndex, totalChunks) {
+  const iv = generateIV();
+  const ciphertext = await encryptAES(
+    chunkData,
+    aesKey,
+    iv,
+    chunkAAD(FORMAT_VERSION_AUTHENTICATED, totalChunks, chunkIndex),
+  );
+  const ciphertextArray = new Uint8Array(ciphertext);
+
+  const chunkPacket = new Uint8Array(16 + ciphertextArray.length);
+  chunkPacket.set(iv, 0);
+  new DataView(chunkPacket.buffer).setUint32(
+    12,
+    ciphertextArray.length,
+    false,
+  );
+  chunkPacket.set(ciphertextArray, 16);
+  return chunkPacket;
 }
 
 // ===========================================================================
@@ -251,7 +265,7 @@ export async function encryptFileChunked(file, aesKey, onProgress = () => {}) {
 export async function createEncryptedHeader(file, aesKey, totalChunks) {
   const headerParts = [];
 
-  headerParts.push(new Uint8Array([FORMAT_VERSION_CHUNKED]));
+  headerParts.push(new Uint8Array([FORMAT_VERSION_AUTHENTICATED]));
 
   const filenameBytes = new TextEncoder().encode(file.name);
   const filenameIV = generateIV();
@@ -259,6 +273,7 @@ export async function createEncryptedHeader(file, aesKey, totalChunks) {
     filenameBytes.buffer,
     aesKey,
     filenameIV,
+    filenameAAD(FORMAT_VERSION_AUTHENTICATED, totalChunks),
   );
   const encryptedFilenameArray = new Uint8Array(encryptedFilename);
 
@@ -317,23 +332,11 @@ export async function createEncryptedStream(
       }
 
       const end = Math.min(offset + CHUNK_SIZE, file.size);
-      const chunkBlob = file.slice(offset, end);
-      const chunkData = await chunkBlob.arrayBuffer();
+      const chunkData = await file.slice(offset, end).arrayBuffer();
 
-      const iv = generateIV();
-      const ciphertext = await encryptAES(chunkData, aesKey, iv);
-      const ciphertextArray = new Uint8Array(ciphertext);
-
-      const chunkPacket = new Uint8Array(16 + ciphertextArray.length);
-      chunkPacket.set(iv, 0);
-      new DataView(chunkPacket.buffer).setUint32(
-        12,
-        ciphertextArray.length,
-        false,
+      controller.enqueue(
+        await encryptChunkPacket(chunkData, aesKey, chunkIndex, totalChunks),
       );
-      chunkPacket.set(ciphertextArray, 16);
-
-      controller.enqueue(chunkPacket);
 
       offset = end;
       chunkIndex++;
@@ -353,7 +356,7 @@ export function supportsStreamingUpload() {
       duplex: "half",
     });
     return true;
-  } catch (e) {
+  } catch {
     return false;
   }
 }
@@ -364,8 +367,11 @@ export function supportsStreamingUpload() {
 
 export function detectEncryptionFormat(data) {
   const firstByte = new Uint8Array(data.slice(0, 1))[0];
-  if (firstByte === FORMAT_VERSION_CHUNKED) {
-    return FORMAT_VERSION_CHUNKED;
+  if (
+    firstByte === FORMAT_VERSION_CHUNKED ||
+    firstByte === FORMAT_VERSION_AUTHENTICATED
+  ) {
+    return firstByte;
   }
   throw new Error("Unknown encryption format.");
 }
@@ -376,40 +382,10 @@ export async function decryptFileChunked(
   aesKey,
   onProgress = () => {},
 ) {
-  let offset = 0;
-
-  // 1. Verify version
-  const version = new Uint8Array(encryptedData.slice(0, 1))[0];
-  if (version !== FORMAT_VERSION_CHUNKED) {
-    throw new Error("Invalid chunked format version");
-  }
-  offset = 1;
-
-  // 2. Read filename
+  const { version, filename, totalChunks, headerSize } =
+    await parseEncryptedHeader(new Uint8Array(encryptedData), aesKey);
   const dataView = new DataView(encryptedData);
-  offset += 2; // Skip original length storage
-  const filenameIV = new Uint8Array(encryptedData.slice(offset, offset + 12));
-  offset += 12;
-
-  const filenameCipherLength = dataView.getUint32(offset, false);
-  offset += 4;
-
-  const filenameCiphertext = encryptedData.slice(
-    offset,
-    offset + filenameCipherLength,
-  );
-  offset += filenameCipherLength;
-
-  const decryptedFilenameBuffer = await decryptAES(
-    filenameCiphertext,
-    aesKey,
-    filenameIV,
-  );
-  const filename = new TextDecoder().decode(decryptedFilenameBuffer);
-
-  // 3. Read chunk count
-  const totalChunks = dataView.getUint32(offset, false);
-  offset += 4;
+  let offset = headerSize;
 
   // 4. Calculate total size
   let tempOffset = offset;
@@ -437,7 +413,12 @@ export async function decryptFileChunked(
     const ciphertext = encryptedData.slice(offset, offset + ciphertextLength);
     offset += ciphertextLength;
 
-    const plaintext = await decryptAES(ciphertext, aesKey, iv);
+    const plaintext = await decryptAES(
+      ciphertext,
+      aesKey,
+      iv,
+      chunkAAD(version, totalChunks, i),
+    );
     const plaintextArray = new Uint8Array(plaintext);
 
     result.set(plaintextArray, writePosition);
@@ -498,16 +479,12 @@ export async function downloadAndDecryptStreaming(
   // Ensure 100% is reported after download completes
   onDownloadProgress(100);
 
-  const format = detectEncryptionFormat(encryptedData.buffer);
-  if (format === FORMAT_VERSION_CHUNKED) {
-    return await decryptFileChunked(
-      encryptedData.buffer,
-      aesKey,
-      onDecryptProgress,
-    );
-  } else {
-    throw new Error("Unsupported file format");
-  }
+  detectEncryptionFormat(encryptedData.buffer);
+  return await decryptFileChunked(
+    encryptedData.buffer,
+    aesKey,
+    onDecryptProgress,
+  );
 }
 
 // ===========================================================================
@@ -519,17 +496,18 @@ export async function downloadAndDecryptStreaming(
  * Returns header info and the offset where chunk data begins.
  * @param {Uint8Array} headerData - At least the first ~1KB of encrypted data
  * @param {CryptoKey} aesKey - The AES key for decrypting the filename
- * @returns {Promise<{filename: string, totalChunks: number, headerSize: number}>}
+ * @returns {Promise<{version: number, filename: string, totalChunks: number, headerSize: number}>}
  */
 async function parseEncryptedHeader(headerData, aesKey) {
-  let offset = 0;
-
   // 1. Verify version
   const version = headerData[0];
-  if (version !== FORMAT_VERSION_CHUNKED) {
+  if (
+    version !== FORMAT_VERSION_CHUNKED &&
+    version !== FORMAT_VERSION_AUTHENTICATED
+  ) {
     throw new Error("Invalid chunked format version");
   }
-  offset = 1;
+  let offset = 1;
 
   // 2. Read filename
   const dataView = new DataView(
@@ -550,6 +528,10 @@ async function parseEncryptedHeader(headerData, aesKey) {
   );
   offset += filenameCipherLength;
 
+  // 3. Read chunk count (authenticated along with the filename in v3)
+  const totalChunks = dataView.getUint32(offset, false);
+  offset += 4;
+
   const decryptedFilenameBuffer = await decryptAES(
     filenameCiphertext.buffer.slice(
       filenameCiphertext.byteOffset,
@@ -557,14 +539,56 @@ async function parseEncryptedHeader(headerData, aesKey) {
     ),
     aesKey,
     filenameIV,
+    filenameAAD(version, totalChunks),
   );
   const filename = new TextDecoder().decode(decryptedFilenameBuffer);
 
-  // 3. Read chunk count
-  const totalChunks = dataView.getUint32(offset, false);
-  offset += 4;
+  return { version, filename, totalChunks, headerSize: offset };
+}
 
-  return { filename, totalChunks, headerSize: offset };
+/**
+ * Read just enough of an encrypted file to recover its original filename,
+ * then cancel the rest of the download.
+ * @param {string} url - URL to download from
+ * @param {CryptoKey} aesKey - The AES decryption key
+ * @returns {Promise<string>} The original filename
+ */
+export async function fetchEncryptedFilename(url, aesKey) {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`Download failed: ${response.status}`);
+
+  const FIXED_HEADER_SIZE = 1 + 2 + 12 + 4; // version, length, IV, cipher length
+  const reader = response.body.getReader();
+  let received = new Uint8Array(0);
+  let needed = FIXED_HEADER_SIZE;
+
+  try {
+    while (received.length < needed) {
+      const { done, value } = await reader.read();
+      if (done) throw new Error("Encrypted file is truncated.");
+
+      const combined = new Uint8Array(received.length + value.length);
+      combined.set(received, 0);
+      combined.set(value, received.length);
+      received = combined;
+
+      if (received.length >= FIXED_HEADER_SIZE) {
+        const cipherLength = new DataView(received.buffer).getUint32(
+          FIXED_HEADER_SIZE - 4,
+          false,
+        );
+        if (cipherLength > MAX_FILENAME_CIPHERTEXT_LENGTH) {
+          throw new Error("Invalid encrypted file header.");
+        }
+        needed = FIXED_HEADER_SIZE + cipherLength + 4; // plus chunk count
+      }
+    }
+  } finally {
+    await reader.cancel().catch(() => {});
+  }
+
+  const { filename } = await parseEncryptedHeader(received, aesKey);
+  return filename;
 }
 
 /**
@@ -584,10 +608,8 @@ export async function* decryptFileChunkedStreaming(
   const data = new Uint8Array(encryptedData);
 
   // Parse header
-  const { filename, totalChunks, headerSize } = await parseEncryptedHeader(
-    data,
-    aesKey,
-  );
+  const { version, filename, totalChunks, headerSize } =
+    await parseEncryptedHeader(data, aesKey);
 
   let offset = headerSize;
   const dataView = new DataView(encryptedData);
@@ -602,7 +624,12 @@ export async function* decryptFileChunkedStreaming(
     const ciphertext = encryptedData.slice(offset, offset + ciphertextLength);
     offset += ciphertextLength;
 
-    const plaintext = await decryptAES(ciphertext, aesKey, iv);
+    const plaintext = await decryptAES(
+      ciphertext,
+      aesKey,
+      iv,
+      chunkAAD(version, totalChunks, i),
+    );
     const plaintextArray = new Uint8Array(plaintext);
 
     const progress = Math.round(((i + 1) / totalChunks) * 100);
@@ -626,7 +653,8 @@ export async function* decryptFileChunkedStreaming(
  * @param {WritableStream} writableStream - Destination stream (e.g., from showSaveFilePicker)
  * @param {function} onDownloadProgress - Download progress callback (0-100)
  * @param {function} onDecryptProgress - Decryption progress callback (0-100)
- * @returns {Promise<{filename: string, bytesWritten: number}>}
+ * @param {string|null} expectedContentHash - Discard the output if the plaintext doesn't match
+ * @returns {Promise<{filename: string, bytesWritten: number, contentHash: string}>}
  */
 export async function downloadAndDecryptToStream(
   url,
@@ -634,6 +662,7 @@ export async function downloadAndDecryptToStream(
   writableStream,
   onDownloadProgress = () => {},
   onDecryptProgress = () => {},
+  expectedContentHash = null,
 ) {
   // Step 1: Download the encrypted file
   // NOTE: For true streaming we'd need a different encrypted format that allows
@@ -677,6 +706,10 @@ export async function downloadAndDecryptToStream(
   const writer = writableStream.getWriter();
   let filename = "";
   let bytesWritten = 0;
+  let contentHash;
+  // Same scheme as hashFile(): small files hash whole, large files per chunk
+  const chunkHashes = [];
+  let smallFileChunks = [];
 
   try {
     for await (const {
@@ -693,12 +726,35 @@ export async function downloadAndDecryptToStream(
       }
       await writer.write(chunk);
       bytesWritten += chunk.length;
+
+      const chunkHash = await window.crypto.subtle.digest("SHA-256", chunk);
+      chunkHashes.push(new Uint8Array(chunkHash));
+      if (bytesWritten <= CHUNKED_HASH_THRESHOLD) {
+        smallFileChunks.push(chunk);
+      } else {
+        smallFileChunks = [];
+      }
     }
-  } finally {
-    await writer.close();
+
+    contentHash =
+      bytesWritten <= CHUNKED_HASH_THRESHOLD
+        ? await sha256(await new Blob(smallFileChunks).arrayBuffer())
+        : await combineChunkHashes(chunkHashes);
+
+    if (expectedContentHash && contentHash !== expectedContentHash) {
+      throw new Error(
+        "SECURITY ALERT: File integrity check failed. " +
+          "The file may have been tampered with. Do not trust this file.",
+      );
+    }
+  } catch (error) {
+    // Discard the output: never leave a partial or unverified file on disk
+    await writer.abort(error).catch(() => {});
+    throw error;
   }
 
-  return { filename, bytesWritten };
+  await writer.close();
+  return { filename, bytesWritten, contentHash };
 }
 
 // ===========================================================================
@@ -895,9 +951,25 @@ export async function verifyFileMetadataSignature(
       return { valid: true, metadata };
     }
     return { valid: false, metadata: null };
-  } catch (error) {
+  } catch {
     return { valid: false, metadata: null };
   }
+}
+
+/**
+ * Check that a verified signature actually covers this file. A valid signature
+ * alone proves nothing: it could be copied from any other file.
+ * @param {Object} signedMetadata - The metadata returned by verifyFileMetadataSignature
+ * @param {{filename: string, size: number, contentHash: string}} file - The decrypted file
+ * @returns {Promise<boolean>} True if the signed values match the file
+ */
+export async function signedMetadataMatchesFile(signedMetadata, file) {
+  const filenameHash = await sha256(new TextEncoder().encode(file.filename));
+  return (
+    signedMetadata?.filenameHash === filenameHash &&
+    signedMetadata?.size === file.size &&
+    signedMetadata?.contentHash === file.contentHash
+  );
 }
 
 // ===========================================================================
@@ -905,7 +977,7 @@ export async function verifyFileMetadataSignature(
 // ===========================================================================
 
 export async function hashFile(file, onProgress = () => {}) {
-  if (file.size <= 100 * 1024 * 1024) {
+  if (file.size <= CHUNKED_HASH_THRESHOLD) {
     const buffer = await file.arrayBuffer();
     onProgress(100);
     return await sha256(buffer);
@@ -925,16 +997,7 @@ export async function hashFile(file, onProgress = () => {}) {
     onProgress(Math.round(((i + 1) / totalChunks) * 100));
   }
 
-  const concatenatedHashes = new Uint8Array(chunkHashes.length * 32);
-  for (let i = 0; i < chunkHashes.length; i++) {
-    concatenatedHashes.set(chunkHashes[i], i * 32);
-  }
-
-  const finalHash = await window.crypto.subtle.digest(
-    "SHA-256",
-    concatenatedHashes,
-  );
-  return arrayBufferToHex(finalHash);
+  return await combineChunkHashes(chunkHashes);
 }
 
 // ===========================================================================
@@ -968,13 +1031,13 @@ export function formatFingerprint(fingerprint) {
 
 /**
  * Derives a cryptographic key from a user password using PBKDF2.
- * Uses high iteration count (100,000) to resist brute-force attacks.
  *
  * @param {string} password - User-provided backup password
  * @param {Uint8Array} salt - Random salt (16 bytes recommended)
+ * @param {number} iterations - PBKDF2 iteration count
  * @returns {Promise<CryptoKey>} AES-GCM key derived from password
  */
-async function deriveKeyFromPassword(password, salt) {
+async function deriveKeyFromPassword(password, salt, iterations) {
   const encoder = new TextEncoder();
   const keyMaterial = await crypto.subtle.importKey(
     "raw",
@@ -988,7 +1051,7 @@ async function deriveKeyFromPassword(password, salt) {
     {
       name: "PBKDF2",
       salt: salt,
-      iterations: 100000, // High iterations for security against brute force
+      iterations: iterations,
       hash: "SHA-256",
     },
     keyMaterial,
@@ -1004,13 +1067,13 @@ async function deriveKeyFromPassword(password, salt) {
  *
  * @param {Object} dataObj - The data to encrypt (identity, contacts, etc.)
  * @param {string} password - User-provided backup password
- * @returns {Promise<Object>} Encrypted backup package { salt, iv, data }
+ * @returns {Promise<Object>} Encrypted backup package { salt, iv, iterations, data }
  */
 export async function encryptBackup(dataObj, password) {
   const salt = crypto.getRandomValues(new Uint8Array(16));
   const iv = crypto.getRandomValues(new Uint8Array(12));
 
-  const key = await deriveKeyFromPassword(password, salt);
+  const key = await deriveKeyFromPassword(password, salt, PBKDF2_ITERATIONS);
   const encodedData = new TextEncoder().encode(JSON.stringify(dataObj));
 
   const encryptedContent = await crypto.subtle.encrypt(
@@ -1023,6 +1086,7 @@ export async function encryptBackup(dataObj, password) {
   return {
     salt: Array.from(salt),
     iv: Array.from(iv),
+    iterations: PBKDF2_ITERATIONS,
     data: Array.from(new Uint8Array(encryptedContent)),
   };
 }
@@ -1031,7 +1095,7 @@ export async function encryptBackup(dataObj, password) {
  * Decrypts a backup package using the user's password.
  * Throws descriptive error if password is wrong or file is corrupted.
  *
- * @param {Object} backupObj - The encrypted backup { salt, iv, data }
+ * @param {Object} backupObj - The encrypted backup { salt, iv, iterations?, data }
  * @param {string} password - User-provided backup password
  * @returns {Promise<Object>} The decrypted identity data
  * @throws {Error} If password is incorrect or backup is corrupted
@@ -1040,8 +1104,18 @@ export async function decryptBackup(backupObj, password) {
   const salt = new Uint8Array(backupObj.salt);
   const iv = new Uint8Array(backupObj.iv);
   const data = new Uint8Array(backupObj.data);
+  const iterations = backupObj.iterations ?? LEGACY_PBKDF2_ITERATIONS;
 
-  const key = await deriveKeyFromPassword(password, salt);
+  // Bounded so a crafted backup file can't lock up the tab
+  if (
+    !Number.isInteger(iterations) ||
+    iterations < LEGACY_PBKDF2_ITERATIONS ||
+    iterations > PBKDF2_ITERATIONS * 10
+  ) {
+    throw new Error("Incorrect password or corrupted backup file.");
+  }
+
+  const key = await deriveKeyFromPassword(password, salt, iterations);
 
   try {
     const decryptedContent = await crypto.subtle.decrypt(
@@ -1050,7 +1124,7 @@ export async function decryptBackup(backupObj, password) {
       data,
     );
     return JSON.parse(new TextDecoder().decode(decryptedContent));
-  } catch (err) {
+  } catch {
     // AES-GCM authentication failure means wrong password or corrupted data
     throw new Error("Incorrect password or corrupted backup file.");
   }
