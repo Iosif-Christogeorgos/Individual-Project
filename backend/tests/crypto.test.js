@@ -1,944 +1,496 @@
-// ============================================================================
-// CrypShare — Cryptographic Functions Unit Tests
-// ============================================================================
-// These tests verify the core cryptographic operations used by the frontend.
-// Node.js 22+ provides crypto.subtle (WebCrypto API) natively.
-// ============================================================================
+// Tests the real browser module (frontend/crypto.js) using Node's WebCrypto.
+import { describe, expect, it, vi, afterEach } from "vitest";
+import * as CryptoModule from "../../frontend/crypto.js";
 
-import { describe, it, expect } from 'vitest';
+globalThis.window = globalThis;
 
-// Since crypto.js is an ES module designed for the browser,
-// we replicate its logic here using Node.js WebCrypto API
 const subtle = globalThis.crypto.subtle;
+const CHUNK_SIZE = 64 * 1024;
 
-// ============================================================================
-// Constants (must match crypto.js)
-// ============================================================================
-const AES_KEY_LENGTH = 256;
-const AES_IV_LENGTH = 12;
-const CHUNK_SIZE = 64 * 1024; // 64KB
-const ECDH_CURVE = 'P-256';
-const ECDSA_CURVE = 'P-256';
-const FORMAT_VERSION_CHUNKED = 2;
-
-// ============================================================================
-// Helper functions (replicated from crypto.js)
-// ============================================================================
-
-function arrayBufferToHex(buffer) {
-  const bytes = new Uint8Array(buffer);
-  return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+function randomBytes(size) {
+  const bytes = new Uint8Array(size);
+  // getRandomValues is capped at 65536 bytes per call
+  for (let i = 0; i < size; i += 65536) {
+    crypto.getRandomValues(bytes.subarray(i, i + 65536));
+  }
+  return bytes;
 }
 
-function arrayBufferToBase64(buffer) {
-  const bytes = new Uint8Array(buffer);
-  return Buffer.from(bytes).toString('base64');
+async function encrypt(bytes, name = "report.pdf") {
+  const key = await CryptoModule.generateAESKey();
+  const blob = await CryptoModule.encryptFileChunked(new File([bytes], name), key);
+  return { key, encrypted: await blob.arrayBuffer() };
 }
 
-function base64ToArrayBuffer(base64) {
-  const buf = Buffer.from(base64, 'base64');
-  return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
-}
-
-async function sha256(data) {
-  const hashBuffer = await subtle.digest('SHA-256', data);
-  return arrayBufferToHex(hashBuffer);
-}
-
-async function generateKeyFingerprint(publicKeyJWK) {
-  const sortedKeys = Object.keys(publicKeyJWK).sort();
-  const canonical = JSON.stringify(publicKeyJWK, sortedKeys);
-  const encoder = new TextEncoder();
-  return await sha256(encoder.encode(canonical));
-}
-
-// ============================================================================
-// Shared helper: Encrypt file in chunked format (replicates crypto.js logic)
-// ============================================================================
-
-async function encryptFileData(fileName, fileData, aesKey) {
-  const encryptedChunks = [];
-
-  // 1. Version byte
-  encryptedChunks.push(new Uint8Array([FORMAT_VERSION_CHUNKED]));
-
-  // 2. Encrypt filename
-  const filenameBytes = new TextEncoder().encode(fileName);
-  const filenameIV = crypto.getRandomValues(new Uint8Array(AES_IV_LENGTH));
-  const encryptedFilename = await subtle.encrypt(
-    { name: 'AES-GCM', iv: filenameIV }, aesKey, filenameBytes
-  );
-  const encFnArr = new Uint8Array(encryptedFilename);
-
-  const filenameHeader = new Uint8Array(2 + 12 + 4 + encFnArr.length);
-  filenameHeader[0] = (filenameBytes.length >> 8) & 0xFF;
-  filenameHeader[1] = filenameBytes.length & 0xFF;
-  filenameHeader.set(filenameIV, 2);
-  new DataView(filenameHeader.buffer).setUint32(14, encFnArr.length, false);
-  filenameHeader.set(encFnArr, 18);
-  encryptedChunks.push(filenameHeader);
-
-  // 3. Chunk count
-  const totalChunks = Math.ceil(fileData.byteLength / CHUNK_SIZE);
-  const chunkCountHeader = new Uint8Array(4);
-  new DataView(chunkCountHeader.buffer).setUint32(0, totalChunks, false);
-  encryptedChunks.push(chunkCountHeader);
-
-  // 4. Encrypt chunks
-  const dataView = new Uint8Array(fileData);
+// Splits an encrypted file into its parts so tests can tamper like a malicious server
+function parseLayout(encrypted) {
+  const view = new DataView(encrypted);
+  const filenameCipherLength = view.getUint32(15, false);
+  const countOffset = 19 + filenameCipherLength;
+  const totalChunks = view.getUint32(countOffset, false);
+  const chunks = [];
+  let offset = countOffset + 4;
   for (let i = 0; i < totalChunks; i++) {
-    const start = i * CHUNK_SIZE;
-    const end = Math.min(start + CHUNK_SIZE, fileData.byteLength);
-    const chunk = dataView.slice(start, end);
-
-    const iv = crypto.getRandomValues(new Uint8Array(AES_IV_LENGTH));
-    const ciphertext = await subtle.encrypt(
-      { name: 'AES-GCM', iv }, aesKey, chunk
-    );
-    const ctArr = new Uint8Array(ciphertext);
-
-    const chunkPacket = new Uint8Array(16 + ctArr.length);
-    chunkPacket.set(iv, 0);
-    new DataView(chunkPacket.buffer).setUint32(12, ctArr.length, false);
-    chunkPacket.set(ctArr, 16);
-    encryptedChunks.push(chunkPacket);
+    const length = 16 + view.getUint32(offset + 12, false);
+    chunks.push(new Uint8Array(encrypted.slice(offset, offset + length)));
+    offset += length;
   }
-
-  // Concatenate all chunks into a single buffer
-  const totalSize = encryptedChunks.reduce((sum, c) => sum + c.length, 0);
-  const result = new Uint8Array(totalSize);
-  let offset = 0;
-  for (const chunk of encryptedChunks) {
-    result.set(chunk, offset);
-    offset += chunk.length;
-  }
-  return result.buffer;
+  return { header: new Uint8Array(encrypted.slice(0, countOffset)), chunks };
 }
 
-// ============================================================================
-// Shared helper: Decrypt file from chunked format (replicates crypto.js logic)
-// ============================================================================
+function assemble(header, chunks, totalChunks = chunks.length) {
+  const count = new Uint8Array(4);
+  new DataView(count.buffer).setUint32(0, totalChunks, false);
+  return new Blob([header, count, ...chunks]).arrayBuffer();
+}
 
-async function decryptFileData(encryptedBuffer, aesKey) {
-  const data = new Uint8Array(encryptedBuffer);
-  let offset = 0;
+// The previous format: same layout, but no authenticated position data
+async function encryptLegacyV2(bytes, name) {
+  const key = await CryptoModule.generateAESKey();
+  const seal = async (data) => {
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const ciphertext = new Uint8Array(
+      await subtle.encrypt({ name: "AES-GCM", iv }, key, data),
+    );
+    return { iv, ciphertext };
+  };
 
-  // 1. Version
-  const version = data[offset];
-  offset += 1;
-  if (version !== FORMAT_VERSION_CHUNKED) throw new Error('Unknown format version');
+  const nameBytes = new TextEncoder().encode(name);
+  const sealedName = await seal(nameBytes);
+  const header = new Uint8Array(19 + sealedName.ciphertext.length);
+  header[0] = 2;
+  header[1] = nameBytes.length >> 8;
+  header[2] = nameBytes.length & 0xff;
+  header.set(sealedName.iv, 3);
+  new DataView(header.buffer).setUint32(15, sealedName.ciphertext.length, false);
+  header.set(sealedName.ciphertext, 19);
 
-  // 2. Filename header
-  const fnOrigLen = (data[offset] << 8) | data[offset + 1];
-  offset += 2;
-  const fnIV = data.slice(offset, offset + 12);
-  offset += 12;
-  const fnCTLen = new DataView(data.buffer, offset, 4).getUint32(0, false);
-  offset += 4;
-  const fnCT = data.slice(offset, offset + fnCTLen);
-  offset += fnCTLen;
+  const chunks = [];
+  for (let start = 0; start < bytes.length; start += CHUNK_SIZE) {
+    const sealed = await seal(bytes.subarray(start, start + CHUNK_SIZE));
+    const packet = new Uint8Array(16 + sealed.ciphertext.length);
+    packet.set(sealed.iv, 0);
+    new DataView(packet.buffer).setUint32(12, sealed.ciphertext.length, false);
+    packet.set(sealed.ciphertext, 16);
+    chunks.push(packet);
+  }
+  return { key, encrypted: await assemble(header, chunks) };
+}
 
-  const fnDecrypted = await subtle.decrypt(
-    { name: 'AES-GCM', iv: fnIV }, aesKey, fnCT
+function stubFetchResponse(body) {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => new Response(body)),
   );
-  const filename = new TextDecoder().decode(fnDecrypted);
-
-  // 3. Chunk count
-  const chunkCount = new DataView(data.buffer, offset, 4).getUint32(0, false);
-  offset += 4;
-
-  // 4. Decrypt chunks
-  const decryptedChunks = [];
-  for (let i = 0; i < chunkCount; i++) {
-    const iv = data.slice(offset, offset + 12);
-    offset += 12;
-    const ctLen = new DataView(data.buffer, offset, 4).getUint32(0, false);
-    offset += 4;
-    const ct = data.slice(offset, offset + ctLen);
-    offset += ctLen;
-
-    const decrypted = await subtle.decrypt({ name: 'AES-GCM', iv }, aesKey, ct);
-    decryptedChunks.push(new Uint8Array(decrypted));
-  }
-
-  const totalSize = decryptedChunks.reduce((sum, c) => sum + c.length, 0);
-  const result = new Uint8Array(totalSize);
-  let pos = 0;
-  for (const chunk of decryptedChunks) {
-    result.set(chunk, pos);
-    pos += chunk.length;
-  }
-
-  return { filename, data: result.buffer };
 }
 
+function memoryWritable() {
+  const written = [];
+  const state = { closed: false, aborted: false, written };
+  const stream = new WritableStream({
+    write: (chunk) => void written.push(chunk),
+    close: () => void (state.closed = true),
+    abort: () => void (state.aborted = true),
+  });
+  return { stream, state };
+}
 
-// ============================================================================
-// TEST SUITE 1: AES-256-GCM Operations
-// ============================================================================
+afterEach(() => vi.unstubAllGlobals());
 
-describe('AES-256-GCM Operations', () => {
+describe("file encryption round trip", () => {
+  it.each([
+    ["empty file", 0],
+    ["one byte", 1],
+    ["exactly one chunk", CHUNK_SIZE],
+    ["one byte over a chunk", CHUNK_SIZE + 1],
+    ["several chunks", CHUNK_SIZE * 3 + 1234],
+  ])("%s", async (_name, size) => {
+    const bytes = randomBytes(size);
+    const { key, encrypted } = await encrypt(bytes, "résumé 📄.pdf");
 
-  it('should generate a 256-bit AES key', async () => {
-    const key = await subtle.generateKey(
-      { name: 'AES-GCM', length: AES_KEY_LENGTH },
-      true,
-      ['encrypt', 'decrypt']
-    );
-
-    expect(key.type).toBe('secret');
-    expect(key.algorithm.name).toBe('AES-GCM');
-    expect(key.algorithm.length).toBe(256);
-    expect(key.extractable).toBe(true);
-    expect(key.usages).toContain('encrypt');
-    expect(key.usages).toContain('decrypt');
+    const result = await CryptoModule.decryptFileChunked(encrypted, key);
+    expect(result.filename).toBe("résumé 📄.pdf");
+    expect(new Uint8Array(result.data)).toEqual(bytes);
   });
 
-  it('should export and re-import AES key (JWK roundtrip)', async () => {
-    const key = await subtle.generateKey(
-      { name: 'AES-GCM', length: AES_KEY_LENGTH },
-      true, ['encrypt', 'decrypt']
-    );
-
-    const jwk = await subtle.exportKey('jwk', key);
-    expect(jwk.kty).toBe('oct');
-    expect(jwk.alg).toBe('A256GCM');
-
-    const reimported = await subtle.importKey(
-      'jwk', jwk, { name: 'AES-GCM' }, true, ['encrypt', 'decrypt']
-    );
-
-    // Verify the reimported key works by cross-encrypting
-    const testData = new TextEncoder().encode('roundtrip test');
-    const iv = crypto.getRandomValues(new Uint8Array(AES_IV_LENGTH));
-    const encrypted = await subtle.encrypt({ name: 'AES-GCM', iv }, reimported, testData);
-    const decrypted = await subtle.decrypt({ name: 'AES-GCM', iv }, key, encrypted);
-
-    expect(new TextDecoder().decode(decrypted)).toBe('roundtrip test');
+  it("writes format version 3", async () => {
+    const { encrypted } = await encrypt(randomBytes(10));
+    expect(new Uint8Array(encrypted)[0]).toBe(3);
+    expect(CryptoModule.detectEncryptionFormat(encrypted)).toBe(3);
   });
 
-  it('should export and re-import AES key (raw roundtrip)', async () => {
-    const key = await subtle.generateKey(
-      { name: 'AES-GCM', length: AES_KEY_LENGTH },
-      true, ['encrypt', 'decrypt']
-    );
-
-    const raw = await subtle.exportKey('raw', key);
-    expect(raw.byteLength).toBe(32); // 256 bits = 32 bytes
-
-    const reimported = await subtle.importKey(
-      'raw', raw, { name: 'AES-GCM', length: AES_KEY_LENGTH }, true, ['encrypt', 'decrypt']
-    );
-    expect(reimported.algorithm.name).toBe('AES-GCM');
+  it("never contains the plaintext or filename", async () => {
+    const plaintext = new TextEncoder().encode("TOP-SECRET-CONTENT");
+    const { encrypted } = await encrypt(plaintext, "secret-name.txt");
+    const asText = Buffer.from(encrypted).toString("latin1");
+    expect(asText).not.toContain("TOP-SECRET-CONTENT");
+    expect(asText).not.toContain("secret-name.txt");
   });
 
-  it('should encrypt and decrypt small data correctly', async () => {
-    const key = await subtle.generateKey(
-      { name: 'AES-GCM', length: AES_KEY_LENGTH },
-      true, ['encrypt', 'decrypt']
+  it("uses a fresh IV for every chunk and file", async () => {
+    const bytes = randomBytes(CHUNK_SIZE * 3);
+    const first = parseLayout((await encrypt(bytes)).encrypted);
+    const second = parseLayout((await encrypt(bytes)).encrypted);
+    const ivs = [...first.chunks, ...second.chunks].map((c) =>
+      Buffer.from(c.subarray(0, 12)).toString("hex"),
     );
-    const iv = crypto.getRandomValues(new Uint8Array(AES_IV_LENGTH));
-    const plaintext = new TextEncoder().encode('Hello, CrypShare!');
-
-    const ciphertext = await subtle.encrypt({ name: 'AES-GCM', iv }, key, plaintext);
-    const decrypted = await subtle.decrypt({ name: 'AES-GCM', iv }, key, ciphertext);
-
-    expect(new TextDecoder().decode(decrypted)).toBe('Hello, CrypShare!');
+    expect(new Set(ivs).size).toBe(ivs.length);
   });
 
-  it('should fail decryption with wrong key', async () => {
-    const key1 = await subtle.generateKey(
-      { name: 'AES-GCM', length: AES_KEY_LENGTH }, true, ['encrypt', 'decrypt']
+  it("the streaming encryptor produces the same format, with the size it promised", async () => {
+    const bytes = randomBytes(CHUNK_SIZE * 2 + 5);
+    const key = await CryptoModule.generateAESKey();
+    const { stream, totalSize } = await CryptoModule.createEncryptedStream(
+      new File([bytes], "stream.bin"),
+      key,
     );
-    const key2 = await subtle.generateKey(
-      { name: 'AES-GCM', length: AES_KEY_LENGTH }, true, ['encrypt', 'decrypt']
-    );
-    const iv = crypto.getRandomValues(new Uint8Array(AES_IV_LENGTH));
-    const plaintext = new TextEncoder().encode('secret data');
+    const encrypted = await new Response(stream).arrayBuffer();
+    expect(encrypted.byteLength).toBe(totalSize);
 
-    const ciphertext = await subtle.encrypt({ name: 'AES-GCM', iv }, key1, plaintext);
+    const result = await CryptoModule.decryptFileChunked(encrypted, key);
+    expect(result.filename).toBe("stream.bin");
+    expect(new Uint8Array(result.data)).toEqual(bytes);
+  });
 
+  it("rejects the wrong key", async () => {
+    const { encrypted } = await encrypt(randomBytes(100));
+    const otherKey = await CryptoModule.generateAESKey();
     await expect(
-      subtle.decrypt({ name: 'AES-GCM', iv }, key2, ciphertext)
+      CryptoModule.decryptFileChunked(encrypted, otherKey),
     ).rejects.toThrow();
   });
 
-  it('should fail decryption with wrong IV', async () => {
-    const key = await subtle.generateKey(
-      { name: 'AES-GCM', length: AES_KEY_LENGTH }, true, ['encrypt', 'decrypt']
-    );
-    const iv1 = crypto.getRandomValues(new Uint8Array(AES_IV_LENGTH));
-    const iv2 = crypto.getRandomValues(new Uint8Array(AES_IV_LENGTH));
-    const plaintext = new TextEncoder().encode('secret data');
+  it("rejects unknown formats", () => {
+    expect(() =>
+      CryptoModule.detectEncryptionFormat(new Uint8Array([9, 0, 0]).buffer),
+    ).toThrow("Unknown encryption format");
+  });
+});
 
-    const ciphertext = await subtle.encrypt({ name: 'AES-GCM', iv: iv1 }, key, plaintext);
+describe("tampering by a malicious server", () => {
+  const size = CHUNK_SIZE * 3 + 100;
 
+  it("detects a flipped ciphertext bit", async () => {
+    const { key, encrypted } = await encrypt(randomBytes(size));
+    const tampered = new Uint8Array(encrypted.slice(0));
+    tampered[tampered.length - 1] ^= 1;
     await expect(
-      subtle.decrypt({ name: 'AES-GCM', iv: iv2 }, key, ciphertext)
+      CryptoModule.decryptFileChunked(tampered.buffer, key),
     ).rejects.toThrow();
   });
 
-  it('should detect ciphertext tampering (GCM authentication tag)', async () => {
-    const key = await subtle.generateKey(
-      { name: 'AES-GCM', length: AES_KEY_LENGTH }, true, ['encrypt', 'decrypt']
-    );
-    const iv = crypto.getRandomValues(new Uint8Array(AES_IV_LENGTH));
-    const plaintext = new TextEncoder().encode('tamper test data');
-
-    const ciphertext = await subtle.encrypt({ name: 'AES-GCM', iv }, key, plaintext);
-
-    // Tamper with the ciphertext (flip a byte)
-    const tampered = new Uint8Array(ciphertext);
-    tampered[0] ^= 0xFF;
-
+  it("detects reordered chunks", async () => {
+    const { key, encrypted } = await encrypt(randomBytes(size));
+    const { header, chunks } = parseLayout(encrypted);
+    [chunks[0], chunks[1]] = [chunks[1], chunks[0]];
     await expect(
-      subtle.decrypt({ name: 'AES-GCM', iv }, key, tampered.buffer)
+      CryptoModule.decryptFileChunked(await assemble(header, chunks), key),
     ).rejects.toThrow();
   });
 
-  it('should produce different ciphertext for same plaintext (random IV)', async () => {
-    const key = await subtle.generateKey(
-      { name: 'AES-GCM', length: AES_KEY_LENGTH }, true, ['encrypt', 'decrypt']
-    );
-    const plaintext = new TextEncoder().encode('same data');
+  it("detects a truncated file with a corrected chunk count", async () => {
+    const { key, encrypted } = await encrypt(randomBytes(size));
+    const { header, chunks } = parseLayout(encrypted);
+    await expect(
+      CryptoModule.decryptFileChunked(
+        await assemble(header, chunks.slice(0, 2)),
+        key,
+      ),
+    ).rejects.toThrow();
+  });
 
-    const iv1 = crypto.getRandomValues(new Uint8Array(AES_IV_LENGTH));
-    const iv2 = crypto.getRandomValues(new Uint8Array(AES_IV_LENGTH));
+  it("detects a file emptied down to zero chunks", async () => {
+    const { key, encrypted } = await encrypt(randomBytes(size));
+    const { header } = parseLayout(encrypted);
+    await expect(
+      CryptoModule.decryptFileChunked(await assemble(header, []), key),
+    ).rejects.toThrow();
+  });
 
-    const ct1 = new Uint8Array(await subtle.encrypt({ name: 'AES-GCM', iv: iv1 }, key, plaintext));
-    const ct2 = new Uint8Array(await subtle.encrypt({ name: 'AES-GCM', iv: iv2 }, key, plaintext));
+  it("detects duplicated chunks", async () => {
+    const { key, encrypted } = await encrypt(randomBytes(size));
+    const { header, chunks } = parseLayout(encrypted);
+    chunks.splice(1, 0, chunks[1]);
+    await expect(
+      CryptoModule.decryptFileChunked(await assemble(header, chunks), key),
+    ).rejects.toThrow();
+  });
 
-    // Ciphertexts should differ because of different random IVs
-    const match = ct1.length === ct2.length && ct1.every((b, i) => b === ct2[i]);
-    expect(match).toBe(false);
+  it("can't be downgraded to the old format to skip the checks", async () => {
+    const { key, encrypted } = await encrypt(randomBytes(size));
+    const downgraded = new Uint8Array(encrypted.slice(0));
+    downgraded[0] = 2;
+    await expect(
+      CryptoModule.decryptFileChunked(downgraded.buffer, key),
+    ).rejects.toThrow();
   });
 });
 
-// ============================================================================
-// TEST SUITE 2: Chunked File Encryption Format
-// ============================================================================
+describe("files already stored in the old v2 format", () => {
+  it("still decrypt", async () => {
+    const bytes = randomBytes(CHUNK_SIZE * 2 + 10);
+    const { key, encrypted } = await encryptLegacyV2(bytes, "old-file.zip");
+    expect(CryptoModule.detectEncryptionFormat(encrypted)).toBe(2);
 
-describe('Chunked File Encryption Format (v2)', () => {
-
-  it('should encrypt and decrypt a small file preserving content and filename', async () => {
-    const key = await subtle.generateKey(
-      { name: 'AES-GCM', length: AES_KEY_LENGTH }, true, ['encrypt', 'decrypt']
-    );
-
-    const filename = 'test-document.pdf';
-    const content = new TextEncoder().encode('PDF file content here');
-
-    const encrypted = await encryptFileData(filename, content.buffer, key);
-    const decrypted = await decryptFileData(encrypted, key);
-
-    expect(decrypted.filename).toBe(filename);
-    expect(new Uint8Array(decrypted.data)).toEqual(content);
+    const result = await CryptoModule.decryptFileChunked(encrypted, key);
+    expect(result.filename).toBe("old-file.zip");
+    expect(new Uint8Array(result.data)).toEqual(bytes);
   });
 
-  it('should handle multi-chunk files correctly', async () => {
-    const key = await subtle.generateKey(
-      { name: 'AES-GCM', length: AES_KEY_LENGTH }, true, ['encrypt', 'decrypt']
-    );
+  it("still decrypt when streaming", async () => {
+    const bytes = randomBytes(CHUNK_SIZE + 10);
+    const { key, encrypted } = await encryptLegacyV2(bytes, "old-file.zip");
+    stubFetchResponse(encrypted);
+    const { stream, state } = memoryWritable();
 
-    // Create data larger than CHUNK_SIZE (64KB) — non-aligned size
-    const size = CHUNK_SIZE * 3 + 1234; // ~193KB
-    const content = new Uint8Array(size);
-    // getRandomValues is capped at 65536 bytes per call
-    for (let i = 0; i < size; i += 65536) {
-      crypto.getRandomValues(content.subarray(i, i + 65536));
-    }
-
-    const encrypted = await encryptFileData('large-test.bin', content.buffer, key);
-    const decrypted = await decryptFileData(encrypted, key);
-
-    expect(decrypted.filename).toBe('large-test.bin');
-    expect(new Uint8Array(decrypted.data)).toEqual(content);
-  });
-
-  it('should produce version 2 format marker', async () => {
-    const key = await subtle.generateKey(
-      { name: 'AES-GCM', length: AES_KEY_LENGTH }, true, ['encrypt', 'decrypt']
-    );
-
-    const encrypted = await encryptFileData('v.txt', new Uint8Array([1, 2, 3]).buffer, key);
-    const view = new Uint8Array(encrypted);
-
-    expect(view[0]).toBe(2); // FORMAT_VERSION_CHUNKED
-  });
-
-  it('should fail decryption with wrong key on chunked file', async () => {
-    const key1 = await subtle.generateKey(
-      { name: 'AES-GCM', length: AES_KEY_LENGTH }, true, ['encrypt', 'decrypt']
-    );
-    const key2 = await subtle.generateKey(
-      { name: 'AES-GCM', length: AES_KEY_LENGTH }, true, ['encrypt', 'decrypt']
-    );
-
-    const encrypted = await encryptFileData('secret.txt',
-      new TextEncoder().encode('secret').buffer, key1
-    );
-
-    await expect(decryptFileData(encrypted, key2)).rejects.toThrow();
-  });
-
-  it('should handle empty filename gracefully', async () => {
-    const key = await subtle.generateKey(
-      { name: 'AES-GCM', length: AES_KEY_LENGTH }, true, ['encrypt', 'decrypt']
-    );
-
-    const encrypted = await encryptFileData('', new Uint8Array([0]).buffer, key);
-    const decrypted = await decryptFileData(encrypted, key);
-
-    expect(decrypted.filename).toBe('');
-  });
-
-  it('should handle unicode filenames', async () => {
-    const key = await subtle.generateKey(
-      { name: 'AES-GCM', length: AES_KEY_LENGTH }, true, ['encrypt', 'decrypt']
-    );
-
-    const unicodeName = '日本語ファイル_📎_résumé.pdf';
-    const encrypted = await encryptFileData(unicodeName, new Uint8Array([1]).buffer, key);
-    const decrypted = await decryptFileData(encrypted, key);
-
-    expect(decrypted.filename).toBe(unicodeName);
+    const result = await CryptoModule.downloadAndDecryptToStream("/x", key, stream);
+    expect(result.filename).toBe("old-file.zip");
+    expect(state.closed).toBe(true);
+    expect(new Uint8Array(await new Blob(state.written).arrayBuffer())).toEqual(bytes);
   });
 });
 
-// ============================================================================
-// TEST SUITE 3: ECDH Key Exchange
-// ============================================================================
+describe("streaming to disk", () => {
+  it("writes the file and reports the same hash as hashFile", async () => {
+    const bytes = randomBytes(CHUNK_SIZE * 2 + 10);
+    const { key, encrypted } = await encrypt(bytes, "video.mp4");
+    const expectedHash = await CryptoModule.hashFile(new File([bytes], "video.mp4"));
+    stubFetchResponse(encrypted);
+    const { stream, state } = memoryWritable();
 
-describe('ECDH Key Exchange (P-256)', () => {
-
-  it('should generate an ECDH P-256 keypair', async () => {
-    const keyPair = await subtle.generateKey(
-      { name: 'ECDH', namedCurve: ECDH_CURVE },
-      true,
-      ['deriveKey']
+    const result = await CryptoModule.downloadAndDecryptToStream(
+      "/x",
+      key,
+      stream,
+      () => {},
+      () => {},
+      expectedHash,
     );
 
-    expect(keyPair.publicKey.type).toBe('public');
-    expect(keyPair.privateKey.type).toBe('private');
-    expect(keyPair.publicKey.algorithm.namedCurve).toBe('P-256');
-  });
-
-  it('should derive the same shared key from both sides', async () => {
-    const alice = await subtle.generateKey(
-      { name: 'ECDH', namedCurve: ECDH_CURVE }, true, ['deriveKey']
-    );
-    const bob = await subtle.generateKey(
-      { name: 'ECDH', namedCurve: ECDH_CURVE }, true, ['deriveKey']
-    );
-
-    const sharedKeyAB = await subtle.deriveKey(
-      { name: 'ECDH', public: bob.publicKey },
-      alice.privateKey,
-      { name: 'AES-GCM', length: 256 },
-      true, ['encrypt', 'decrypt']
-    );
-
-    const sharedKeyBA = await subtle.deriveKey(
-      { name: 'ECDH', public: alice.publicKey },
-      bob.privateKey,
-      { name: 'AES-GCM', length: 256 },
-      true, ['encrypt', 'decrypt']
-    );
-
-    const rawAB = new Uint8Array(await subtle.exportKey('raw', sharedKeyAB));
-    const rawBA = new Uint8Array(await subtle.exportKey('raw', sharedKeyBA));
-
-    expect(rawAB).toEqual(rawBA);
-  });
-
-  it('should encrypt and decrypt an AES key for a recipient (full ECDH flow)', async () => {
-    // 1. Generate file AES key
-    const fileKey = await subtle.generateKey(
-      { name: 'AES-GCM', length: AES_KEY_LENGTH }, true, ['encrypt', 'decrypt']
-    );
-    const fileKeyRaw = await subtle.exportKey('raw', fileKey);
-
-    // 2. Recipient has a long-lived keypair
-    const recipient = await subtle.generateKey(
-      { name: 'ECDH', namedCurve: ECDH_CURVE }, true, ['deriveKey']
-    );
-
-    // 3. Sender creates ephemeral keypair + derives shared secret
-    const ephemeral = await subtle.generateKey(
-      { name: 'ECDH', namedCurve: ECDH_CURVE }, true, ['deriveKey']
-    );
-
-    const sharedKey = await subtle.deriveKey(
-      { name: 'ECDH', public: recipient.publicKey },
-      ephemeral.privateKey,
-      { name: 'AES-GCM', length: 256 },
-      false, ['encrypt']
-    );
-
-    // 4. Encrypt the file key with the shared secret
-    const iv = crypto.getRandomValues(new Uint8Array(AES_IV_LENGTH));
-    const encryptedFileKey = await subtle.encrypt(
-      { name: 'AES-GCM', iv }, sharedKey, fileKeyRaw
-    );
-
-    // 5. Bundle = { ephemeralPublicKey, iv, encryptedKey }
-    const ephemeralPubJWK = await subtle.exportKey('jwk', ephemeral.publicKey);
-
-    // --- Recipient side ---
-
-    // 6. Import ephemeral public key
-    const importedEphPub = await subtle.importKey(
-      'jwk', ephemeralPubJWK,
-      { name: 'ECDH', namedCurve: ECDH_CURVE },
-      false, []
-    );
-
-    // 7. Derive same shared secret
-    const recipientSharedKey = await subtle.deriveKey(
-      { name: 'ECDH', public: importedEphPub },
-      recipient.privateKey,
-      { name: 'AES-GCM', length: 256 },
-      false, ['decrypt']
-    );
-
-    // 8. Decrypt the file key
-    const decryptedFileKeyRaw = await subtle.decrypt(
-      { name: 'AES-GCM', iv }, recipientSharedKey, encryptedFileKey
-    );
-
-    // 9. Compare raw key bytes
-    expect(new Uint8Array(decryptedFileKeyRaw)).toEqual(new Uint8Array(fileKeyRaw));
-
-    // 10. Verify the recovered key actually works for file decryption
-    const recoveredFileKey = await subtle.importKey(
-      'raw', decryptedFileKeyRaw,
-      { name: 'AES-GCM', length: AES_KEY_LENGTH },
-      true, ['encrypt', 'decrypt']
-    );
-
-    const testIV = crypto.getRandomValues(new Uint8Array(AES_IV_LENGTH));
-    const testPlain = new TextEncoder().encode('file content');
-    const testCipher = await subtle.encrypt(
-      { name: 'AES-GCM', iv: testIV }, fileKey, testPlain
-    );
-    const testDecrypted = await subtle.decrypt(
-      { name: 'AES-GCM', iv: testIV }, recoveredFileKey, testCipher
-    );
-
-    expect(new TextDecoder().decode(testDecrypted)).toBe('file content');
-  });
-
-  it('should produce different shared keys for different keypairs', async () => {
-    const alice = await subtle.generateKey(
-      { name: 'ECDH', namedCurve: ECDH_CURVE }, true, ['deriveKey']
-    );
-    const bob = await subtle.generateKey(
-      { name: 'ECDH', namedCurve: ECDH_CURVE }, true, ['deriveKey']
-    );
-    const charlie = await subtle.generateKey(
-      { name: 'ECDH', namedCurve: ECDH_CURVE }, true, ['deriveKey']
-    );
-
-    const keyAB = await subtle.deriveKey(
-      { name: 'ECDH', public: bob.publicKey }, alice.privateKey,
-      { name: 'AES-GCM', length: 256 }, true, ['encrypt']
-    );
-    const keyAC = await subtle.deriveKey(
-      { name: 'ECDH', public: charlie.publicKey }, alice.privateKey,
-      { name: 'AES-GCM', length: 256 }, true, ['encrypt']
-    );
-
-    const rawAB = new Uint8Array(await subtle.exportKey('raw', keyAB));
-    const rawAC = new Uint8Array(await subtle.exportKey('raw', keyAC));
-
-    expect(rawAB).not.toEqual(rawAC);
-  });
-});
-
-// ============================================================================
-// TEST SUITE 4: ECDSA Digital Signatures
-// ============================================================================
-
-describe('ECDSA Digital Signatures (P-256)', () => {
-
-  it('should generate an ECDSA P-256 signing keypair', async () => {
-    const keyPair = await subtle.generateKey(
-      { name: 'ECDSA', namedCurve: ECDSA_CURVE },
-      true,
-      ['sign', 'verify']
-    );
-
-    expect(keyPair.publicKey.algorithm.name).toBe('ECDSA');
-    expect(keyPair.privateKey.algorithm.name).toBe('ECDSA');
-  });
-
-  it('should sign and verify data correctly', async () => {
-    const keyPair = await subtle.generateKey(
-      { name: 'ECDSA', namedCurve: ECDSA_CURVE }, true, ['sign', 'verify']
-    );
-
-    const data = new TextEncoder().encode('data to sign');
-    const signature = await subtle.sign(
-      { name: 'ECDSA', hash: 'SHA-256' }, keyPair.privateKey, data
-    );
-
-    const valid = await subtle.verify(
-      { name: 'ECDSA', hash: 'SHA-256' }, keyPair.publicKey, signature, data
-    );
-
-    expect(valid).toBe(true);
-  });
-
-  it('should fail verification with tampered data', async () => {
-    const keyPair = await subtle.generateKey(
-      { name: 'ECDSA', namedCurve: ECDSA_CURVE }, true, ['sign', 'verify']
-    );
-
-    const data = new TextEncoder().encode('original data');
-    const signature = await subtle.sign(
-      { name: 'ECDSA', hash: 'SHA-256' }, keyPair.privateKey, data
-    );
-
-    const tamperedData = new TextEncoder().encode('tampered data');
-    const valid = await subtle.verify(
-      { name: 'ECDSA', hash: 'SHA-256' }, keyPair.publicKey, signature, tamperedData
-    );
-
-    expect(valid).toBe(false);
-  });
-
-  it('should fail verification with wrong public key', async () => {
-    const keyPair1 = await subtle.generateKey(
-      { name: 'ECDSA', namedCurve: ECDSA_CURVE }, true, ['sign', 'verify']
-    );
-    const keyPair2 = await subtle.generateKey(
-      { name: 'ECDSA', namedCurve: ECDSA_CURVE }, true, ['sign', 'verify']
-    );
-
-    const data = new TextEncoder().encode('signed by keyPair1');
-    const signature = await subtle.sign(
-      { name: 'ECDSA', hash: 'SHA-256' }, keyPair1.privateKey, data
-    );
-
-    const valid = await subtle.verify(
-      { name: 'ECDSA', hash: 'SHA-256' }, keyPair2.publicKey, signature, data
-    );
-
-    expect(valid).toBe(false);
-  });
-
-  it('should sign and verify file metadata (CrypShare format)', async () => {
-    const keyPair = await subtle.generateKey(
-      { name: 'ECDSA', namedCurve: ECDSA_CURVE }, true, ['sign', 'verify']
-    );
-
-    // Replicate signFileMetadata from crypto.js
-    const metadata = {
-      filename: 'secret-report.pdf',
-      size: 1048576,
-      contentHash: 'a'.repeat(64),
-    };
-
-    const encoder = new TextEncoder();
-    const filenameHashBuffer = await subtle.digest('SHA-256', encoder.encode(metadata.filename));
-    const filenameHash = arrayBufferToHex(filenameHashBuffer);
-
-    const dataToSign = JSON.stringify({
-      filenameHash,
-      size: metadata.size,
-      contentHash: metadata.contentHash,
-      timestamp: new Date().toISOString(),
+    expect(result).toEqual({
+      filename: "video.mp4",
+      bytesWritten: bytes.length,
+      contentHash: expectedHash,
     });
-
-    const dataBytes = encoder.encode(dataToSign);
-    const signature = await subtle.sign(
-      { name: 'ECDSA', hash: 'SHA-256' }, keyPair.privateKey, dataBytes
-    );
-
-    const signatureBundle = {
-      signature: arrayBufferToBase64(signature),
-      signedData: arrayBufferToBase64(dataBytes),
-    };
-
-    // Replicate verifyFileMetadataSignature from crypto.js
-    const sigBytes = base64ToArrayBuffer(signatureBundle.signature);
-    const signedDataBytes = base64ToArrayBuffer(signatureBundle.signedData);
-
-    const valid = await subtle.verify(
-      { name: 'ECDSA', hash: 'SHA-256' }, keyPair.publicKey, sigBytes, signedDataBytes
-    );
-
-    expect(valid).toBe(true);
-
-    // Also verify the signed metadata can be parsed correctly
-    const parsed = JSON.parse(new TextDecoder().decode(signedDataBytes));
-    expect(parsed.filenameHash).toBe(filenameHash);
-    expect(parsed.size).toBe(1048576);
-    expect(parsed.contentHash).toBe('a'.repeat(64));
+    expect(state.closed).toBe(true);
+    expect(new Uint8Array(await new Blob(state.written).arrayBuffer())).toEqual(bytes);
   });
 
-  it('should detect tampered signature bytes', async () => {
-    const keyPair = await subtle.generateKey(
-      { name: 'ECDSA', namedCurve: ECDSA_CURVE }, true, ['sign', 'verify']
-    );
+  it("discards the output when the content hash doesn't match", async () => {
+    const { key, encrypted } = await encrypt(randomBytes(1000));
+    stubFetchResponse(encrypted);
+    const { stream, state } = memoryWritable();
 
-    const data = new TextEncoder().encode(JSON.stringify({ test: 'data' }));
-    const signature = await subtle.sign(
-      { name: 'ECDSA', hash: 'SHA-256' }, keyPair.privateKey, data
-    );
+    await expect(
+      CryptoModule.downloadAndDecryptToStream(
+        "/x",
+        key,
+        stream,
+        () => {},
+        () => {},
+        "0".repeat(64),
+      ),
+    ).rejects.toThrow("integrity check failed");
+    expect(state.aborted).toBe(true);
+    expect(state.closed).toBe(false);
+  });
 
-    // Tamper with signature (flip a byte)
-    const tampered = new Uint8Array(signature);
-    tampered[0] ^= 0xFF;
+  it("discards the output when a later chunk is corrupted", async () => {
+    const { key, encrypted } = await encrypt(randomBytes(CHUNK_SIZE * 2 + 10));
+    const tampered = new Uint8Array(encrypted.slice(0));
+    tampered[tampered.length - 1] ^= 1;
+    stubFetchResponse(tampered);
+    const { stream, state } = memoryWritable();
 
-    // Verification should return false or throw — both are acceptable
-    try {
-      const valid = await subtle.verify(
-        { name: 'ECDSA', hash: 'SHA-256' }, keyPair.publicKey, tampered.buffer, data
-      );
-      expect(valid).toBe(false);
-    } catch (e) {
-      // Some WebCrypto implementations throw on malformed signatures
-      expect(e).toBeDefined();
-    }
+    await expect(
+      CryptoModule.downloadAndDecryptToStream("/x", key, stream),
+    ).rejects.toThrow();
+    expect(state.aborted).toBe(true);
+    expect(state.closed).toBe(false);
   });
 });
 
-// ============================================================================
-// TEST SUITE 5: SHA-256 Hashing & Fingerprints
-// ============================================================================
+describe("fetchEncryptedFilename", () => {
+  it("reads the name from the header without downloading the rest", async () => {
+    const { key, encrypted } = await encrypt(randomBytes(CHUNK_SIZE * 3), "movie.mkv");
+    let pulls = 0;
+    const bytes = new Uint8Array(encrypted);
+    const body = new ReadableStream({
+      pull(controller) {
+        const start = pulls * 8;
+        pulls += 1;
+        controller.enqueue(bytes.subarray(start, start + 8));
+      },
+    });
+    stubFetchResponse(body);
 
-describe('SHA-256 Hashing & Fingerprints', () => {
-
-  it('should produce correct SHA-256 hash for known input', async () => {
-    const data = new TextEncoder().encode('hello');
-    const hash = await sha256(data);
-
-    // Well-known SHA-256 of "hello"
-    expect(hash).toBe('2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824');
+    await expect(CryptoModule.fetchEncryptedFilename("/x", key)).resolves.toBe("movie.mkv");
+    expect(pulls * 8).toBeLessThan(CHUNK_SIZE);
   });
 
-  it('should produce different hashes for different inputs', async () => {
-    const hash1 = await sha256(new TextEncoder().encode('input1'));
-    const hash2 = await sha256(new TextEncoder().encode('input2'));
+  it("rejects a header claiming an absurd filename length", async () => {
+    const key = await CryptoModule.generateAESKey();
+    const header = new Uint8Array(19);
+    header[0] = 3;
+    new DataView(header.buffer).setUint32(15, 0xffffffff, false);
+    stubFetchResponse(header);
 
-    expect(hash1).not.toBe(hash2);
-  });
-
-  it('should generate deterministic fingerprints from JWK (canonical JSON)', async () => {
-    const keyPair = await subtle.generateKey(
-      { name: 'ECDH', namedCurve: ECDH_CURVE }, true, ['deriveKey']
+    await expect(CryptoModule.fetchEncryptedFilename("/x", key)).rejects.toThrow(
+      "Invalid encrypted file header",
     );
-
-    const jwk = await subtle.exportKey('jwk', keyPair.publicKey);
-
-    // Generate fingerprint twice — must be identical
-    const fp1 = await generateKeyFingerprint(jwk);
-    const fp2 = await generateKeyFingerprint(jwk);
-
-    expect(fp1).toBe(fp2);
-    expect(fp1.length).toBe(64); // SHA-256 = 64 hex chars
-  });
-
-  it('should produce different fingerprints for different keys', async () => {
-    const kp1 = await subtle.generateKey(
-      { name: 'ECDH', namedCurve: ECDH_CURVE }, true, ['deriveKey']
-    );
-    const kp2 = await subtle.generateKey(
-      { name: 'ECDH', namedCurve: ECDH_CURVE }, true, ['deriveKey']
-    );
-
-    const fp1 = await generateKeyFingerprint(await subtle.exportKey('jwk', kp1.publicKey));
-    const fp2 = await generateKeyFingerprint(await subtle.exportKey('jwk', kp2.publicKey));
-
-    expect(fp1).not.toBe(fp2);
-  });
-
-  it('should generate consistent fingerprint regardless of JWK property order', async () => {
-    // This is critical — crypto.js uses sorted keys for canonical JSON
-    const jwk1 = { kty: 'EC', crv: 'P-256', x: 'abc', y: 'def' };
-    const jwk2 = { y: 'def', x: 'abc', kty: 'EC', crv: 'P-256' };
-
-    const fp1 = await generateKeyFingerprint(jwk1);
-    const fp2 = await generateKeyFingerprint(jwk2);
-
-    expect(fp1).toBe(fp2);
-  });
-
-  it('should derive user ID from fingerprint (first 32 chars)', async () => {
-    // Replicates identity.js: id = fingerprint.substring(0, 32)
-    const kp = await subtle.generateKey(
-      { name: 'ECDH', namedCurve: ECDH_CURVE }, true, ['deriveKey']
-    );
-    const jwk = await subtle.exportKey('jwk', kp.publicKey);
-    const fingerprint = await generateKeyFingerprint(jwk);
-
-    const id = fingerprint.substring(0, 32);
-
-    expect(id.length).toBe(32);
-    expect(/^[a-f0-9]{32}$/.test(id)).toBe(true);
-    expect(fingerprint.startsWith(id)).toBe(true);
   });
 });
 
-// ============================================================================
-// TEST SUITE 6: PBKDF2 Backup Encryption
-// ============================================================================
-
-describe('PBKDF2 Backup Encryption', () => {
-
-  async function deriveKeyFromPassword(password, salt) {
-    const encoder = new TextEncoder();
-    const keyMaterial = await subtle.importKey(
-      'raw', encoder.encode(password), 'PBKDF2', false, ['deriveKey']
+describe("hashing", () => {
+  it("hashFile and hashArrayBuffer agree", async () => {
+    const bytes = randomBytes(1000);
+    const copy = bytes.slice();
+    expect(await CryptoModule.hashFile(new File([bytes], "a"))).toBe(
+      await CryptoModule.hashArrayBuffer(copy.buffer),
     );
-    return subtle.deriveKey(
-      { name: 'PBKDF2', salt, iterations: 100000, hash: 'SHA-256' },
-      keyMaterial,
-      { name: 'AES-GCM', length: 256 },
-      false,
-      ['encrypt', 'decrypt']
+  });
+
+  it("matches a known SHA-256 value", async () => {
+    const bytes = new TextEncoder().encode("abc");
+    expect(await CryptoModule.hashArrayBuffer(bytes.buffer)).toBe(
+      "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
     );
+  });
+});
+
+describe("recipient key exchange", () => {
+  it("only the recipient can recover the file key", async () => {
+    const fileKey = await CryptoModule.generateAESKey();
+    const recipient = await CryptoModule.generateECDHKeyPair();
+    const stranger = await CryptoModule.generateECDHKeyPair();
+
+    const bundle = await CryptoModule.encryptKeyForRecipient(fileKey, recipient.publicKey);
+    const recovered = await CryptoModule.decryptKeyWithPrivateKey(
+      bundle,
+      recipient.privateKey,
+    );
+    expect(await CryptoModule.exportAESKeyRaw(recovered)).toEqual(
+      await CryptoModule.exportAESKeyRaw(fileKey),
+    );
+
+    await expect(
+      CryptoModule.decryptKeyWithPrivateKey(bundle, stranger.privateKey),
+    ).rejects.toThrow();
+  });
+
+  it("uses a new ephemeral key for every recipient bundle", async () => {
+    const fileKey = await CryptoModule.generateAESKey();
+    const recipient = await CryptoModule.generateECDHKeyPair();
+    const first = await CryptoModule.encryptKeyForRecipient(fileKey, recipient.publicKey);
+    const second = await CryptoModule.encryptKeyForRecipient(fileKey, recipient.publicKey);
+    expect(first.ephemeralPublicKey.x).not.toBe(second.ephemeralPublicKey.x);
+  });
+});
+
+describe("file signatures", () => {
+  const file = { filename: "a.txt", size: 3, contentHash: "h".repeat(64) };
+
+  async function signed() {
+    const keys = await CryptoModule.generateSigningKeyPair();
+    const bundle = await CryptoModule.signFileMetadata(file, keys.privateKey);
+    return { keys, bundle };
   }
 
-  it('should encrypt and decrypt backup data with password', async () => {
-    const password = 'MyStr0ngP@ssw0rd!';
-    const salt = crypto.getRandomValues(new Uint8Array(16));
-    const iv = crypto.getRandomValues(new Uint8Array(AES_IV_LENGTH));
-
-    const backupData = JSON.stringify({ identity: 'test', keys: {} });
-    const encoder = new TextEncoder();
-
-    const key = await deriveKeyFromPassword(password, salt);
-    const encrypted = await subtle.encrypt(
-      { name: 'AES-GCM', iv }, key, encoder.encode(backupData)
-    );
-
-    // Decrypt with the same password
-    const key2 = await deriveKeyFromPassword(password, salt);
-    const decrypted = await subtle.decrypt(
-      { name: 'AES-GCM', iv }, key2, encrypted
-    );
-
-    expect(JSON.parse(new TextDecoder().decode(decrypted))).toEqual({
-      identity: 'test', keys: {}
-    });
+  it("verifies a genuine signature over the same file", async () => {
+    const { keys, bundle } = await signed();
+    const result = await CryptoModule.verifyFileMetadataSignature(bundle, keys.publicKey);
+    expect(result.valid).toBe(true);
+    expect(await CryptoModule.signedMetadataMatchesFile(result.metadata, file)).toBe(true);
   });
 
-  it('should fail decryption with wrong password', async () => {
-    const salt = crypto.getRandomValues(new Uint8Array(16));
-    const iv = crypto.getRandomValues(new Uint8Array(AES_IV_LENGTH));
+  it("rejects a signature from a different key", async () => {
+    const { bundle } = await signed();
+    const other = await CryptoModule.generateSigningKeyPair();
+    const result = await CryptoModule.verifyFileMetadataSignature(bundle, other.publicKey);
+    expect(result.valid).toBe(false);
+  });
 
-    const key1 = await deriveKeyFromPassword('correct-password', salt);
-    const encrypted = await subtle.encrypt(
-      { name: 'AES-GCM', iv }, key1, new TextEncoder().encode('secret')
+  it("rejects altered signed data", async () => {
+    const { keys, bundle } = await signed();
+    const forged = { ...bundle, signedData: btoa('{"size":999}') };
+    const result = await CryptoModule.verifyFileMetadataSignature(forged, keys.publicKey);
+    expect(result.valid).toBe(false);
+  });
+
+  it.each([
+    ["content", { contentHash: "x".repeat(64) }],
+    ["size", { size: 4 }],
+    ["filename", { filename: "b.txt" }],
+  ])("a valid signature doesn't cover a file with a different %s", async (_name, change) => {
+    const { keys, bundle } = await signed();
+    const { metadata } = await CryptoModule.verifyFileMetadataSignature(bundle, keys.publicKey);
+    expect(
+      await CryptoModule.signedMetadataMatchesFile(metadata, { ...file, ...change }),
+    ).toBe(false);
+  });
+});
+
+describe("fingerprints", () => {
+  it("doesn't depend on JWK key order", async () => {
+    const a = await CryptoModule.generateKeyFingerprint({ kty: "EC", x: "1", y: "2" });
+    const b = await CryptoModule.generateKeyFingerprint({ y: "2", x: "1", kty: "EC" });
+    expect(a).toBe(b);
+    expect(a).toMatch(/^[a-f0-9]{64}$/);
+  });
+});
+
+describe("identity backups", () => {
+  const secrets = { identity: { privateKey: "secret" } };
+
+  it("round-trips with the right password at the current strength", async () => {
+    const backup = await CryptoModule.encryptBackup(secrets, "correct horse");
+    expect(backup.iterations).toBe(600000);
+    expect(JSON.stringify(backup)).not.toContain("secret");
+    await expect(CryptoModule.decryptBackup(backup, "correct horse")).resolves.toEqual(secrets);
+  });
+
+  it("rejects the wrong password", async () => {
+    const backup = await CryptoModule.encryptBackup(secrets, "correct horse");
+    await expect(CryptoModule.decryptBackup(backup, "wrong")).rejects.toThrow(
+      "Incorrect password",
     );
+  });
 
-    const key2 = await deriveKeyFromPassword('wrong-password', salt);
+  it("still restores old backups made with 100,000 iterations", async () => {
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const material = await subtle.importKey(
+      "raw",
+      new TextEncoder().encode("old password"),
+      "PBKDF2",
+      false,
+      ["deriveKey"],
+    );
+    const key = await subtle.deriveKey(
+      { name: "PBKDF2", salt, iterations: 100000, hash: "SHA-256" },
+      material,
+      { name: "AES-GCM", length: 256 },
+      false,
+      ["encrypt"],
+    );
+    const data = await subtle.encrypt(
+      { name: "AES-GCM", iv },
+      key,
+      new TextEncoder().encode(JSON.stringify(secrets)),
+    );
+    const oldBackup = {
+      salt: Array.from(salt),
+      iv: Array.from(iv),
+      data: Array.from(new Uint8Array(data)),
+    };
+
+    await expect(CryptoModule.decryptBackup(oldBackup, "old password")).resolves.toEqual(secrets);
+  });
+
+  it.each([[1], [1e12], ["600000"]])("refuses an iteration count of %s", async (iterations) => {
+    const backup = await CryptoModule.encryptBackup(secrets, "pw");
     await expect(
-      subtle.decrypt({ name: 'AES-GCM', iv }, key2, encrypted)
+      CryptoModule.decryptBackup({ ...backup, iterations }, "pw"),
     ).rejects.toThrow();
-  });
-
-  it('should use 100,000 PBKDF2 iterations (timing sanity check)', async () => {
-    const salt = crypto.getRandomValues(new Uint8Array(16));
-
-    const t0 = performance.now();
-    await deriveKeyFromPassword('benchmark-password', salt);
-    const elapsed = performance.now() - t0;
-
-    // 100K iterations should take at least a few milliseconds
-    expect(elapsed).toBeGreaterThan(1);
-  });
-});
-
-// ============================================================================
-// TEST SUITE 7: Content Integrity Verification
-// ============================================================================
-
-describe('Content Integrity Verification', () => {
-
-  it('should detect hash mismatch after tampering', async () => {
-    const originalData = new TextEncoder().encode('original file content');
-    const originalHash = await sha256(originalData);
-
-    const tamperedData = new TextEncoder().encode('tampered file content');
-    const tamperedHash = await sha256(tamperedData);
-
-    expect(originalHash).not.toBe(tamperedHash);
-  });
-
-  it('should produce matching hashes for identical data', async () => {
-    const data = crypto.getRandomValues(new Uint8Array(1024));
-
-    const hash1 = await sha256(data);
-    const hash2 = await sha256(data);
-
-    expect(hash1).toBe(hash2);
-  });
-
-  it('should verify encrypt-decrypt roundtrip preserves content hash', async () => {
-    const key = await subtle.generateKey(
-      { name: 'AES-GCM', length: AES_KEY_LENGTH }, true, ['encrypt', 'decrypt']
-    );
-
-    // Original data
-    const original = crypto.getRandomValues(new Uint8Array(50000));
-    const originalHash = await sha256(original);
-
-    // Encrypt
-    const iv = crypto.getRandomValues(new Uint8Array(AES_IV_LENGTH));
-    const encrypted = await subtle.encrypt(
-      { name: 'AES-GCM', iv }, key, original
-    );
-
-    // Decrypt
-    const decrypted = new Uint8Array(
-      await subtle.decrypt({ name: 'AES-GCM', iv }, key, encrypted)
-    );
-    const decryptedHash = await sha256(decrypted);
-
-    // Hash must match — proves no data corruption during encrypt/decrypt
-    expect(decryptedHash).toBe(originalHash);
-  });
-});
-
-// ============================================================================
-// TEST SUITE 8: File ID Format Validation (Security)
-// ============================================================================
-
-describe('File ID Format Validation', () => {
-  const FILE_ID_REGEX = /^file-[a-f0-9]{64}\.bin$/;
-
-  it('should accept valid file IDs', () => {
-    const validId = 'file-' + 'a'.repeat(64) + '.bin';
-    expect(FILE_ID_REGEX.test(validId)).toBe(true);
-
-    const validId2 = 'file-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef.bin';
-    expect(FILE_ID_REGEX.test(validId2)).toBe(true);
-  });
-
-  it('should reject path traversal attempts', () => {
-    expect(FILE_ID_REGEX.test('../../../etc/passwd')).toBe(false);
-    expect(FILE_ID_REGEX.test('..\\..\\windows\\system32')).toBe(false);
-    expect(FILE_ID_REGEX.test('file-../../../etc/passwd.bin')).toBe(false);
-  });
-
-  it('should reject old timestamp-based format', () => {
-    expect(FILE_ID_REGEX.test('file-1703580000000-abcdef.bin')).toBe(false);
-  });
-
-  it('should reject uppercase hex', () => {
-    expect(FILE_ID_REGEX.test('file-' + 'A'.repeat(64) + '.bin')).toBe(false);
-  });
-
-  it('should reject wrong length', () => {
-    expect(FILE_ID_REGEX.test('file-' + 'a'.repeat(63) + '.bin')).toBe(false);
-    expect(FILE_ID_REGEX.test('file-' + 'a'.repeat(65) + '.bin')).toBe(false);
-  });
-
-  it('should reject missing prefix or suffix', () => {
-    expect(FILE_ID_REGEX.test('a'.repeat(64) + '.bin')).toBe(false);
-    expect(FILE_ID_REGEX.test('file-' + 'a'.repeat(64))).toBe(false);
   });
 });
